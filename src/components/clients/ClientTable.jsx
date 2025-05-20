@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, Edit, Trash, ArrowUpDown, User, Building, Users } from 'lucide-react';
+import { Eye, Edit, Trash, ArrowUpDown, User, Building, Users, Group } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
       case 'Corporate':
         return <Building className="h-5 w-5 text-purple-500" />;
       case 'Group':
-        return <Users className="h-5 w-5 text-green-500" />;
+        return <Group className="h-5 w-5 text-green-500" />;
       default:
         return <User className="h-5 w-5 text-gray-500" />;
     }

@@ -7,7 +7,8 @@ import {
   Filter,
   Users,
   Building,
-  User
+  User,
+  Group
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
@@ -298,30 +299,47 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Client Tabs */}
+      {/* Enhanced Client Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Tabs value={clientTypeFilter} onValueChange={setClientTypeFilter}>
-          <div className="border-b border-gray-200 px-4">
-            <TabsList className="flex gap-4 -mb-px overflow-x-auto no-scrollbar">
-              <TabsTrigger value="all">
-                All Clients
+        <Tabs 
+          value={clientTypeFilter} 
+          onValueChange={setClientTypeFilter} 
+          className="w-full"
+        >
+          <div className="border-b border-gray-200">
+            <TabsList className="h-auto w-full bg-transparent p-0 flex justify-around">
+              <TabsTrigger 
+                value="all"
+                className="data-[state=active]:bg-white data-[state=active]:text-amba-blue data-[state=active]:border-b-2 data-[state=active]:border-amba-blue rounded-none py-4 px-6 flex-1 text-gray-600 font-medium text-sm transition-all duration-200 hover:bg-gray-50"
+              >
+                <Users className="h-5 w-5 mr-2" />
+                <span>All Clients</span>
               </TabsTrigger>
-              <TabsTrigger value="individual">
-                <User className="h-4 w-4 mr-1 inline" />
-                Individual
+              <TabsTrigger 
+                value="individual"
+                className="data-[state=active]:bg-white data-[state=active]:text-amba-blue data-[state=active]:border-b-2 data-[state=active]:border-amba-blue rounded-none py-4 px-6 flex-1 text-gray-600 font-medium text-sm transition-all duration-200 hover:bg-gray-50"
+              >
+                <User className="h-5 w-5 mr-2" />
+                <span>Individual</span>
               </TabsTrigger>
-              <TabsTrigger value="corporate">
-                <Building className="h-4 w-4 mr-1 inline" />
-                Corporate
+              <TabsTrigger 
+                value="corporate"
+                className="data-[state=active]:bg-white data-[state=active]:text-amba-blue data-[state=active]:border-b-2 data-[state=active]:border-amba-blue rounded-none py-4 px-6 flex-1 text-gray-600 font-medium text-sm transition-all duration-200 hover:bg-gray-50"
+              >
+                <Building className="h-5 w-5 mr-2" />
+                <span>Corporate</span>
               </TabsTrigger>
-              <TabsTrigger value="group">
-                <Users className="h-4 w-4 mr-1 inline" />
-                Group
+              <TabsTrigger 
+                value="group"
+                className="data-[state=active]:bg-white data-[state=active]:text-amba-blue data-[state=active]:border-b-2 data-[state=active]:border-amba-blue rounded-none py-4 px-6 flex-1 text-gray-600 font-medium text-sm transition-all duration-200 hover:bg-gray-50"
+              >
+                <Group className="h-5 w-5 mr-2" />
+                <span>Group</span>
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="all">
+          <TabsContent value="all" className="p-0 mt-0 animate-fade-in">
             <ClientTable 
               clients={filteredClients}
               onViewClient={handleViewClient}
@@ -330,7 +348,7 @@ const Clients = () => {
             />
           </TabsContent>
           
-          <TabsContent value="individual">
+          <TabsContent value="individual" className="p-0 mt-0 animate-fade-in">
             <ClientTable 
               clients={filteredClients.filter(client => client.type === 'Individual')}
               onViewClient={handleViewClient}
@@ -339,7 +357,7 @@ const Clients = () => {
             />
           </TabsContent>
           
-          <TabsContent value="corporate">
+          <TabsContent value="corporate" className="p-0 mt-0 animate-fade-in">
             <ClientTable 
               clients={filteredClients.filter(client => client.type === 'Corporate')}
               onViewClient={handleViewClient}
@@ -348,7 +366,7 @@ const Clients = () => {
             />
           </TabsContent>
           
-          <TabsContent value="group">
+          <TabsContent value="group" className="p-0 mt-0 animate-fade-in">
             <ClientTable 
               clients={filteredClients.filter(client => client.type === 'Group')}
               onViewClient={handleViewClient}
