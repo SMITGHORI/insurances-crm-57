@@ -28,7 +28,7 @@ const Clients = () => {
   const [clients, setClients] = useState([
     {
       id: 1,
-      clientId: 'AMB-CLI-20250520-0001',
+      clientId: 'AMB-CLI-2025-0001',
       name: 'Rahul Sharma',
       type: 'Individual',
       contact: '+91 9876543210',
@@ -39,7 +39,7 @@ const Clients = () => {
     },
     {
       id: 2,
-      clientId: 'AMB-CLI-20250520-0002',
+      clientId: 'AMB-CLI-2025-0002',
       name: 'Tech Solutions Ltd',
       type: 'Corporate',
       contact: '+91 2234567890',
@@ -141,7 +141,7 @@ const Clients = () => {
   // Handle client form submission
   const handleClientFormSuccess = (clientData) => {
     // Generate a unique client ID
-    const existingIds = clients.map(client => client.clientId);
+    const existingIds = clients.map(client => client.clientId).filter(Boolean);
     const newClientId = generateClientId(existingIds);
     
     // Create new client with ID

@@ -1,20 +1,18 @@
 
-// Function to generate unique client IDs with pattern AMB-CLI-YYYYMMDD-XXXX
-// where XXXX is a sequence number
+// Function to generate unique client IDs with pattern AMB-CLI-YYYY-XXXX
+// where YYYY is the year and XXXX is a sequence number that resets each year
 
 export const generateClientId = (existingIds = []) => {
   const today = new Date();
   const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  const datePrefix = `AMB-CLI-${year}${month}${day}`;
+  const datePrefix = `AMB-CLI-${year}`;
   
-  // Find the highest sequence number for today's date
-  const todaysIds = existingIds.filter(id => id && id.startsWith(datePrefix));
+  // Find the highest sequence number for the current year
+  const yearIds = existingIds.filter(id => id && id.startsWith(datePrefix));
   let highestSequence = 0;
   
-  if (todaysIds.length > 0) {
-    todaysIds.forEach(id => {
+  if (yearIds.length > 0) {
+    yearIds.forEach(id => {
       const sequencePart = id.split('-')[3];
       if (sequencePart) {
         const sequence = parseInt(sequencePart, 10);
