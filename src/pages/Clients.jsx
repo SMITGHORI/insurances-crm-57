@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
-import { generateClientId } from '../utils/idGenerator';
+import { generateClientId, ensureClientIds } from '../utils/idGenerator';
 import { Button } from '@/components/ui/button';
 
 const Clients = () => {
@@ -24,7 +25,7 @@ const Clients = () => {
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Sample client data
-  const clients = [
+  const [clients, setClients] = useState([
     {
       id: 1,
       clientId: 'AMB-CLI-20250520-0001',
@@ -107,7 +108,13 @@ const Clients = () => {
       policies: 4,
       status: 'Inactive',
     },
-  ];
+  ]);
+
+  // Ensure all clients have client IDs on initial load
+  useEffect(() => {
+    const updatedClients = ensureClientIds(clients);
+    setClients(updatedClients);
+  }, []);
 
   // Filter options
   const filterOptions = ['All', 'Individual', 'Corporate', 'Group', 'Active', 'Inactive'];
@@ -137,6 +144,17 @@ const Clients = () => {
     const existingIds = clients.map(client => client.clientId);
     const newClientId = generateClientId(existingIds);
     
+    // Create new client with ID
+    const newClient = {
+      id: clients.length + 1,
+      clientId: newClientId,
+      ...clientData,
+      policies: 0,
+      status: 'Active'
+    };
+    
+    // Add to clients list
+    setClients([...clients, newClient]);
     toast.success(`Client ${clientData.name} added successfully with ID: ${newClientId}`);
     setShowAddModal(false);
   };

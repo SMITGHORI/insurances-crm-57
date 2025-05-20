@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { User, Building, Users } from 'lucide-react';
 import { 
@@ -20,9 +20,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
+import { generateClientId } from '../../utils/idGenerator';
 
-const ClientForm = ({ onClose, onSuccess }) => {
+const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
   const [clientType, setClientType] = useState('individual');
+  const [previewClientId, setPreviewClientId] = useState('');
+
+  // Generate preview client ID
+  useEffect(() => {
+    const existingIds = existingClients.map(client => client?.clientId).filter(Boolean);
+    const generatedId = generateClientId(existingIds);
+    setPreviewClientId(generatedId);
+  }, [existingClients]);
 
   const form = useForm({
     defaultValues: {
@@ -49,10 +58,26 @@ const ClientForm = ({ onClose, onSuccess }) => {
   });
 
   const handleSubmit = (data) => {
-    console.log("Form data:", data);
-    toast.success('Client added successfully');
-    onSuccess && onSuccess();
-    onClose && onClose();
+    // Construct the client name based on client type
+    let name = '';
+    if (clientType === 'individual') {
+      name = `${data.firstName} ${data.lastName}`;
+    } else if (clientType === 'corporate') {
+      name = data.companyName;
+    } else if (clientType === 'group') {
+      name = data.groupName;
+    }
+    
+    // Prepare client data with type
+    const clientData = {
+      ...data,
+      name,
+      type: clientType === 'individual' ? 'Individual' : 
+            clientType === 'corporate' ? 'Corporate' : 'Group',
+    };
+    
+    console.log("Form data:", clientData);
+    onSuccess && onSuccess(clientData);
   };
 
   const handleClientTypeChange = (value) => {
@@ -66,6 +91,12 @@ const ClientForm = ({ onClose, onSuccess }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Add New Client
         </h3>
+        
+        {/* Client ID Preview */}
+        <div className="mb-4 p-2 border border-dashed border-gray-300 rounded-md bg-gray-50">
+          <p className="text-sm text-gray-500">Client ID (will be assigned automatically)</p>
+          <p className="font-mono text-gray-900 font-medium">{previewClientId}</p>
+        </div>
         
         {/* Client Type Selection */}
         <div className="mb-6">

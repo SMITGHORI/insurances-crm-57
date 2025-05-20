@@ -10,15 +10,17 @@ export const generateClientId = (existingIds = []) => {
   const datePrefix = `AMB-CLI-${year}${month}${day}`;
   
   // Find the highest sequence number for today's date
-  const todaysIds = existingIds.filter(id => id.startsWith(datePrefix));
+  const todaysIds = existingIds.filter(id => id && id.startsWith(datePrefix));
   let highestSequence = 0;
   
   if (todaysIds.length > 0) {
     todaysIds.forEach(id => {
       const sequencePart = id.split('-')[3];
-      const sequence = parseInt(sequencePart, 10);
-      if (sequence > highestSequence) {
-        highestSequence = sequence;
+      if (sequencePart) {
+        const sequence = parseInt(sequencePart, 10);
+        if (!isNaN(sequence) && sequence > highestSequence) {
+          highestSequence = sequence;
+        }
       }
     });
   }
@@ -26,4 +28,19 @@ export const generateClientId = (existingIds = []) => {
   // Generate the next sequence number
   const nextSequence = String(highestSequence + 1).padStart(4, '0');
   return `${datePrefix}-${nextSequence}`;
+};
+
+// Function to ensure all clients have a valid client ID
+export const ensureClientIds = (clients) => {
+  const validIds = clients.filter(client => client.clientId).map(client => client.clientId);
+  
+  return clients.map(client => {
+    if (!client.clientId) {
+      // Generate a new client ID for this client
+      client.clientId = generateClientId(validIds);
+      // Add this ID to our list of valid IDs for subsequent generations
+      validIds.push(client.clientId);
+    }
+    return client;
+  });
 };
