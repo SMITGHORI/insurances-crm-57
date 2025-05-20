@@ -23,7 +23,7 @@ const Clients = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [clientTypeFilter, setClientTypeFilter] = useState('all');
 
-  // Sample client data
+  // Initialize clients state with sample data
   const [clients, setClients] = useState([
     {
       id: 1,
@@ -109,11 +109,24 @@ const Clients = () => {
     },
   ]);
 
-  // Ensure all clients have client IDs on initial load
+  // Load clients from localStorage on initial load
   useEffect(() => {
-    const updatedClients = ensureClientIds(clients);
-    setClients(updatedClients);
+    const storedClientsData = localStorage.getItem('clientsData');
+    
+    if (storedClientsData) {
+      setClients(JSON.parse(storedClientsData));
+    } else {
+      // If no data in localStorage, ensure all clients have client IDs and save to localStorage
+      const updatedClients = ensureClientIds(clients);
+      setClients(updatedClients);
+      localStorage.setItem('clientsData', JSON.stringify(updatedClients));
+    }
   }, []);
+
+  // Update localStorage whenever clients change
+  useEffect(() => {
+    localStorage.setItem('clientsData', JSON.stringify(clients));
+  }, [clients]);
 
   // Filter options
   const filterOptions = ['All', 'Individual', 'Corporate', 'Group', 'Active', 'Inactive'];
@@ -147,7 +160,7 @@ const Clients = () => {
     
     // Create new client with ID
     const newClient = {
-      id: clients.length + 1,
+      id: clients.length > 0 ? Math.max(...clients.map(c => c.id)) + 1 : 1,
       clientId: newClientId,
       ...clientData,
       policies: 0,
@@ -155,7 +168,12 @@ const Clients = () => {
     };
     
     // Add to clients list
-    setClients([...clients, newClient]);
+    const updatedClients = [...clients, newClient];
+    setClients(updatedClients);
+    
+    // Update localStorage
+    localStorage.setItem('clientsData', JSON.stringify(updatedClients));
+    
     toast.success(`Client ${clientData.name} added successfully with ID: ${newClientId}`);
     setShowAddModal(false);
   };
@@ -177,21 +195,34 @@ const Clients = () => {
       const clientToDelete = clients.find(client => client.id === id);
       const updatedClients = clients.filter(client => client.id !== id);
       setClients(updatedClients);
+      
+      // Update localStorage
+      localStorage.setItem('clientsData', JSON.stringify(updatedClients));
+      
       toast.success(`Client ${clientToDelete?.name || `ID: ${id}`} has been deleted`);
     }
   };
 
   // Handle export
   const handleExport = () => {
-    // In a real application, this would generate a CSV or Excel file
-    const exportData = filteredClients.map(({ id, clientId, name, type, contact, email, location, policies, status }) => 
-      ({ id, clientId, name, type, contact, email, location, policies, status })
-    );
-    
     // Create a CSV string
-    const headers = Object.keys(exportData[0]).join(',');
-    const rows = exportData.map(client => Object.values(client).join(','));
-    const csvContent = [headers, ...rows].join('\n');
+    const headers = ['ID', 'Client ID', 'Name', 'Type', 'Contact', 'Email', 'Location', 'Policies', 'Status'];
+    const rows = filteredClients.map(client => [
+      client.id,
+      client.clientId || '',
+      client.name || '',
+      client.type || '',
+      client.contact || '',
+      client.email || '',
+      client.location || '',
+      client.policies || 0,
+      client.status || ''
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
     
     // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -267,7 +298,7 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Client Tabs - Fixed the tabs structure */}
+      {/* Client Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <Tabs value={clientTypeFilter} onValueChange={setClientTypeFilter}>
           <div className="border-b border-gray-200 px-4">

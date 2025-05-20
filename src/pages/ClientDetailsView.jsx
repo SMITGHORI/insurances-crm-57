@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -29,6 +28,93 @@ const ClientDetailsView = () => {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Load client data
+  useEffect(() => {
+    setLoading(true);
+    
+    // Try to get clients from localStorage first
+    const storedClientsData = localStorage.getItem('clientsData');
+    let clientsList = [];
+    
+    if (storedClientsData) {
+      clientsList = JSON.parse(storedClientsData);
+    } else {
+      // Fallback to dummy data if no localStorage data
+      clientsList = [
+        {
+          id: 1,
+          clientId: 'AMB-CLI-2025-0001',
+          name: 'Rahul Sharma',
+          type: 'Individual',
+          contact: '+91 9876543210',
+          email: 'rahul.sharma@example.com',
+          location: 'Mumbai, Maharashtra',
+          policies: 3,
+          status: 'Active',
+          createdAt: '2025-01-15',
+          dob: '1985-06-22',
+          panNumber: 'ABCPD1234R',
+          gender: 'Male',
+          occupation: 'Software Engineer',
+          notes: 'Prefers communication via email',
+          assignedAgent: 'Amit Kumar',
+        },
+        {
+          id: 2,
+          clientId: 'AMB-CLI-2025-0002',
+          name: 'Tech Solutions Ltd',
+          type: 'Corporate',
+          contact: '+91 2234567890',
+          email: 'info@techsolutions.com',
+          location: 'Bangalore, Karnataka',
+          policies: 8,
+          status: 'Active',
+          createdAt: '2025-01-20',
+          registrationNo: 'U12345KA2015PTC123456',
+          gstNumber: '29AABCT1234A1Z5',
+          industry: 'Information Technology',
+          employeeCount: 150,
+          contactPerson: 'Vikram Mehta',
+          contactPersonDesignation: 'HR Manager',
+          notes: 'Handles group health insurance for employees',
+          assignedAgent: 'Priya Sharma',
+        },
+      ];
+    }
+    
+    // Find the requested client
+    const foundClient = clientsList.find(c => c.id === parseInt(id));
+    
+    if (foundClient) {
+      setClient(foundClient);
+    } else {
+      // Create placeholder client if not found
+      setClient({
+        id: parseInt(id), 
+        clientId: generateClientId([]),
+        name: `Client #${id}`,
+        type: 'Individual',
+        email: 'client@example.com',
+        contact: '+91 9999999999',
+        location: 'New Delhi, Delhi',
+        status: 'Active',
+        policies: 0,
+        createdAt: new Date().toISOString().split('T')[0]
+      });
+    }
+    
+    setLoading(false);
+  }, [id]);
+
+  // Handle edit client - This is the key function we need to fix
+  const handleEditClient = () => {
+    if (client) {
+      navigate(`/clients/edit/${client.id}`);
+    } else {
+      toast.error("Client data not available for editing");
+    }
+  };
 
   // Dummy client data - in a real app, this would be fetched from API
   const clients = [
@@ -109,10 +195,6 @@ const ClientDetailsView = () => {
       default:
         return <User className="h-8 w-8 text-gray-400" />;
     }
-  };
-
-  const handleEditClient = () => {
-    navigate(`/clients/edit/${id}`);
   };
 
   // Dummy data for policy list
