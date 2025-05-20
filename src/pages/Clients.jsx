@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Download, 
   Edit, 
   Trash, 
@@ -12,17 +10,16 @@ import {
   ArrowUpDown,
   Users,
   Building,
-  UserPlus,
   User
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ClientForm from '../components/clients/ClientForm';
 
 const Clients = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [clientType, setClientType] = useState('individual');
 
   // Sample client data
   const clients = [
@@ -380,342 +377,14 @@ const Clients = () => {
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Add New Client
-                    </h3>
-                    
-                    <div className="mt-4">
-                      {/* Client Type Selection */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Client Type
-                        </label>
-                        <div className="grid grid-cols-3 gap-4">
-                          <button
-                            type="button"
-                            className={`py-2 px-3 rounded-md flex flex-col items-center justify-center text-sm ${
-                              clientType === 'individual' 
-                                ? 'bg-amba-blue text-white' 
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                            onClick={() => setClientType('individual')}
-                          >
-                            <User className="h-6 w-6 mb-1" />
-                            Individual
-                          </button>
-                          <button
-                            type="button"
-                            className={`py-2 px-3 rounded-md flex flex-col items-center justify-center text-sm ${
-                              clientType === 'corporate' 
-                                ? 'bg-amba-blue text-white' 
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                            onClick={() => setClientType('corporate')}
-                          >
-                            <Building className="h-6 w-6 mb-1" />
-                            Corporate
-                          </button>
-                          <button
-                            type="button"
-                            className={`py-2 px-3 rounded-md flex flex-col items-center justify-center text-sm ${
-                              clientType === 'group' 
-                                ? 'bg-amba-blue text-white' 
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                            onClick={() => setClientType('group')}
-                          >
-                            <Users className="h-6 w-6 mb-1" />
-                            Group
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Form Fields */}
-                      <form className="space-y-4">
-                        {clientType === 'individual' && (
-                          <>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                                  First Name
-                                </label>
-                                <input
-                                  type="text"
-                                  id="firstName"
-                                  className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                              <div>
-                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                                  Last Name
-                                </label>
-                                <input
-                                  type="text"
-                                  id="lastName"
-                                  className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label htmlFor="dob" className="block text-sm font-medium text-gray-700 mb-1">
-                                Date of Birth
-                              </label>
-                              <input
-                                type="date"
-                                id="dob"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
-                                Gender
-                              </label>
-                              <select
-                                id="gender"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              >
-                                <option value="">Select Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                              </select>
-                            </div>
-                          </>
-                        )}
-
-                        {clientType === 'corporate' && (
-                          <>
-                            <div>
-                              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
-                                Company Name
-                              </label>
-                              <input
-                                type="text"
-                                id="companyName"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="registrationNo" className="block text-sm font-medium text-gray-700 mb-1">
-                                Registration Number
-                              </label>
-                              <input
-                                type="text"
-                                id="registrationNo"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">
-                                Industry
-                              </label>
-                              <select
-                                id="industry"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              >
-                                <option value="">Select Industry</option>
-                                <option value="IT">Information Technology</option>
-                                <option value="Manufacturing">Manufacturing</option>
-                                <option value="Healthcare">Healthcare</option>
-                                <option value="Finance">Finance</option>
-                                <option value="Retail">Retail</option>
-                                <option value="Other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label htmlFor="employeeCount" className="block text-sm font-medium text-gray-700 mb-1">
-                                Number of Employees
-                              </label>
-                              <input
-                                type="number"
-                                id="employeeCount"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {clientType === 'group' && (
-                          <>
-                            <div>
-                              <label htmlFor="groupName" className="block text-sm font-medium text-gray-700 mb-1">
-                                Group Name
-                              </label>
-                              <input
-                                type="text"
-                                id="groupName"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                            <div>
-                              <label htmlFor="groupType" className="block text-sm font-medium text-gray-700 mb-1">
-                                Group Type
-                              </label>
-                              <select
-                                id="groupType"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              >
-                                <option value="">Select Group Type</option>
-                                <option value="family">Family</option>
-                                <option value="association">Association</option>
-                                <option value="trust">Trust</option>
-                                <option value="community">Community</option>
-                                <option value="other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label htmlFor="memberCount" className="block text-sm font-medium text-gray-700 mb-1">
-                                Number of Members
-                              </label>
-                              <input
-                                type="number"
-                                id="memberCount"
-                                className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {/* Common fields for all client types */}
-                        <div>
-                          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                            Email Address
-                          </label>
-                          <input
-                            type="email"
-                            id="email"
-                            className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                          />
-                        </div>
-
-                        <div>
-                          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                            Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            id="phone"
-                            className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                          />
-                        </div>
-
-                        <div>
-                          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                            Address
-                          </label>
-                          <textarea
-                            id="address"
-                            rows="2"
-                            className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                          ></textarea>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                              City
-                            </label>
-                            <input
-                              type="text"
-                              id="city"
-                              className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                              State
-                            </label>
-                            <select
-                              id="state"
-                              className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                            >
-                              <option value="">Select State</option>
-                              <option value="AN">Andaman and Nicobar Islands</option>
-                              <option value="AP">Andhra Pradesh</option>
-                              <option value="AR">Arunachal Pradesh</option>
-                              <option value="AS">Assam</option>
-                              <option value="BR">Bihar</option>
-                              <option value="CH">Chandigarh</option>
-                              <option value="CT">Chhattisgarh</option>
-                              <option value="DL">Delhi</option>
-                              <option value="GA">Goa</option>
-                              <option value="GJ">Gujarat</option>
-                              <option value="HR">Haryana</option>
-                              <option value="HP">Himachal Pradesh</option>
-                              <option value="JK">Jammu and Kashmir</option>
-                              <option value="JH">Jharkhand</option>
-                              <option value="KA">Karnataka</option>
-                              <option value="KL">Kerala</option>
-                              <option value="MP">Madhya Pradesh</option>
-                              <option value="MH">Maharashtra</option>
-                              <option value="MN">Manipur</option>
-                              <option value="ML">Meghalaya</option>
-                              <option value="MZ">Mizoram</option>
-                              <option value="NL">Nagaland</option>
-                              <option value="OR">Odisha</option>
-                              <option value="PB">Punjab</option>
-                              <option value="RJ">Rajasthan</option>
-                              <option value="SK">Sikkim</option>
-                              <option value="TN">Tamil Nadu</option>
-                              <option value="TG">Telangana</option>
-                              <option value="TR">Tripura</option>
-                              <option value="UP">Uttar Pradesh</option>
-                              <option value="UK">Uttarakhand</option>
-                              <option value="WB">West Bengal</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label htmlFor="pincode" className="block text-sm font-medium text-gray-700 mb-1">
-                              PIN Code
-                            </label>
-                            <input
-                              type="text"
-                              id="pincode"
-                              className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                              Country
-                            </label>
-                            <input
-                              type="text"
-                              id="country"
-                              className="shadow-sm focus:ring-amba-blue focus:border-amba-blue block w-full sm:text-sm border-gray-300 rounded-md"
-                              defaultValue="India"
-                            />
-                          </div>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-amba-blue text-base font-medium text-white hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => {
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <ClientForm 
+                  onClose={() => setShowAddModal(false)}
+                  onSuccess={() => {
                     setShowAddModal(false);
-                    toast.success('Client added successfully');
                   }}
-                >
-                  Add Client
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
+                />
               </div>
             </div>
           </div>
