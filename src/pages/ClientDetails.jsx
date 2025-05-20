@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -42,7 +41,7 @@ const ClientDetails = () => {
       const clientsData = [
         {
           id: 1,
-          clientId: 'AMB-CLI-20250520-0001',
+          clientId: 'AMB-CLI-2025-0001',
           name: 'Rahul Sharma',
           type: 'Individual',
           contact: '+91 9876543210',
@@ -58,7 +57,7 @@ const ClientDetails = () => {
           policies: [
             { 
               id: 101, 
-              policyNumber: 'HL-20250520-001', 
+              policyNumber: 'HL-2025-001', 
               type: 'Health Insurance', 
               provider: 'Star Health', 
               plan: 'Family Floater', 
@@ -70,7 +69,7 @@ const ClientDetails = () => {
             },
             { 
               id: 102, 
-              policyNumber: 'TL-20250520-002', 
+              policyNumber: 'TL-2025-002', 
               type: 'Term Insurance', 
               provider: 'HDFC Life',
               plan: 'Click 2 Protect', 
@@ -88,7 +87,7 @@ const ClientDetails = () => {
         },
         {
           id: 2,
-          clientId: 'AMB-CLI-20250519-0001',
+          clientId: 'AMB-CLI-2025-0002',
           name: 'Tech Solutions Ltd',
           type: 'Corporate',
           contact: '+91 2234567890',
@@ -124,7 +123,7 @@ const ClientDetails = () => {
           policies: [
             { 
               id: 201, 
-              policyNumber: 'GH-20250520-001', 
+              policyNumber: 'GH-2025-001', 
               type: 'Group Health Insurance', 
               provider: 'ICICI Lombard', 
               plan: 'Corporate Shield', 
@@ -136,7 +135,7 @@ const ClientDetails = () => {
             },
             { 
               id: 202, 
-              policyNumber: 'GL-20250520-002', 
+              policyNumber: 'GL-2025-002', 
               type: 'Group Life Insurance', 
               provider: 'LIC',
               plan: 'Group Term Plan', 
@@ -148,7 +147,7 @@ const ClientDetails = () => {
             },
             { 
               id: 203, 
-              policyNumber: 'PI-20250520-003', 
+              policyNumber: 'PI-2025-003', 
               type: 'Professional Indemnity', 
               provider: 'Bajaj Allianz',
               plan: 'IT Shield', 
@@ -285,15 +284,14 @@ const ClientDetails = () => {
         {/* Main Content Area */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                {client.type !== 'Individual' && (
-                  <TabsTrigger value="contacts">Contacts</TabsTrigger>
-                )}
+                <TabsTrigger value="contacts" disabled={client.type === 'Individual'}>Contacts</TabsTrigger>
                 <TabsTrigger value="policies">Policies ({client.policies.length})</TabsTrigger>
               </TabsList>
-
+              
+              {/* Tab content sections */}
               <TabsContent value="overview" className="space-y-6 mt-4">
                 {client.type === 'Individual' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

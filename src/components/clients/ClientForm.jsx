@@ -145,7 +145,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                       <FormItem>
                         <FormLabel>First Name*</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="John" required />
+                          <Input {...field} placeholder="Aarav" required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -158,7 +158,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                       <FormItem>
                         <FormLabel>Last Name*</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Doe" required />
+                          <Input {...field} placeholder="Sharma" required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -250,19 +250,90 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="annualIncome"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Annual Income (₹)</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} placeholder="500000" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="maritalStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Marital Status</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="single">Single</SelectItem>
+                            <SelectItem value="married">Married</SelectItem>
+                            <SelectItem value="divorced">Divorced</SelectItem>
+                            <SelectItem value="widowed">Widowed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="annualIncome"
+                  name="nomineeName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Annual Income (₹)</FormLabel>
+                      <FormLabel>Nominee Name</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} placeholder="500000" />
+                        <Input {...field} placeholder="Priya Sharma" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nomineeRelation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nominee Relation</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Spouse" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="nomineeContact"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nominee Contact</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="+91 98765 43210" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             )}
 
@@ -275,7 +346,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     <FormItem>
                       <FormLabel>Company Name*</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="ABC Corporation" required />
+                        <Input {...field} placeholder="Infosys Technologies Ltd." required />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -396,12 +467,74 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     <FormItem>
                       <FormLabel>Website</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="https://www.example.com" />
+                        <Input {...field} placeholder="https://www.infosys.com" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                <div className="pt-3 border-t border-gray-200 mb-2">
+                  <h4 className="font-medium text-gray-700 mb-2">Primary Contact Person</h4>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contactPersonName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Name*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Vikram Mehta" required />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="contactPersonDesignation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Designation*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="HR Manager" required />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contactPersonEmail"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email*</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} placeholder="vikram.mehta@infosys.com" required />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="contactPersonPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="+91 98765 43210" required />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             )}
 
@@ -414,7 +547,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     <FormItem>
                       <FormLabel>Group Name*</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Family Health Group" required />
+                        <Input {...field} placeholder="Sharma Family Group" required />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -472,7 +605,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     <FormItem>
                       <FormLabel>Primary Contact Person*</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Rahul Sharma" required />
+                        <Input {...field} placeholder="Rajesh Sharma" required />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -507,6 +640,64 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     )}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="groupFormationDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Formation Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="groupCategory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Group Category</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="religious">Religious</SelectItem>
+                            <SelectItem value="educational">Educational</SelectItem>
+                            <SelectItem value="professional">Professional</SelectItem>
+                            <SelectItem value="social">Social Welfare</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="groupPurpose"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Purpose of Group</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Family health insurance coverage" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             )}
 
@@ -522,7 +713,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                       <FormItem>
                         <FormLabel>Email Address*</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} placeholder="example@mail.com" required />
+                          <Input type="email" {...field} placeholder="name@example.com" required />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -564,7 +755,7 @@ const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
                     <FormItem>
                       <FormLabel>Address*</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="123 Main Street" required />
+                        <Input {...field} placeholder="123 MG Road" required />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
