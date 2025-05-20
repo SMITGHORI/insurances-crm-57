@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
+import { generateClientId } from '../utils/idGenerator';
+import { Button } from '@/components/ui/button';
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ const Clients = () => {
   const clients = [
     {
       id: 1,
+      clientId: 'AMB-CLI-20250520-0001',
       name: 'Rahul Sharma',
       type: 'Individual',
       contact: '+91 9876543210',
@@ -35,6 +38,7 @@ const Clients = () => {
     },
     {
       id: 2,
+      clientId: 'AMB-CLI-20250520-0002',
       name: 'Tech Solutions Ltd',
       type: 'Corporate',
       contact: '+91 2234567890',
@@ -112,7 +116,8 @@ const Clients = () => {
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.contact.includes(searchTerm);
+      client.contact.includes(searchTerm) ||
+      client.clientId.includes(searchTerm);
     
     const matchesFilter = selectedFilter === 'All' || 
       client.type === selectedFilter || 
@@ -126,15 +131,23 @@ const Clients = () => {
     setShowAddModal(true);
   };
 
+  // Handle client form submission
+  const handleClientFormSuccess = (clientData) => {
+    // Generate a unique client ID
+    const existingIds = clients.map(client => client.clientId);
+    const newClientId = generateClientId(existingIds);
+    
+    toast.success(`Client ${clientData.name} added successfully with ID: ${newClientId}`);
+    setShowAddModal(false);
+  };
+
   // Handle edit client
   const handleEditClient = (id) => {
-    toast.info(`Editing client ID: ${id}`);
     navigate(`/clients/edit/${id}`);
   };
 
   // Handle view client details
   const handleViewClient = (id) => {
-    toast.info(`Viewing client ID: ${id}`);
     navigate(`/clients/${id}`);
   };
 
@@ -165,13 +178,13 @@ const Clients = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Clients</h1>
-        <button
+        <Button
           onClick={handleAddClient}
           className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add Client
-        </button>
+        </Button>
       </div>
 
       {/* Filters and Search */}
@@ -225,6 +238,12 @@ const Clients = () => {
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center space-x-1">
+                    <span>Client ID</span>
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <div className="flex items-center space-x-1">
                     <span>Client</span>
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
@@ -267,6 +286,9 @@ const Clients = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredClients.map((client) => (
                 <tr key={client.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-500">
+                    {client.clientId}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -381,9 +403,7 @@ const Clients = () => {
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
                 <ClientForm 
                   onClose={() => setShowAddModal(false)}
-                  onSuccess={() => {
-                    setShowAddModal(false);
-                  }}
+                  onSuccess={handleClientFormSuccess}
                 />
               </div>
             </div>
