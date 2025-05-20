@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,11 +14,11 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 217 71% 24%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 20 89% 54%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
@@ -30,25 +31,18 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 217 71% 24%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-background: 217 71% 24%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 20 89% 54%;
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 217 71% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 217 71% 30%;
+    --sidebar-ring: 20 89% 54%;
   }
 
   .dark {
@@ -61,11 +55,11 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217 71% 24%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 20 89% 54%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
@@ -79,14 +73,15 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    
+    --sidebar-background: 217 71% 24%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 20 89% 54%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 217 71% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 217 71% 30%;
+    --sidebar-ring: 20 89% 54%;
   }
 }
 
@@ -98,4 +93,109 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #afafaf;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+/* Custom styles for the CRM */
+.auth-background {
+  background: linear-gradient(135deg, #1b365d 0%, #5086c1 100%);
+}
+
+.amba-card {
+  @apply bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.amba-table {
+  @apply w-full whitespace-nowrap text-sm text-left text-gray-600;
+}
+
+.amba-table thead {
+  @apply text-xs text-gray-800 uppercase bg-gray-100;
+}
+
+.amba-table th,
+.amba-table td {
+  @apply px-5 py-3;
+}
+
+.amba-table tbody tr {
+  @apply border-b hover:bg-gray-50;
+}
+
+.amba-badge {
+  @apply px-2.5 py-0.5 rounded text-xs font-medium;
+}
+
+.amba-badge-blue {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.amba-badge-green {
+  @apply bg-green-100 text-green-800;
+}
+
+.amba-badge-yellow {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.amba-badge-red {
+  @apply bg-red-100 text-red-800;
+}
+
+.amba-badge-purple {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.amba-badge-orange {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.amba-input {
+  @apply w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500;
+}
+
+.amba-btn {
+  @apply inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+}
+
+.amba-btn-primary {
+  @apply amba-btn bg-amba-blue hover:bg-blue-800 text-white py-2 px-4;
+}
+
+.amba-btn-secondary {
+  @apply amba-btn bg-amba-orange hover:bg-orange-600 text-white py-2 px-4;
+}
+
+.amba-btn-outline {
+  @apply amba-btn border border-input bg-background hover:bg-accent hover:text-accent-foreground py-2 px-4;
+}
+
+.amba-form-group {
+  @apply mb-4;
+}
+
+.amba-form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.amba-help-text {
+  @apply mt-1 text-xs text-gray-500;
 }
