@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { FileUpload, Download, Trash } from 'lucide-react';
+import { Upload, Download, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DocumentUpload = ({ policy, setPolicy }) => {
@@ -180,7 +180,7 @@ const DocumentUpload = ({ policy, setPolicy }) => {
                       htmlFor={`upload-${docType.key}`} 
                       className="cursor-pointer flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 p-3 rounded-md w-full"
                     >
-                      <FileUpload size={16} />
+                      <Upload size={16} />
                       <span>Upload {docType.label}</span>
                     </Label>
                   </div>
