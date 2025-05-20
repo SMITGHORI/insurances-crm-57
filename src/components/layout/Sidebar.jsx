@@ -44,16 +44,16 @@ const Sidebar = () => {
     >
       {/* Sidebar Header */}
       <div className="flex items-center justify-between p-4 border-b border-amba-lightblue/30">
-        {!isCollapsed && (
-          <div className="flex items-center">
-            <img src="/logo.png" alt="Amba Insurance" className="h-8 mr-2" />
-            <span className="font-bold text-lg">Amba Insurance</span>
-          </div>
-        )}
-        {isCollapsed && <img src="/logo.png" alt="Amba Insurance" className="h-8 mx-auto" />}
+        <div className="flex items-center justify-center flex-1">
+          <img 
+            src="/lovable-uploads/82237eee-d62f-4d61-b7c7-1ef7e3f95f2e.png" 
+            alt="Amba Insurance" 
+            className={`${isCollapsed ? 'h-10' : 'h-12'} transition-all duration-300`} 
+          />
+        </div>
         <button
           onClick={toggleSidebar}
-          className="p-1 rounded-full hover:bg-amba-lightblue/20"
+          className="p-1 rounded-full hover:bg-amba-lightblue/20 flex-shrink-0"
         >
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>

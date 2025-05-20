@@ -72,9 +72,9 @@ const Auth = () => {
         <div className="max-w-md w-full space-y-8 animate-fade-in">
           <div className="text-center">
             <img
-              src="/logo.png"
+              src="/lovable-uploads/82237eee-d62f-4d61-b7c7-1ef7e3f95f2e.png"
               alt="Amba Insurance"
-              className="h-20 mx-auto mb-6"
+              className="h-24 mx-auto mb-6"
             />
             <h2 className="text-3xl font-bold mb-2">Welcome to Amba Insurance CRM</h2>
             <p className="text-lg opacity-80">
