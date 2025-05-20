@@ -11,18 +11,22 @@ import {
   ArrowUpDown,
   Users,
   Building,
-  User
+  User,
+  Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
 import { generateClientId, ensureClientIds } from '../utils/idGenerator';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ClientTable from '../components/clients/ClientTable';
 
 const Clients = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [clientTypeFilter, setClientTypeFilter] = useState('all');
 
   // Sample client data
   const [clients, setClients] = useState([
@@ -119,18 +123,20 @@ const Clients = () => {
   // Filter options
   const filterOptions = ['All', 'Individual', 'Corporate', 'Group', 'Active', 'Inactive'];
 
-  // Filtered clients
+  // Filtered clients based on searchTerm, selectedFilter and clientTypeFilter
   const filteredClients = clients.filter(client => {
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.contact.includes(searchTerm) ||
-      client.clientId.includes(searchTerm);
+    const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.contact?.includes(searchTerm) ||
+      (client.clientId && client.clientId.includes(searchTerm));
     
-    const matchesFilter = selectedFilter === 'All' || 
-      client.type === selectedFilter || 
+    const matchesStatusFilter = selectedFilter === 'All' || 
       client.status === selectedFilter;
     
-    return matchesSearch && matchesFilter;
+    const matchesTypeFilter = clientTypeFilter === 'all' || 
+      client.type?.toLowerCase() === clientTypeFilter;
+    
+    return matchesSearch && matchesStatusFilter && matchesTypeFilter;
   });
 
   // Handle adding a new client
@@ -171,31 +177,47 @@ const Clients = () => {
 
   // Handle delete client
   const handleDeleteClient = (id) => {
-    toast.success(`Client ID: ${id} has been deleted`);
+    // Confirm deletion
+    if (window.confirm('Are you sure you want to delete this client?')) {
+      const clientToDelete = clients.find(client => client.id === id);
+      const updatedClients = clients.filter(client => client.id !== id);
+      setClients(updatedClients);
+      toast.success(`Client ${clientToDelete?.name || `ID: ${id}`} has been deleted`);
+    }
   };
 
   // Handle export
   const handleExport = () => {
+    // In a real application, this would generate a CSV or Excel file
+    const exportData = filteredClients.map(({ id, clientId, name, type, contact, email, location, policies, status }) => 
+      ({ id, clientId, name, type, contact, email, location, policies, status })
+    );
+    
+    // Create a CSV string
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(client => Object.values(client).join(','));
+    const csvContent = [headers, ...rows].join('\n');
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `clients_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
     toast.success('Clients exported successfully');
-  };
-
-  const getClientTypeIcon = (type) => {
-    switch (type) {
-      case 'Individual':
-        return <User className="h-5 w-5 text-blue-500" />;
-      case 'Corporate':
-        return <Building className="h-5 w-5 text-purple-500" />;
-      case 'Group':
-        return <Users className="h-5 w-5 text-green-500" />;
-      default:
-        return <User className="h-5 w-5 text-gray-500" />;
-    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Clients</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Client Management</h1>
         <Button
           onClick={handleAddClient}
           className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
@@ -208,7 +230,7 @@ const Clients = () => {
       {/* Filters and Search */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
             <div className="relative w-full md:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -221,7 +243,9 @@ const Clients = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="relative">
+            
+            <div className="relative flex items-center gap-2">
+              <Filter className="h-5 w-5 text-gray-400" />
               <select
                 className="block pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-amba-blue focus:border-amba-blue sm:text-sm"
                 value={selectedFilter}
@@ -248,154 +272,77 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Clients Table */}
+      {/* Client Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Client ID</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Client</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Type</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Contact</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Policies</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center space-x-1">
-                    <span>Status</span>
-                    <ArrowUpDown className="h-4 w-4" />
-                  </div>
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredClients.map((client) => (
-                <tr key={client.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap font-mono text-sm text-gray-500">
-                    {client.clientId}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
-                        {getClientTypeIcon(client.type)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{client.name}</div>
-                        <div className="text-sm text-gray-500">{client.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${client.type === 'Individual' ? 'bg-blue-100 text-blue-800' : 
-                        client.type === 'Corporate' ? 'bg-purple-100 text-purple-800' : 
-                        'bg-green-100 text-green-800'}`}>
-                      {client.type}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.contact}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {client.policies}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${client.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {client.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleViewClient(client.id)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        <Eye className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditClient(client.id)}
-                        className="text-yellow-600 hover:text-yellow-900"
-                      >
-                        <Edit className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClient(client.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {/* Pagination */}
-        <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">1</span> to <span className="font-medium">8</span> of{' '}
-                <span className="font-medium">8</span> results
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex shadow-sm -space-x-px" aria-label="Pagination">
-                <a
-                  href="#"
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Previous</span>
-                  Previous
-                </a>
-                <a
-                  href="#"
-                  aria-current="page"
-                  className="z-10 bg-amba-blue border-amba-blue text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                >
-                  1
-                </a>
-                <a
-                  href="#"
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Next</span>
-                  Next
-                </a>
-              </nav>
-            </div>
+        <Tabs defaultValue="all" onValueChange={(value) => setClientTypeFilter(value)}>
+          <div className="border-b border-gray-200 px-4">
+            <TabsList className="flex gap-4 -mb-px overflow-x-auto no-scrollbar">
+              <TabsTrigger
+                value="all"
+                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
+              >
+                All Clients
+              </TabsTrigger>
+              <TabsTrigger 
+                value="individual"
+                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
+              >
+                <User className="h-4 w-4 mr-1 inline" />
+                Individual
+              </TabsTrigger>
+              <TabsTrigger 
+                value="corporate"
+                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
+              >
+                <Building className="h-4 w-4 mr-1 inline" />
+                Corporate
+              </TabsTrigger>
+              <TabsTrigger 
+                value="group"
+                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
+              >
+                <Users className="h-4 w-4 mr-1 inline" />
+                Group
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </div>
+
+          <TabsContent value="all">
+            <ClientTable 
+              clients={filteredClients}
+              onViewClient={handleViewClient}
+              onEditClient={handleEditClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          </TabsContent>
+          
+          <TabsContent value="individual">
+            <ClientTable 
+              clients={filteredClients.filter(client => client.type === 'Individual')}
+              onViewClient={handleViewClient}
+              onEditClient={handleEditClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          </TabsContent>
+          
+          <TabsContent value="corporate">
+            <ClientTable 
+              clients={filteredClients.filter(client => client.type === 'Corporate')}
+              onViewClient={handleViewClient}
+              onEditClient={handleEditClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          </TabsContent>
+          
+          <TabsContent value="group">
+            <ClientTable 
+              clients={filteredClients.filter(client => client.type === 'Group')}
+              onViewClient={handleViewClient}
+              onEditClient={handleEditClient}
+              onDeleteClient={handleDeleteClient}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Add Client Modal */}
@@ -410,9 +357,21 @@ const Clients = () => {
 
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-500"
+                    onClick={() => setShowAddModal(false)}
+                  >
+                    <span className="sr-only">Close</span>
+                    <span className="text-xl font-medium">&times;</span>
+                  </button>
+                </div>
                 <ClientForm 
                   onClose={() => setShowAddModal(false)}
                   onSuccess={handleClientFormSuccess}
+                  existingClients={clients}
                 />
               </div>
             </div>
