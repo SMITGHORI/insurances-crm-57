@@ -1,18 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
   Download, 
-  Edit, 
-  Trash, 
-  Eye, 
-  ArrowUpDown,
+  Filter,
   Users,
   Building,
-  User,
-  Filter
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
@@ -272,35 +267,23 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Client Tabs */}
+      {/* Client Tabs - Fixed the tabs structure */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Tabs defaultValue="all" onValueChange={(value) => setClientTypeFilter(value)}>
+        <Tabs value={clientTypeFilter} onValueChange={setClientTypeFilter}>
           <div className="border-b border-gray-200 px-4">
             <TabsList className="flex gap-4 -mb-px overflow-x-auto no-scrollbar">
-              <TabsTrigger
-                value="all"
-                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
-              >
+              <TabsTrigger value="all">
                 All Clients
               </TabsTrigger>
-              <TabsTrigger 
-                value="individual"
-                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
-              >
+              <TabsTrigger value="individual">
                 <User className="h-4 w-4 mr-1 inline" />
                 Individual
               </TabsTrigger>
-              <TabsTrigger 
-                value="corporate"
-                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
-              >
+              <TabsTrigger value="corporate">
                 <Building className="h-4 w-4 mr-1 inline" />
                 Corporate
               </TabsTrigger>
-              <TabsTrigger 
-                value="group"
-                className="py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap"
-              >
+              <TabsTrigger value="group">
                 <Users className="h-4 w-4 mr-1 inline" />
                 Group
               </TabsTrigger>
