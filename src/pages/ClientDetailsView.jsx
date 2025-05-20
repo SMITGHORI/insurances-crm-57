@@ -15,7 +15,13 @@ import {
   Clock,
   Calendar,
   Check,
-  X
+  X,
+  File,
+  FileImage,
+  FilePdf,
+  IdCard,
+  FileLock,
+  FileUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -107,7 +113,7 @@ const ClientDetailsView = () => {
     setLoading(false);
   }, [id]);
 
-  // Handle edit client - This is the key function we need to fix
+  // Handle edit client
   const handleEditClient = () => {
     if (client) {
       navigate(`/clients/edit/${client.id}`);
@@ -197,6 +203,35 @@ const ClientDetailsView = () => {
     }
   };
 
+  // Get document icon based on file type
+  const getDocumentIcon = (fileType) => {
+    if (!fileType) return <FileText className="h-5 w-5 text-gray-500" />;
+    
+    if (fileType.includes('image')) {
+      return <FileImage className="h-5 w-5 text-blue-500" />;
+    } else if (fileType.includes('pdf')) {
+      return <FilePdf className="h-5 w-5 text-red-500" />;
+    } else {
+      return <FileText className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+  };
+
+  // Handle document view or download
+  const handleViewDocument = (document) => {
+    if (document && document.url) {
+      window.open(document.url, '_blank');
+    } else {
+      toast.error('Document not available for viewing');
+    }
+  };
+
   // Dummy data for policy list
   const policies = client?.type === 'Individual' ? [
     { id: 101, policyNumber: 'POL-2025-00123', type: 'Health Insurance', startDate: '2025-01-20', endDate: '2026-01-19', premium: '₹15,000', status: 'Active' },
@@ -223,6 +258,17 @@ const ClientDetailsView = () => {
     { id: 501, name: 'ID Proof', type: 'PDF', uploadDate: '2025-01-15', size: '1.2 MB' },
     { id: 502, name: 'Address Proof', type: 'PDF', uploadDate: '2025-01-15', size: '0.8 MB' },
     { id: 503, name: 'Income Proof', type: 'PDF', uploadDate: '2025-01-16', size: '1.5 MB' },
+  ];
+
+  // Get client documents if they exist
+  const clientDocuments = client.documents || {};
+  
+  // Create a formatted document list for display
+  const documentList = [
+    { id: 1, type: 'PAN Card', docKey: 'pan', icon: <IdCard className="h-5 w-5 text-orange-500" />, data: clientDocuments.pan },
+    { id: 2, type: 'Aadhaar Card', docKey: 'aadhaar', icon: <IdCard className="h-5 w-5 text-blue-500" />, data: clientDocuments.aadhaar },
+    { id: 3, type: 'Passport/Voter ID', docKey: 'idProof', icon: <FileLock className="h-5 w-5 text-green-500" />, data: clientDocuments.idProof },
+    { id: 4, type: 'Address Proof', docKey: 'addressProof', icon: <FileUp className="h-5 w-5 text-purple-500" />, data: clientDocuments.addressProof }
   ];
 
   // Loading state
@@ -616,33 +662,71 @@ const ClientDetailsView = () => {
 
           <TabsContent value="documents" className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Documents</h3>
-              <Button>Upload Document</Button>
+              <h3 className="text-lg font-medium">KYC Documents</h3>
+              <Button onClick={() => navigate(`/clients/edit/${client.id}`)}>Upload Documents</Button>
             </div>
             
             <div className="overflow-x-auto bg-white rounded-lg border">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">File Name</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Upload Date</th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
                     <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {documents.map((document) => (
+                  {documentList.map((document) => (
                     <tr key={document.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{document.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{document.type}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{document.uploadDate}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{document.size}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            {document.icon}
+                          </div>
+                          <div className="ml-4 text-sm font-medium text-gray-900">{document.type}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                        {document.data ? document.data.name : 'Not uploaded'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {document.data ? new Date(document.data.uploadDate).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                        {document.data ? formatFileSize(document.data.size) : '-'}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                         <div className="flex justify-end space-x-2">
-                          <button className="text-blue-600 hover:text-blue-900">View</button>
-                          <button className="text-green-600 hover:text-green-900">Download</button>
-                          <button className="text-red-600 hover:text-red-900">Delete</button>
+                          {document.data ? (
+                            <>
+                              <button 
+                                className="text-blue-600 hover:text-blue-900"
+                                onClick={() => handleViewDocument(document.data)}
+                              >
+                                View
+                              </button>
+                              <button 
+                                className="text-green-600 hover:text-green-900"
+                                onClick={() => {
+                                  if (document.data.url) {
+                                    window.open(document.data.url, '_blank');
+                                    toast.success(`Downloading ${document.type}`);
+                                  }
+                                }}
+                              >
+                                Download
+                              </button>
+                            </>
+                          ) : (
+                            <button 
+                              className="text-amber-600 hover:text-amber-900"
+                              onClick={() => navigate(`/clients/edit/${client.id}`)}
+                            >
+                              Upload
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

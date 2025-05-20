@@ -9,6 +9,12 @@ const ClientEdit = () => {
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [documentUploads, setDocumentUploads] = useState({
+    pan: null,
+    aadhaar: null,
+    idProof: null,
+    addressProof: null
+  });
 
   // Get the clients data from localStorage or use the sample data
   useEffect(() => {
@@ -52,7 +58,16 @@ const ClientEdit = () => {
     const foundClient = clientsList.find(c => c.id === parseInt(id));
     
     if (foundClient) {
+      // Also load any existing document data if present
       setClient(foundClient);
+      if (foundClient.documents) {
+        setDocumentUploads({
+          pan: foundClient.documents.pan || null,
+          aadhaar: foundClient.documents.aadhaar || null,
+          idProof: foundClient.documents.idProof || null,
+          addressProof: foundClient.documents.addressProof || null
+        });
+      }
     } else {
       toast.error(`Client with ID ${id} not found`);
       // Create a placeholder client if not found
@@ -71,6 +86,32 @@ const ClientEdit = () => {
     setLoading(false);
   }, [id]);
 
+  // Handle document uploads
+  const handleDocumentUpload = (documentType, file) => {
+    if (!file) return;
+
+    // In a real application, you would upload the file to a server
+    // For this example, we'll create a data URL to simulate file storage
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setDocumentUploads(prev => ({
+        ...prev,
+        [documentType]: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: event.target.result,
+          uploadDate: new Date().toISOString()
+        }
+      }));
+      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
+    };
+    reader.onerror = () => {
+      toast.error(`Failed to process ${documentType} document`);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle save client (update)
   const handleSaveClient = (updatedClient) => {
     // Get current clients from localStorage
@@ -80,6 +121,9 @@ const ClientEdit = () => {
     if (storedClientsData) {
       clientsList = JSON.parse(storedClientsData);
     }
+    
+    // Add documents data to the updated client
+    updatedClient.documents = documentUploads;
     
     // Find the index of the client to update
     const clientIndex = clientsList.findIndex(c => c.id === updatedClient.id);
@@ -109,7 +153,12 @@ const ClientEdit = () => {
 
   return (
     <div className="container mx-auto">
-      <ClientEditForm client={client} onSave={handleSaveClient} />
+      <ClientEditForm 
+        client={client} 
+        onSave={handleSaveClient} 
+        documentUploads={documentUploads}
+        onDocumentUpload={handleDocumentUpload}
+      />
     </div>
   );
 };
