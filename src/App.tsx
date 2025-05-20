@@ -10,6 +10,10 @@ import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetails from "./pages/ClientDetails";
 import NotFound from "./pages/NotFound";
+import Policies from "./pages/Policies";
+import PolicyDetails from "./pages/PolicyDetails";
+import PolicyEdit from "./pages/PolicyEdit";
+import PolicyCreate from "./pages/PolicyCreate";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +32,10 @@ const App = () => (
             <Route path="/clients" element={<Clients />} />
             <Route path="/clients/:id" element={<ClientDetails />} />
             <Route path="/clients/edit/:id" element={<Clients />} />
-            <Route path="/policies" element={<Dashboard />} />
+            <Route path="/policies" element={<Policies />} />
+            <Route path="/policies/:id" element={<PolicyDetails />} />
+            <Route path="/policies/create" element={<PolicyCreate />} />
+            <Route path="/policies/edit/:id" element={<PolicyEdit />} />
             <Route path="/agents" element={<Dashboard />} />
             <Route path="/claims" element={<Dashboard />} />
             <Route path="/leads" element={<Dashboard />} />
