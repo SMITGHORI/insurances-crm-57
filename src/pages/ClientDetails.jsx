@@ -293,190 +293,192 @@ const ClientDetails = () => {
                 )}
                 <TabsTrigger value="policies">Policies ({client.policies.length})</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="overview" className="space-y-6 mt-4">
+                {client.type === 'Individual' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Full Address</div>
+                      <div>{client.address}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Date of Birth</div>
+                      <div>{client.dateOfBirth}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Gender</div>
+                      <div>{client.gender}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Occupation</div>
+                      <div>{client.occupation}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Annual Income</div>
+                      <div>{client.annualIncome}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">PAN Card</div>
+                      <div>{client.panCard}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Aadhar Card</div>
+                      <div>{client.aadharCard}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Full Address</div>
+                      <div>{client.address}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">
+                        {client.type === 'Corporate' ? 'Date of Incorporation' : 'Establishment Date'}
+                      </div>
+                      <div>{client.dateOfIncorporation}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">GST Number</div>
+                      <div>{client.gstNumber}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">PAN Card</div>
+                      <div>{client.panCard}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">
+                        {client.type === 'Corporate' ? 'Industry' : 'Type'}
+                      </div>
+                      <div>{client.industry}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">
+                        {client.type === 'Corporate' ? 'Number of Employees' : 'Number of Members'}
+                      </div>
+                      <div>{client.employees}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Annual Revenue</div>
+                      <div>{client.annualRevenue}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-500">Primary Contact Person</div>
+                      <div>{client.contactPerson?.name} ({client.contactPerson?.designation})</div>
+                    </div>
+                  </div>
+                )}
+                {client.remarks && (
+                  <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
+                    <div className="font-medium text-amber-800 mb-1">Remarks</div>
+                    <div className="text-amber-700">{client.remarks}</div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {client.type !== 'Individual' && (
+                <TabsContent value="contacts" className="space-y-4 mt-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">Primary Contact</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-500">Name</div>
+                          <div>{client.contactPerson?.name}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-500">Designation</div>
+                          <div>{client.contactPerson?.designation}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-500">Phone</div>
+                          <div>{client.contactPerson?.phone}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-gray-500">Email</div>
+                          <div>{client.contactPerson?.email}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-medium">Key Personnel</h3>
+                    {client.keyPersonnel?.map((person, index) => (
+                      <Card key={index}>
+                        <CardContent className="pt-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-500">Name</div>
+                              <div>{person.name}</div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-500">Designation</div>
+                              <div>{person.designation}</div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-500">Phone</div>
+                              <div>{person.phone}</div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-gray-500">Email</div>
+                              <div>{person.email}</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </TabsContent>
+              )}
+
+              <TabsContent value="policies" className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Policy #</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Premium</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {client.policies.map((policy) => (
+                      <TableRow key={policy.id}>
+                        <TableCell className="font-mono">{policy.policyNumber}</TableCell>
+                        <TableCell>{policy.type}</TableCell>
+                        <TableCell>{policy.provider}</TableCell>
+                        <TableCell>{policy.plan}</TableCell>
+                        <TableCell>{policy.premium}</TableCell>
+                        <TableCell>
+                          <Badge variant={policy.status === 'Active' ? 'success' : 'destructive'}>
+                            {policy.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleViewPolicy(policy.id)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TabsContent>
             </Tabs>
           </CardHeader>
           <CardContent>
-            <TabsContent value="overview" className="space-y-6">
-              {client.type === 'Individual' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Full Address</div>
-                    <div>{client.address}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Date of Birth</div>
-                    <div>{client.dateOfBirth}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Gender</div>
-                    <div>{client.gender}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Occupation</div>
-                    <div>{client.occupation}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Annual Income</div>
-                    <div>{client.annualIncome}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">PAN Card</div>
-                    <div>{client.panCard}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Aadhar Card</div>
-                    <div>{client.aadharCard}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Full Address</div>
-                    <div>{client.address}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">
-                      {client.type === 'Corporate' ? 'Date of Incorporation' : 'Establishment Date'}
-                    </div>
-                    <div>{client.dateOfIncorporation}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">GST Number</div>
-                    <div>{client.gstNumber}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">PAN Card</div>
-                    <div>{client.panCard}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">
-                      {client.type === 'Corporate' ? 'Industry' : 'Type'}
-                    </div>
-                    <div>{client.industry}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">
-                      {client.type === 'Corporate' ? 'Number of Employees' : 'Number of Members'}
-                    </div>
-                    <div>{client.employees}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Annual Revenue</div>
-                    <div>{client.annualRevenue}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-500">Primary Contact Person</div>
-                    <div>{client.contactPerson?.name} ({client.contactPerson?.designation})</div>
-                  </div>
-                </div>
-              )}
-              {client.remarks && (
-                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-md">
-                  <div className="font-medium text-amber-800 mb-1">Remarks</div>
-                  <div className="text-amber-700">{client.remarks}</div>
-                </div>
-              )}
-            </TabsContent>
-
-            {client.type !== 'Individual' && (
-              <TabsContent value="contacts" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Primary Contact</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-500">Name</div>
-                        <div>{client.contactPerson?.name}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-500">Designation</div>
-                        <div>{client.contactPerson?.designation}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-500">Phone</div>
-                        <div>{client.contactPerson?.phone}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-500">Email</div>
-                        <div>{client.contactPerson?.email}</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="space-y-3">
-                  <h3 className="text-lg font-medium">Key Personnel</h3>
-                  {client.keyPersonnel?.map((person, index) => (
-                    <Card key={index}>
-                      <CardContent className="pt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-gray-500">Name</div>
-                            <div>{person.name}</div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-gray-500">Designation</div>
-                            <div>{person.designation}</div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-gray-500">Phone</div>
-                            <div>{person.phone}</div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="text-sm font-medium text-gray-500">Email</div>
-                            <div>{person.email}</div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            )}
-
-            <TabsContent value="policies">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Policy #</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Premium</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {client.policies.map((policy) => (
-                    <TableRow key={policy.id}>
-                      <TableCell className="font-mono">{policy.policyNumber}</TableCell>
-                      <TableCell>{policy.type}</TableCell>
-                      <TableCell>{policy.provider}</TableCell>
-                      <TableCell>{policy.plan}</TableCell>
-                      <TableCell>{policy.premium}</TableCell>
-                      <TableCell>
-                        <Badge variant={policy.status === 'Active' ? 'success' : 'destructive'}>
-                          {policy.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleViewPolicy(policy.id)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TabsContent>
+            {/* CardContent is now empty since we moved TabsContent components inside the Tabs component */}
           </CardContent>
         </Card>
       </div>
