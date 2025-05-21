@@ -64,7 +64,9 @@ const PolicyCreate = () => {
           details: `Policy created with status "${newPolicy.status}"`
         }
       ],
-      notes: []
+      notes: [],
+      // Ensure typeSpecificDetails exists even if not provided
+      typeSpecificDetails: newPolicy.typeSpecificDetails || {}
     };
     
     // Add the new policy to the list
@@ -112,7 +114,8 @@ const PolicyCreate = () => {
     discountPercentage: 0,
     gstNumber: '',
     nextYearPremium: '',
-    client: { id: '', name: '' }
+    client: { id: '', name: '' },
+    typeSpecificDetails: {}
   };
 
   return (

@@ -32,6 +32,11 @@ const PolicyEdit = () => {
     const foundPolicy = policiesList.find(p => p.id === parseInt(id));
     
     if (foundPolicy) {
+      // If typeSpecificDetails doesn't exist yet, initialize it
+      if (!foundPolicy.typeSpecificDetails) {
+        foundPolicy.typeSpecificDetails = {};
+      }
+      
       setPolicy(foundPolicy);
     } else {
       toast.error(`Policy with ID ${id} not found`);
@@ -75,6 +80,11 @@ const PolicyEdit = () => {
         timestamp: new Date().toISOString(),
         details: 'Policy details updated'
       });
+      
+      // Ensure typeSpecificDetails exists
+      if (!updatedPolicy.typeSpecificDetails) {
+        updatedPolicy.typeSpecificDetails = {};
+      }
       
       // Update the policy in the array
       policiesList[policyIndex] = updatedPolicy;

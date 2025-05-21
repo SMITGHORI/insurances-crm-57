@@ -19,7 +19,9 @@ import {
   Building,
   Lock,
   Percent,
-  Link
+  Link,
+  Shield,
+  Car
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,6 +107,136 @@ const PolicyDetails = () => {
       default:
         return 'bg-blue-100 text-blue-800';
     }
+  };
+  
+  // Render type-specific details
+  const renderTypeSpecificDetails = () => {
+    if (!policy?.typeSpecificDetails) return null;
+    
+    const details = policy.typeSpecificDetails;
+    
+    if (policy.type === 'Health Insurance') {
+      return (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" /> Health Insurance Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Coverage Type</h3>
+                <p>{details.coverageType || 'Individual'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Waiting Period</h3>
+                <p>{details.waitingPeriod ? `${details.waitingPeriod} days` : 'None'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Room Rent Limit</h3>
+                <p>{details.roomRentLimit || 'Not specified'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Coverage Amount</h3>
+                <p>{details.coverageAmount || 'Same as sum assured'}</p>
+              </div>
+              
+              <div className="col-span-2">
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Pre-existing Diseases Covered</h3>
+                <p className="whitespace-pre-wrap">{details.preExistingDiseases || 'None specified'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    } else if (policy.type === 'Life Insurance') {
+      return (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-green-600" /> Term Insurance Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Maturity Age</h3>
+                <p>{details.maturityAge ? `${details.maturityAge} years` : 'Not specified'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Death Benefit</h3>
+                <p>{details.deathBenefit || 'Same as sum assured'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Critical Illness Cover</h3>
+                <p>{details.criticalIllnessCover || 'Not included'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Accidental Death Benefit</h3>
+                <p>{details.accidentalDeathBenefit || 'Not included'}</p>
+              </div>
+              
+              <div className="col-span-2">
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Riders Included</h3>
+                <p className="whitespace-pre-wrap">{details.ridersIncluded || 'None'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    } else if (policy.type === 'Motor Insurance') {
+      return (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Car className="h-5 w-5 text-amber-600" /> Vehicle Insurance Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Vehicle Type</h3>
+                <p>{details.vehicleType || 'Not specified'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Vehicle Model</h3>
+                <p>{details.vehicleModel || 'Not specified'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Registration Number</h3>
+                <p className="font-semibold">{details.vehicleNumber || 'Not provided'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">IDV (Insured Declared Value)</h3>
+                <p>{details.idv || 'Not specified'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Engine Number</h3>
+                <p className="font-mono">{details.engineNumber || 'Not provided'}</p>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Chassis Number</h3>
+                <p className="font-mono">{details.chassisNumber || 'Not provided'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    
+    return null;
   };
 
   if (loading || !policy) {
@@ -207,6 +339,9 @@ const PolicyDetails = () => {
         </CardContent>
       </Card>
 
+      {/* Type-specific details section */}
+      {renderTypeSpecificDetails()}
+
       <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-8 mb-4">
           <TabsTrigger value="overview" className="flex items-center">
@@ -256,7 +391,12 @@ const PolicyDetails = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Type</h3>
-                  <p>{policy.type}</p>
+                  <p className="flex items-center gap-1">
+                    {policy.type === 'Health Insurance' && <Shield className="h-4 w-4 text-blue-600" />}
+                    {policy.type === 'Life Insurance' && <Shield className="h-4 w-4 text-green-600" />}
+                    {policy.type === 'Motor Insurance' && <Car className="h-4 w-4 text-amber-600" />}
+                    {policy.type}
+                  </p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Client</h3>
