@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const PolicyEdit = () => {
   const { id } = useParams();
@@ -10,6 +13,7 @@ const PolicyEdit = () => {
   const [policy, setPolicy] = useState(null);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setLoading(true);
@@ -102,16 +106,29 @@ const PolicyEdit = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Edit Policy: {policy.policyNumber}
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      {isMobile && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mb-3 -ml-2 text-gray-600 hover:text-gray-900"
+          onClick={() => navigate(`/policies/${id}`)}
+        >
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          Back to policy
+        </Button>
+      )}
+      
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">
+        {isMobile ? 'Edit Policy' : `Edit Policy: ${policy.policyNumber}`}
       </h1>
+      
       <PolicyForm policy={policy} onSave={handleSavePolicy} clients={clients} />
     </div>
   );

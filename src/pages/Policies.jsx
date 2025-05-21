@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,20 +19,38 @@ import {
   Plus, 
   Search,
   Building,
-  Link
+  Link,
+  Filter,
+  SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PoliciesMobileView from '@/components/policies/PoliciesMobileView';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+  SheetClose
+} from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Policies = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const tabFromQuery = queryParams.get('tab');
+  const isMobile = useIsMobile();
   
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(tabFromQuery || 'all');
+  const [filterType, setFilterType] = useState('all');
+  const [filterCompany, setFilterCompany] = useState('all');
 
   // Get the policies data from localStorage or use the sample data
   useEffect(() => {
@@ -266,18 +285,27 @@ const Policies = () => {
       (policy.type?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
       (policy.insuranceCompany?.toLowerCase().includes(searchQuery.toLowerCase()) || '');
     
-    if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'active') return matchesSearch && policy.status === 'In Force';
+    const matchesType = filterType === 'all' || (policy.type && policy.type.includes(filterType));
+    const matchesCompany = filterCompany === 'all' || (policy.insuranceCompany && policy.insuranceCompany === filterCompany);
+    
+    let matchesTab = true;
+    if (activeTab === 'active') matchesTab = policy.status === 'In Force';
     if (activeTab === 'renewal') {
       const endDate = new Date(policy.endDate);
       const today = new Date();
       const daysUntilRenewal = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
-      return matchesSearch && daysUntilRenewal <= 30;
+      matchesTab = daysUntilRenewal <= 30;
     }
-    if (activeTab === 'proposal') return matchesSearch && policy.status === 'Proposal';
+    if (activeTab === 'proposal') matchesTab = policy.status === 'Proposal';
     
-    return matchesSearch;
+    return matchesSearch && matchesType && matchesCompany && matchesTab;
   });
+
+  // Get unique insurance companies for filter
+  const insuranceCompanies = [...new Set(policies.map(p => p.insuranceCompany).filter(Boolean))];
+  
+  // Get unique policy types for filter
+  const policyTypes = [...new Set(policies.map(p => p.type).filter(Boolean))];
 
   const handleCreatePolicy = () => {
     navigate('/policies/create');
@@ -305,19 +333,19 @@ const Policies = () => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'In Force':
-        return 'amba-badge-green';
+        return 'bg-green-100 text-green-800';
       case 'Proposal':
-        return 'amba-badge-blue';
+        return 'bg-blue-100 text-blue-800';
       case 'Grace':
-        return 'amba-badge-yellow';
+        return 'bg-yellow-100 text-yellow-800';
       case 'Lapsed':
       case 'Cancelled':
-        return 'amba-badge-red';
+        return 'bg-red-100 text-red-800';
       case 'Surrendered':
       case 'Matured':
-        return 'amba-badge-purple';
+        return 'bg-purple-100 text-purple-800';
       default:
-        return 'amba-badge-blue';
+        return 'bg-blue-100 text-blue-800';
     }
   };
 
@@ -326,29 +354,158 @@ const Policies = () => {
     navigate(`/clients/${clientId}`);
   };
 
+  const handleClearFilters = () => {
+    setFilterType('all');
+    setFilterCompany('all');
+    setSearchQuery('');
+  };
+
+  const totalActive = policies.filter(p => p.status === 'In Force').length;
+  const totalPending = policies.filter(p => p.status === 'Proposal').length;
+  const totalRenewal = policies.filter(p => {
+    const endDate = new Date(p.endDate);
+    const today = new Date();
+    const daysUntilRenewal = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+    return daysUntilRenewal <= 30 && daysUntilRenewal >= 0;
+  }).length;
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Policies</h1>
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Policies</h1>
         <Button 
           onClick={handleCreatePolicy}
-          className="bg-primary hover:bg-primary/90 text-white"
+          className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white"
         >
           <Plus className="mr-1 h-4 w-4" /> New Policy
         </Button>
       </div>
 
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mb-4">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
               type="text"
-              placeholder="Search policies by number, client, type or insurance company..."
-              className="pl-10"
+              placeholder="Search policies..."
+              className="pl-10 pr-4 py-2 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+
+          {isMobile && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Filters
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[70vh]">
+                <SheetHeader className="text-left">
+                  <SheetTitle>Filter Policies</SheetTitle>
+                  <SheetDescription>
+                    Apply filters to find specific policies
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="py-6 space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Policy Type</label>
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        {policyTypes.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Insurance Company</label>
+                    <Select value={filterCompany} onValueChange={setFilterCompany}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Companies</SelectItem>
+                        {insuranceCompanies.map((company) => (
+                          <SelectItem key={company} value={company}>{company}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <SheetFooter className="sm:justify-between">
+                  <SheetClose asChild>
+                    <Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Button>Apply Filters</Button>
+                  </SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          )}
+
+          {!isMobile && (
+            <>
+              <div className="flex items-center">
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Policy Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {policyTypes.map((type) => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center">
+                <Select value={filterCompany} onValueChange={setFilterCompany}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Insurance Company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Companies</SelectItem>
+                    {insuranceCompanies.map((company) => (
+                      <SelectItem key={company} value={company}>{company}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-10"
+              >
+                Clear
+              </Button>
+            </>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-white shadow-sm rounded-md p-3 border">
+            <div className="text-sm text-gray-500">Total</div>
+            <div className="text-lg font-semibold">{policies.length}</div>
+          </div>
+          <div className="bg-white shadow-sm rounded-md p-3 border">
+            <div className="text-sm text-gray-500">Active</div>
+            <div className="text-lg font-semibold text-green-600">{totalActive}</div>
+          </div>
+          <div className="bg-white shadow-sm rounded-md p-3 border">
+            <div className="text-sm text-gray-500">Due for Renewal</div>
+            <div className="text-lg font-semibold text-amber-600">{totalRenewal}</div>
           </div>
         </div>
 
@@ -359,20 +516,20 @@ const Policies = () => {
         >
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="all" className="flex items-center">
-              <FileText className="mr-2 h-4 w-4" />
-              All Policies
+              <FileText className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">All</span>
             </TabsTrigger>
             <TabsTrigger value="active" className="flex items-center">
-              <FileText className="mr-2 h-4 w-4" />
-              Active
+              <FileText className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Active</span>
             </TabsTrigger>
             <TabsTrigger value="renewal" className="flex items-center">
-              <Calendar className="mr-2 h-4 w-4" />
-              Due for Renewal
+              <Calendar className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Renewals</span>
             </TabsTrigger>
             <TabsTrigger value="proposal" className="flex items-center">
-              <Bell className="mr-2 h-4 w-4" />
-              Proposals
+              <Bell className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Proposals</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -380,84 +537,94 @@ const Policies = () => {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Policy Number</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Insurance Company</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Premium</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPolicies.length > 0 ? (
-                filteredPolicies.map((policy) => (
-                  <TableRow 
-                    key={policy.id} 
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleViewPolicy(policy.id)}
-                  >
-                    <TableCell>{policy.policyNumber}</TableCell>
-                    <TableCell>
-                      <div 
-                        className="flex items-center text-primary hover:underline cursor-pointer"
-                        onClick={(e) => handleViewClient(e, policy.client.id)}
-                      >
-                        <Link className="h-4 w-4 mr-1" />
-                        {policy.client.name}
-                      </div>
-                    </TableCell>
-                    <TableCell className="flex items-center">
-                      <Building className="h-4 w-4 mr-1 text-blue-600" />
-                      {policy.insuranceCompany || 'Not specified'}
-                    </TableCell>
-                    <TableCell>{policy.planName || 'Not specified'}</TableCell>
-                    <TableCell>{policy.type}</TableCell>
-                    <TableCell>
-                      <span className={`amba-badge ${getStatusBadgeClass(policy.status)}`}>
-                        {policy.status}
-                      </span>
-                      {isPolicyDueForRenewal(policy.endDate) && (
-                        <span className="amba-badge amba-badge-orange ml-1">
-                          Renewal due
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
-                    <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/policies/edit/${policy.id}`);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                    </TableCell>
+        <>
+          {isMobile ? (
+            <PoliciesMobileView 
+              policies={filteredPolicies} 
+              isPolicyDueForRenewal={isPolicyDueForRenewal}
+              getStatusBadgeClass={getStatusBadgeClass}
+            />
+          ) : (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Policy Number</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Insurance Company</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead>Premium</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="h-24 text-center">
-                    No policies found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredPolicies.length > 0 ? (
+                    filteredPolicies.map((policy) => (
+                      <TableRow 
+                        key={policy.id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewPolicy(policy.id)}
+                      >
+                        <TableCell>{policy.policyNumber}</TableCell>
+                        <TableCell>
+                          <div 
+                            className="flex items-center text-primary hover:underline cursor-pointer"
+                            onClick={(e) => handleViewClient(e, policy.client.id)}
+                          >
+                            <Link className="h-4 w-4 mr-1" />
+                            {policy.client.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="flex items-center">
+                          <Building className="h-4 w-4 mr-1 text-blue-600" />
+                          {policy.insuranceCompany || 'Not specified'}
+                        </TableCell>
+                        <TableCell>{policy.planName || 'Not specified'}</TableCell>
+                        <TableCell>{policy.type}</TableCell>
+                        <TableCell>
+                          <span className={`amba-badge ${getStatusBadgeClass(policy.status)}`}>
+                            {policy.status}
+                          </span>
+                          {isPolicyDueForRenewal(policy.endDate) && (
+                            <span className="amba-badge amba-badge-orange ml-1">
+                              Renewal due
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
+                        <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/policies/edit/${policy.id}`);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="h-24 text-center">
+                        No policies found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
