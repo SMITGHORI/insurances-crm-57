@@ -8,10 +8,17 @@ const PolicyEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [policy, setPolicy] = useState(null);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
+    
+    // Load clients data
+    const storedClientsData = localStorage.getItem('clientsData');
+    if (storedClientsData) {
+      setClients(JSON.parse(storedClientsData));
+    }
     
     // Try to get policies from localStorage
     const storedPoliciesData = localStorage.getItem('policiesData');
@@ -47,9 +54,19 @@ const PolicyEdit = () => {
     const policyIndex = policiesList.findIndex(p => p.id === updatedPolicy.id);
     
     if (policyIndex !== -1) {
+      // Preserve existing fields that aren't in the form
+      const existingPolicy = policiesList[policyIndex];
+      const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes'];
+      
+      fieldsToPreserve.forEach(field => {
+        if (existingPolicy[field] && !updatedPolicy[field]) {
+          updatedPolicy[field] = existingPolicy[field];
+        }
+      });
+      
       // Add history entry for the update
       if (!updatedPolicy.history) {
-        updatedPolicy.history = [];
+        updatedPolicy.history = existingPolicy.history || [];
       }
       
       updatedPolicy.history.push({
@@ -60,7 +77,7 @@ const PolicyEdit = () => {
       });
       
       // Update the policy in the array
-      policiesList[policyIndex] = { ...policiesList[policyIndex], ...updatedPolicy };
+      policiesList[policyIndex] = updatedPolicy;
       
       // Save updated policies list back to localStorage
       localStorage.setItem('policiesData', JSON.stringify(policiesList));
@@ -85,7 +102,7 @@ const PolicyEdit = () => {
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         Edit Policy: {policy.policyNumber}
       </h1>
-      <PolicyForm policy={policy} onSave={handleSavePolicy} />
+      <PolicyForm policy={policy} onSave={handleSavePolicy} clients={clients} />
     </div>
   );
 };

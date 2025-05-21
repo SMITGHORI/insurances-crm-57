@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, Edit, Trash, ArrowUpDown, User, Building, Users, Group } from 'lucide-react';
+import { Eye, Edit, Trash, ArrowUpDown, User, Building, Users, Group, Link } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -9,8 +9,11 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { useNavigate } from 'react-router-dom';
 
 const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) => {
+  const navigate = useNavigate();
+  
   const getClientTypeIcon = (type) => {
     switch (type) {
       case 'Individual':
@@ -21,6 +24,30 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
         return <Group className="h-5 w-5 text-green-500" />;
       default:
         return <User className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  const viewClientPolicies = (e, clientId) => {
+    e.stopPropagation();
+    
+    // Get policies for this client
+    const storedPoliciesData = localStorage.getItem('policiesData');
+    if (!storedPoliciesData) {
+      return;
+    }
+    
+    const policies = JSON.parse(storedPoliciesData);
+    const clientPolicies = policies.filter(policy => policy.client.id === clientId);
+    
+    // If client has exactly one policy, go directly to it
+    if (clientPolicies.length === 1) {
+      navigate(`/policies/${clientPolicies[0].id}`);
+    } 
+    // If multiple policies, go to policies view with filter
+    else if (clientPolicies.length > 1) {
+      navigate('/policies', { state: { clientFilter: clientId } });
+    } else {
+      alert('No policies found for this client');
     }
   };
 
@@ -105,10 +132,20 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
                 {client.contact}
                 <div className="text-xs text-gray-400">{client.location}</div>
               </TableCell>
-              <TableCell className="text-center font-medium">
-                <span className={`px-2 py-1 inline-flex text-xs leading-5 rounded-full ${client.policies > 0 ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-800'}`}>
-                  {client.policies}
-                </span>
+              <TableCell className="text-center">
+                {client.policies > 0 ? (
+                  <button 
+                    onClick={(e) => viewClientPolicies(e, client.id)}
+                    className="inline-flex items-center px-2 py-1 text-xs leading-5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  >
+                    <Link className="h-3 w-3 mr-1" />
+                    {client.policies} policies
+                  </button>
+                ) : (
+                  <span className="px-2 py-1 inline-flex text-xs leading-5 rounded-full bg-gray-100 text-gray-800">
+                    0
+                  </span>
+                )}
               </TableCell>
               <TableCell>
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 

@@ -17,7 +17,9 @@ import {
   Calendar, 
   Bell, 
   Plus, 
-  Search 
+  Search,
+  Building,
+  Link
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -39,7 +41,7 @@ const Policies = () => {
     if (storedPoliciesData) {
       policiesList = JSON.parse(storedPoliciesData);
     } else {
-      // Sample policies data as fallback
+      // Sample policies data as fallback with added insurance fields
       policiesList = [
         {
           id: 1,
@@ -56,6 +58,12 @@ const Policies = () => {
           premium: '12500',
           paymentFrequency: 'Annual',
           gracePeriod: 30,
+          insuranceCompany: 'Star Health',
+          planName: 'Family Health Optima',
+          lockInPeriod: 3,
+          discountPercentage: 5,
+          gstNumber: 'GST123456789',
+          nextYearPremium: '13125',
           renewals: [
             {
               date: '2025-01-01',
@@ -124,6 +132,12 @@ const Policies = () => {
           premium: '8000',
           paymentFrequency: 'Annual',
           gracePeriod: 15,
+          insuranceCompany: 'ICICI Lombard',
+          planName: 'Commercial Vehicle Insurance',
+          lockInPeriod: 1,
+          discountPercentage: 10,
+          gstNumber: 'GST987654321',
+          nextYearPremium: '8400',
           renewals: [
             {
               date: '2025-01-15',
@@ -186,6 +200,12 @@ const Policies = () => {
           premium: '25000',
           paymentFrequency: 'Annual',
           gracePeriod: 30,
+          insuranceCompany: 'LIC',
+          planName: 'Jeevan Anand',
+          lockInPeriod: 5,
+          discountPercentage: 0,
+          gstNumber: '',
+          nextYearPremium: '25000',
           renewals: [],
           documents: {
             proposalForm: null,
@@ -230,9 +250,10 @@ const Policies = () => {
   // Filter policies based on search query and active tab
   const filteredPolicies = policies.filter(policy => {
     const matchesSearch = 
-      policy.policyNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      policy.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      policy.type.toLowerCase().includes(searchQuery.toLowerCase());
+      (policy.policyNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+      (policy.client?.name?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+      (policy.type?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+      (policy.insuranceCompany?.toLowerCase().includes(searchQuery.toLowerCase()) || '');
     
     if (activeTab === 'all') return matchesSearch;
     if (activeTab === 'active') return matchesSearch && policy.status === 'In Force';
@@ -283,6 +304,11 @@ const Policies = () => {
     }
   };
 
+  const handleViewClient = (e, clientId) => {
+    e.stopPropagation(); // Prevent triggering the row click
+    navigate(`/clients/${clientId}`);
+  };
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
@@ -301,7 +327,7 @@ const Policies = () => {
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
             <Input
               type="text"
-              placeholder="Search policies by number, client or type..."
+              placeholder="Search policies by number, client, type or insurance company..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,11 +368,11 @@ const Policies = () => {
               <TableRow>
                 <TableHead>Policy Number</TableHead>
                 <TableHead>Client</TableHead>
+                <TableHead>Insurance Company</TableHead>
+                <TableHead>Plan</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
-                <TableHead>Sum Assured</TableHead>
                 <TableHead>Premium</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -360,7 +386,20 @@ const Policies = () => {
                     onClick={() => handleViewPolicy(policy.id)}
                   >
                     <TableCell>{policy.policyNumber}</TableCell>
-                    <TableCell>{policy.client.name}</TableCell>
+                    <TableCell>
+                      <div 
+                        className="flex items-center text-primary hover:underline cursor-pointer"
+                        onClick={(e) => handleViewClient(e, policy.client.id)}
+                      >
+                        <Link className="h-4 w-4 mr-1" />
+                        {policy.client.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="flex items-center">
+                      <Building className="h-4 w-4 mr-1 text-blue-600" />
+                      {policy.insuranceCompany || 'Not specified'}
+                    </TableCell>
+                    <TableCell>{policy.planName || 'Not specified'}</TableCell>
                     <TableCell>{policy.type}</TableCell>
                     <TableCell>
                       <span className={`amba-badge ${getStatusBadgeClass(policy.status)}`}>
@@ -372,9 +411,7 @@ const Policies = () => {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{new Date(policy.startDate).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
-                    <TableCell>₹{parseInt(policy.sumAssured).toLocaleString()}</TableCell>
                     <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Button 

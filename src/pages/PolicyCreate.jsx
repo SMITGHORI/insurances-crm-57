@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
@@ -35,7 +36,7 @@ const PolicyCreate = () => {
     const year = new Date().getFullYear();
     const policyNum = generateId('POL', year, newId);
     
-    // Create the new policy object
+    // Create the new policy object with the additional fields
     const completePolicy = {
       ...newPolicy,
       id: newId,
@@ -69,6 +70,18 @@ const PolicyCreate = () => {
     // Add the new policy to the list
     policiesList.push(completePolicy);
     
+    // Update client's policy count
+    const storedClientsData = localStorage.getItem('clientsData');
+    if (storedClientsData) {
+      const clientsList = JSON.parse(storedClientsData);
+      const clientIndex = clientsList.findIndex(c => c.id === newPolicy.client.id);
+      
+      if (clientIndex !== -1) {
+        clientsList[clientIndex].policies = (clientsList[clientIndex].policies || 0) + 1;
+        localStorage.setItem('clientsData', JSON.stringify(clientsList));
+      }
+    }
+    
     // Save updated policies list back to localStorage
     localStorage.setItem('policiesData', JSON.stringify(policiesList));
     
@@ -93,6 +106,12 @@ const PolicyCreate = () => {
     sumAssured: '',
     premium: '',
     type: '',
+    insuranceCompany: '',
+    planName: '',
+    lockInPeriod: 0,
+    discountPercentage: 0,
+    gstNumber: '',
+    nextYearPremium: '',
     client: { id: '', name: '' }
   };
 

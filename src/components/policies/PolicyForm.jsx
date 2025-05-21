@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from 'sonner';
+import { Building, FileText, Lock, Percent, Calendar, FileText as GSTIcon } from 'lucide-react';
 
 const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false }) => {
   const navigate = useNavigate();
@@ -25,6 +26,12 @@ const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false })
     defaultValues: {
       ...policy,
       clientId: policy?.client?.id || '',
+      insuranceCompany: policy?.insuranceCompany || '',
+      planName: policy?.planName || '',
+      lockInPeriod: policy?.lockInPeriod || 0,
+      discountPercentage: policy?.discountPercentage || 0,
+      gstNumber: policy?.gstNumber || '',
+      nextYearPremium: policy?.nextYearPremium || '',
     }
   });
 
@@ -60,7 +67,13 @@ const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false })
       client: {
         id: selectedClient.id,
         name: selectedClient.name
-      }
+      },
+      insuranceCompany: data.insuranceCompany,
+      planName: data.planName,
+      lockInPeriod: parseInt(data.lockInPeriod),
+      discountPercentage: parseFloat(data.discountPercentage),
+      gstNumber: data.gstNumber,
+      nextYearPremium: data.nextYearPremium.toString(),
     };
     
     // Remove clientId as it's now in the client object
@@ -109,6 +122,52 @@ const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false })
             </Select>
             {errors.clientId && (
               <p className="text-red-500 text-sm">Client is required</p>
+            )}
+          </div>
+
+          {/* Insurance Company */}
+          <div className="space-y-2">
+            <Label htmlFor="insuranceCompany" className="flex items-center gap-1">
+              <Building className="h-4 w-4" /> Insurance Company <span className="text-red-500">*</span>
+            </Label>
+            <Select 
+              onValueChange={(value) => setValue('insuranceCompany', value)} 
+              defaultValue={policy.insuranceCompany}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select Insurance Company" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="LIC">LIC</SelectItem>
+                <SelectItem value="HDFC Life">HDFC Life</SelectItem>
+                <SelectItem value="ICICI Prudential">ICICI Prudential</SelectItem>
+                <SelectItem value="SBI Life">SBI Life</SelectItem>
+                <SelectItem value="Max Life">Max Life</SelectItem>
+                <SelectItem value="Bajaj Allianz">Bajaj Allianz</SelectItem>
+                <SelectItem value="Aditya Birla">Aditya Birla</SelectItem>
+                <SelectItem value="Kotak Life">Kotak Life</SelectItem>
+                <SelectItem value="Reliance Nippon">Reliance Nippon</SelectItem>
+                <SelectItem value="Tata AIA">Tata AIA</SelectItem>
+                <SelectItem value="Star Health">Star Health</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.insuranceCompany && (
+              <p className="text-red-500 text-sm">Insurance company is required</p>
+            )}
+          </div>
+
+          {/* Plan Name */}
+          <div className="space-y-2">
+            <Label htmlFor="planName" className="flex items-center gap-1">
+              <FileText className="h-4 w-4" /> Plan Name <span className="text-red-500">*</span>
+            </Label>
+            <Input 
+              type="text"
+              id="planName"
+              {...register('planName', { required: true })}
+            />
+            {errors.planName && (
+              <p className="text-red-500 text-sm">Plan name is required</p>
             )}
           </div>
 
@@ -199,6 +258,22 @@ const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false })
             )}
           </div>
 
+          {/* Next Year Premium */}
+          <div className="space-y-2">
+            <Label htmlFor="nextYearPremium" className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" /> Next Year Premium
+            </Label>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5">₹</span>
+              <Input 
+                type="number"
+                id="nextYearPremium"
+                className="pl-8"
+                {...register('nextYearPremium')}
+              />
+            </div>
+          </div>
+
           {/* Payment Frequency */}
           <div className="space-y-2">
             <Label htmlFor="paymentFrequency">Payment Frequency <span className="text-red-500">*</span></Label>
@@ -220,6 +295,47 @@ const PolicyForm = ({ policy, onSave, clients: providedClients, isNew = false })
             {errors.paymentFrequency && (
               <p className="text-red-500 text-sm">Payment frequency is required</p>
             )}
+          </div>
+
+          {/* GST Number */}
+          <div className="space-y-2">
+            <Label htmlFor="gstNumber" className="flex items-center gap-1">
+              <GSTIcon className="h-4 w-4" /> GST Number
+            </Label>
+            <Input 
+              type="text"
+              id="gstNumber"
+              placeholder="For GST claims (optional)"
+              {...register('gstNumber')}
+            />
+          </div>
+
+          {/* Lock-in Period */}
+          <div className="space-y-2">
+            <Label htmlFor="lockInPeriod" className="flex items-center gap-1">
+              <Lock className="h-4 w-4" /> Lock-in Period (years)
+            </Label>
+            <Input 
+              type="number"
+              id="lockInPeriod"
+              min="0"
+              {...register('lockInPeriod')}
+            />
+          </div>
+
+          {/* Discount Percentage */}
+          <div className="space-y-2">
+            <Label htmlFor="discountPercentage" className="flex items-center gap-1">
+              <Percent className="h-4 w-4" /> Discount (%)
+            </Label>
+            <Input 
+              type="number"
+              id="discountPercentage"
+              min="0"
+              max="100"
+              step="0.01"
+              {...register('discountPercentage')}
+            />
           </div>
 
           {/* Start Date */}

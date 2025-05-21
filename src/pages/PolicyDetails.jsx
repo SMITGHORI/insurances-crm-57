@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,10 @@ import {
   User,
   Info,
   StickyNote,
-  Clock as ClockIcon,
+  Building,
+  Lock,
+  Percent,
+  Link
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,8 +122,15 @@ const PolicyDetails = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             Policy: {policy.policyNumber}
           </h1>
-          <div className="text-gray-500">
-            {policy.type} - {policy.client.name}
+          <div className="flex items-center text-gray-500">
+            {policy.type} - 
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-blue-600" 
+              onClick={() => navigate(`/clients/${policy.client.id}`)}
+            >
+              <Link className="h-4 w-4 mr-1" /> {policy.client.name}
+            </Button>
           </div>
         </div>
         <Button onClick={handleEditPolicy}>
@@ -127,7 +138,7 @@ const PolicyDetails = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Status</CardTitle>
@@ -155,6 +166,16 @@ const PolicyDetails = () => {
           <CardContent>
             <div className="text-2xl font-bold">₹{parseInt(policy.premium).toLocaleString()}</div>
             <div className="text-sm text-gray-500">{policy.paymentFrequency}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Insurance Company</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center gap-2">
+            <Building className="h-5 w-5 text-blue-600" />
+            <div className="font-medium">{policy.insuranceCompany || 'Not specified'}</div>
           </CardContent>
         </Card>
       </div>
@@ -213,7 +234,7 @@ const PolicyDetails = () => {
             Commission
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center">
-            <ClockIcon className="mr-2 h-4 w-4" />
+            <Clock className="mr-2 h-4 w-4" />
             History
           </TabsTrigger>
           <TabsTrigger value="notes" className="flex items-center">
@@ -251,6 +272,20 @@ const PolicyDetails = () => {
                   </Badge>
                 </div>
                 <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Insurance Company</h3>
+                  <p className="flex items-center gap-1">
+                    <Building className="h-4 w-4 text-blue-600" />
+                    {policy.insuranceCompany || 'Not specified'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Plan Name</h3>
+                  <p className="flex items-center gap-1">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    {policy.planName || 'Not specified'}
+                  </p>
+                </div>
+                <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Start Date</h3>
                   <p>{new Date(policy.startDate).toLocaleDateString()}</p>
                 </div>
@@ -260,11 +295,36 @@ const PolicyDetails = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Sum Assured</h3>
-                  <p>₹{parseInt(policy.sumAssured).toLocaleString()}</p>
+                  <p>₹{parseInt(policy.sumAssured || 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Premium</h3>
-                  <p>₹{parseInt(policy.premium).toLocaleString()} ({policy.paymentFrequency})</p>
+                  <p>₹{parseInt(policy.premium || 0).toLocaleString()} ({policy.paymentFrequency})</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Next Year Premium</h3>
+                  <p className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    {policy.nextYearPremium ? `₹${parseInt(policy.nextYearPremium).toLocaleString()}` : 'Not specified'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Lock-in Period</h3>
+                  <p className="flex items-center gap-1">
+                    <Lock className="h-4 w-4 text-blue-600" />
+                    {policy.lockInPeriod ? `${policy.lockInPeriod} years` : 'None'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Discount</h3>
+                  <p className="flex items-center gap-1">
+                    <Percent className="h-4 w-4 text-blue-600" />
+                    {policy.discountPercentage ? `${policy.discountPercentage}%` : 'None'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">GST Number</h3>
+                  <p>{policy.gstNumber || 'Not provided'}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Grace Period</h3>
