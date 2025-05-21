@@ -62,7 +62,7 @@ const MainLayout = () => {
       <div className="flex flex-col flex-1 overflow-hidden w-full">
         <Header onMenuClick={toggleMobileSidebar} />
         <main className="flex-1 overflow-y-auto p-2 md:p-4 max-w-full">
-          <div className="max-w-full overflow-x-hidden">
+          <div className="container mx-auto max-w-full overflow-x-hidden px-0">
             <Outlet />
           </div>
         </main>

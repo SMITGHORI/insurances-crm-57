@@ -26,7 +26,7 @@ const Leads = () => {
       <div className="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-3">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">Leads Management</h1>
         <Button onClick={handleCreateLead} className={`${isMobile ? 'w-full' : 'w-auto'}`}>
-          <Plus className="mr-2 h-4 w-4" /> Create Lead
+          <Plus className="mr-2 h-4 w-4" /> {isMobile ? 'Create' : 'Create Lead'}
         </Button>
       </div>
 

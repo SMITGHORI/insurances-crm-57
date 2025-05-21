@@ -14,7 +14,7 @@ const Header = ({ onMenuClick }) => {
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm py-2 px-2 sm:px-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between max-w-full">
         <div className="flex items-center lg:hidden">
           <button
             data-menu-button="true"
@@ -27,7 +27,7 @@ const Header = ({ onMenuClick }) => {
         </div>
 
         {/* Search */}
-        <div className={`${isMobile ? 'flex-1 mx-2' : 'flex-1 max-w-xl mx-4'}`}>
+        <div className={`${isMobile ? 'flex-1 mx-2 max-w-[60vw]' : 'flex-1 max-w-xl mx-4'}`}>
           <form onSubmit={handleSearch} className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />

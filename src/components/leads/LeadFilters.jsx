@@ -84,7 +84,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
             placeholder="Search name, email, phone..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full"
+            className="w-full text-xs sm:text-sm"
           />
           <Button type="submit" variant="outline" size="icon" className="flex-shrink-0">
             <Search className="h-4 w-4" />
@@ -96,13 +96,13 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.status} 
           onValueChange={handleStatusChange}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full text-xs sm:text-sm">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {statusOptions.map((status) => (
-                <SelectItem key={status} value={status}>
+                <SelectItem key={status} value={status} className="text-xs sm:text-sm">
                   {status === 'all' ? 'All Statuses' : status}
                 </SelectItem>
               ))}
@@ -115,13 +115,13 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.source} 
           onValueChange={handleSourceChange}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full text-xs sm:text-sm">
             <SelectValue placeholder="Filter by source" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {sourceOptions.map((source) => (
-                <SelectItem key={source} value={source}>
+                <SelectItem key={source} value={source} className="text-xs sm:text-sm">
                   {source === 'all' ? 'All Sources' : source}
                 </SelectItem>
               ))}
@@ -134,13 +134,13 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.assignedTo === 'all' ? 'All Agents' : filterParams.assignedTo} 
           onValueChange={handleAgentChange}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full text-xs sm:text-sm">
             <SelectValue placeholder="Filter by agent" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {agents.map((agent) => (
-                <SelectItem key={agent} value={agent}>
+                <SelectItem key={agent} value={agent} className="text-xs sm:text-sm">
                   {agent}
                 </SelectItem>
               ))}

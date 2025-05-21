@@ -77,23 +77,23 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
               {agents.map((agent) => (
                 <div
                   key={agent.id}
-                  className={`flex items-start space-x-4 p-3 rounded-md border ${
+                  className={`flex items-start space-x-2 sm:space-x-4 p-2 sm:p-3 rounded-md border ${
                     selectedAgent === agent.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                   } overflow-hidden`}
                 >
                   <RadioGroupItem value={agent.id} id={`agent-${agent.id}`} />
                   <Label 
                     htmlFor={`agent-${agent.id}`} 
-                    className="flex flex-1 items-center space-x-3 cursor-pointer overflow-hidden"
+                    className="flex flex-1 items-center space-x-2 sm:space-x-3 cursor-pointer overflow-hidden"
                   >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarFallback className="bg-blue-100 text-blue-600">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                      <AvatarFallback className="bg-blue-100 text-blue-600 text-xs sm:text-sm">
                         {agent.avatar}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{agent.name}</p>
-                      <p className="text-sm text-gray-500 truncate">{agent.email}</p>
+                      <p className="font-medium text-sm sm:text-base truncate">{agent.name}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 truncate">{agent.email}</p>
                       <p className="text-xs text-gray-400 truncate">{agent.role}</p>
                     </div>
                   </Label>
