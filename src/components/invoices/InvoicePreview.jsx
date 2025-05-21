@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -286,7 +285,7 @@ const InvoicePreview = ({ invoice }) => {
         pdf.text(formatCurrency(getPaidAmount()), 170, yPosition, { align: 'right' });
         
         yPosition += 5;
-        pdf.setTextColor(invoice.status === 'paid' ? 0x00, 0x80, 0x00 : 0xcc, 0x00, 0x00);
+        pdf.setTextColor(invoice.status === 'paid' ? 0x008000 : 0xcc0000);
         pdf.text('Balance Due:', 140, yPosition);
         pdf.text(formatCurrency(getRemainingBalance()), 170, yPosition, { align: 'right' });
         
