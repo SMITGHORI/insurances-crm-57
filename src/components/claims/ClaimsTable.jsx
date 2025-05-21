@@ -20,11 +20,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import ClaimsMobileView from './ClaimsMobileView';
 
 const ClaimsTable = ({ filterParams, setFilterParams }) => {
   const navigate = useNavigate();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     // In a real app, this would fetch claims from API
@@ -208,24 +211,24 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
 
         <div className="flex flex-wrap gap-2 items-center">
           {/* Search */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Search claims..."
               value={filterParams.searchTerm}
               onChange={(e) => setFilterParams({...filterParams, searchTerm: e.target.value})}
-              className="pl-9 w-full md:w-[250px]"
+              className="pl-9 w-full"
             />
           </div>
 
           {/* Policy Type Filter */}
-          <div className="flex items-center">
+          <div className="flex items-center w-full sm:w-auto">
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterParams.policyType}
               onValueChange={(value) => setFilterParams({...filterParams, policyType: value})}
             >
-              <SelectTrigger className="w-full md:w-[180px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Policy Type" />
               </SelectTrigger>
               <SelectContent>
@@ -240,13 +243,13 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center">
+          <div className="flex items-center w-full sm:w-auto">
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterParams.status}
               onValueChange={(value) => setFilterParams({...filterParams, status: value})}
             >
-              <SelectTrigger className="w-full md:w-[150px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -263,86 +266,90 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
         </div>
       </div>
 
-      {/* Claims Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Claim ID</TableHead>
-                <TableHead>Insurance Claim #</TableHead>
-                <TableHead>Policy Details</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Incident Date</TableHead>
-                <TableHead>Claim Amount</TableHead>
-                <TableHead>Documents</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClaims.length === 0 ? (
+      {/* Claims display - Table for desktop, Cards for mobile */}
+      {isMobile ? (
+        <ClaimsMobileView claims={claims} filterParams={filterParams} />
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan="8" className="py-8 text-center text-gray-500">
-                    No claims found matching your search criteria
-                  </TableCell>
+                  <TableHead>Claim ID</TableHead>
+                  <TableHead>Insurance Claim #</TableHead>
+                  <TableHead>Policy Details</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Incident Date</TableHead>
+                  <TableHead>Claim Amount</TableHead>
+                  <TableHead>Documents</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              ) : (
-                filteredClaims.map((claim) => (
-                  <TableRow 
-                    key={claim.id} 
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => handleRowClick(claim.id)}
-                  >
-                    <TableCell>
-                      <div className="font-medium">{claim.claimNumber}</div>
-                      <div className="text-xs text-gray-500">{claim.policyType}</div>
-                    </TableCell>
-                    <TableCell>
-                      {claim.insuranceCompanyClaimId ? (
-                        <div className="font-mono text-blue-700">{claim.insuranceCompanyClaimId}</div>
-                      ) : (
-                        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Not Generated</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{claim.policyNumber}</div>
-                      <div className="text-xs font-mono text-gray-500">{claim.insuranceCompanyPolicyNumber}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{claim.clientName}</div>
-                      <div className="text-xs text-gray-500">Member: {claim.memberName}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Calendar className="h-3.5 w-3.5 mr-1 text-gray-500" />
-                        <span>{claim.dateOfIncident}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">Filed: {claim.dateOfFiling}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-semibold">{formatCurrency(claim.claimAmount)}</div>
-                      {claim.approvedAmount !== null && (
-                        <div className={`text-xs ${claim.approvedAmount === 0 ? 'text-red-500' : 'text-green-600'}`}>
-                          Approved: {formatCurrency(claim.approvedAmount)}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center text-blue-600">
-                        <FileText className="h-4 w-4 mr-1" />
-                        <span>{claim.documents}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(claim.status)}
+              </TableHeader>
+              <TableBody>
+                {filteredClaims.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan="8" className="py-8 text-center text-gray-500">
+                      No claims found matching your search criteria
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredClaims.map((claim) => (
+                    <TableRow 
+                      key={claim.id} 
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => handleRowClick(claim.id)}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{claim.claimNumber}</div>
+                        <div className="text-xs text-gray-500">{claim.policyType}</div>
+                      </TableCell>
+                      <TableCell>
+                        {claim.insuranceCompanyClaimId ? (
+                          <div className="font-mono text-blue-700">{claim.insuranceCompanyClaimId}</div>
+                        ) : (
+                          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Not Generated</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{claim.policyNumber}</div>
+                        <div className="text-xs font-mono text-gray-500">{claim.insuranceCompanyPolicyNumber}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{claim.clientName}</div>
+                        <div className="text-xs text-gray-500">Member: {claim.memberName}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Calendar className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                          <span>{claim.dateOfIncident}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">Filed: {claim.dateOfFiling}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-semibold">{formatCurrency(claim.claimAmount)}</div>
+                        {claim.approvedAmount !== null && (
+                          <div className={`text-xs ${claim.approvedAmount === 0 ? 'text-red-500' : 'text-green-600'}`}>
+                            Approved: {formatCurrency(claim.approvedAmount)}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-blue-600">
+                          <FileText className="h-4 w-4 mr-1" />
+                          <span>{claim.documents}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(claim.status)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
