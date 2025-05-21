@@ -5,12 +5,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { formatInvoiceDateForDisplay } from '@/utils/invoiceUtils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PaintBucket } from 'lucide-react';
+import { FileImage, Image, Layout, PaintBucket } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const InvoicePreview = ({ invoice }) => {
   const [template, setTemplate] = useState(invoice.layoutTemplate || 'standard');
   const [accentColor, setAccentColor] = useState('#1a56db');
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const [activeCustomizeTab, setActiveCustomizeTab] = useState('layout');
+  const [logoUrl, setLogoUrl] = useState('/placeholder.svg');
   
   // Get total paid amount if payment details exist
   const getPaidAmount = () => {
@@ -48,6 +51,22 @@ const InvoicePreview = ({ invoice }) => {
       tableClass: "mt-6",
       footerClass: "mt-4 pt-4 border-t text-sm",
     },
+    modern: {
+      className: "bg-white max-w-4xl mx-auto p-8 rounded-xl shadow-lg",
+      headerClass: "flex flex-col md:flex-row justify-between items-start md:items-center pb-8",
+      titleClass: "text-3xl font-bold",
+      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-8 mt-8",
+      tableClass: "mt-10",
+      footerClass: "mt-10 pt-6 border-t flex flex-col md:flex-row justify-between",
+    },
+    elegant: {
+      className: "bg-white max-w-4xl mx-auto p-12 rounded shadow-md border",
+      headerClass: "text-center border-b pb-8 mb-8",
+      titleClass: "text-4xl font-light",
+      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-12",
+      tableClass: "mt-12",
+      footerClass: "mt-12 pt-8 border-t text-center",
+    }
   };
   
   const currentTemplate = templates[template] || templates.standard;
@@ -58,6 +77,17 @@ const InvoicePreview = ({ invoice }) => {
   
   const handleColorChange = (color) => {
     setAccentColor(color);
+  };
+  
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setLogoUrl(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -76,42 +106,104 @@ const InvoicePreview = ({ invoice }) => {
       {showCustomizer && (
         <Card className="mb-6">
           <CardContent className="p-4">
-            <h3 className="font-medium mb-3">Layout Options</h3>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <Button 
-                variant={template === 'standard' ? 'default' : 'outline'}
-                onClick={() => handleTemplateChange('standard')}
-                className="h-auto py-2"
-              >
-                Standard
-              </Button>
-              <Button 
-                variant={template === 'corporate' ? 'default' : 'outline'}
-                onClick={() => handleTemplateChange('corporate')}
-                className="h-auto py-2"
-              >
-                Corporate
-              </Button>
-              <Button 
-                variant={template === 'minimal' ? 'default' : 'outline'}
-                onClick={() => handleTemplateChange('minimal')}
-                className="h-auto py-2"
-              >
-                Minimal
-              </Button>
-            </div>
-            
-            <h3 className="font-medium mb-3">Accent Color</h3>
-            <div className="flex flex-wrap gap-2">
-              {['#1a56db', '#047857', '#b91c1c', '#7c3aed', '#0369a1', '#0f766e'].map(color => (
-                <div
-                  key={color}
-                  className={`w-8 h-8 rounded-full cursor-pointer border-2 ${accentColor === color ? 'border-black' : 'border-transparent'}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleColorChange(color)}
-                />
-              ))}
-            </div>
+            <Tabs defaultValue="layout" value={activeCustomizeTab} onValueChange={setActiveCustomizeTab}>
+              <TabsList className="mb-4 grid grid-cols-2 w-full md:w-auto">
+                <TabsTrigger value="layout" className="flex items-center">
+                  <Layout className="mr-2 h-4 w-4" />
+                  Layout Options
+                </TabsTrigger>
+                <TabsTrigger value="branding" className="flex items-center">
+                  <Image className="mr-2 h-4 w-4" />
+                  Branding
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="layout" className="space-y-4">
+                <h3 className="font-medium mb-3">Template Selection</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                  <Button 
+                    variant={template === 'standard' ? 'default' : 'outline'}
+                    onClick={() => handleTemplateChange('standard')}
+                    className="h-auto py-2"
+                  >
+                    Standard
+                  </Button>
+                  <Button 
+                    variant={template === 'corporate' ? 'default' : 'outline'}
+                    onClick={() => handleTemplateChange('corporate')}
+                    className="h-auto py-2"
+                  >
+                    Corporate
+                  </Button>
+                  <Button 
+                    variant={template === 'minimal' ? 'default' : 'outline'}
+                    onClick={() => handleTemplateChange('minimal')}
+                    className="h-auto py-2"
+                  >
+                    Minimal
+                  </Button>
+                  <Button 
+                    variant={template === 'modern' ? 'default' : 'outline'}
+                    onClick={() => handleTemplateChange('modern')}
+                    className="h-auto py-2"
+                  >
+                    Modern
+                  </Button>
+                  <Button 
+                    variant={template === 'elegant' ? 'default' : 'outline'}
+                    onClick={() => handleTemplateChange('elegant')}
+                    className="h-auto py-2"
+                  >
+                    Elegant
+                  </Button>
+                </div>
+                
+                <h3 className="font-medium mb-3">Accent Color</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['#1a56db', '#047857', '#b91c1c', '#7c3aed', '#0369a1', '#0f766e', '#ea384c', '#9b87f5', '#f97316', '#33C3F0'].map(color => (
+                    <div
+                      key={color}
+                      className={`w-8 h-8 rounded-full cursor-pointer border-2 ${accentColor === color ? 'border-black' : 'border-transparent'}`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => handleColorChange(color)}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="branding" className="space-y-4">
+                <h3 className="font-medium mb-3">Company Logo</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center border rounded-md p-4 bg-gray-50">
+                    <img 
+                      src={logoUrl} 
+                      alt="Company Logo" 
+                      className="h-20 max-w-full object-contain"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md cursor-pointer">
+                      <FileImage className="h-4 w-4" />
+                      <span>Upload Logo</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="sr-only" 
+                        onChange={handleLogoChange}
+                      />
+                    </label>
+                    
+                    <Button 
+                      variant="outline"
+                      onClick={() => setLogoUrl('/placeholder.svg')}
+                    >
+                      Reset Logo
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       )}
@@ -121,7 +213,7 @@ const InvoicePreview = ({ invoice }) => {
         <div className={currentTemplate.headerClass} style={template === 'corporate' ? { backgroundColor: accentColor } : {}}>
           <div className="flex justify-between items-center">
             <div>
-              <h1 className={currentTemplate.titleClass}>INVOICE</h1>
+              <h1 className={currentTemplate.titleClass} style={template === 'elegant' ? { color: accentColor } : {}}>INVOICE</h1>
               <p className={`text-lg font-semibold ${template === 'corporate' ? 'text-white' : 'text-gray-700'} mt-1`}>
                 #{invoice.invoiceNumber}
               </p>
@@ -129,7 +221,7 @@ const InvoicePreview = ({ invoice }) => {
             <div className="text-right">
               <div className="flex items-center justify-end mb-2">
                 <img 
-                  src="/placeholder.svg" 
+                  src={logoUrl} 
                   alt="Company Logo"
                   className="h-12"
                 />
