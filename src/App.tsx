@@ -26,6 +26,9 @@ import LeadForm from "./pages/LeadForm";
 import Quotations from "./pages/Quotations";
 import QuotationDetails from "./pages/QuotationDetails";
 import QuotationForm from "./pages/QuotationForm";
+import Invoices from "./pages/Invoices";
+import InvoiceDetails from "./pages/InvoiceDetails";
+import InvoiceForm from "./pages/InvoiceForm";
 
 const queryClient = new QueryClient();
 
@@ -64,7 +67,10 @@ const App = () => (
             <Route path="/quotations/:id" element={<QuotationDetails />} />
             <Route path="/quotations/create" element={<QuotationForm />} />
             <Route path="/quotations/edit/:id" element={<QuotationForm />} />
-            <Route path="/invoices" element={<Dashboard />} />
+            <Route path="/invoices" element={<Invoices />} />
+            <Route path="/invoices/:id" element={<InvoiceDetails />} />
+            <Route path="/invoices/create" element={<InvoiceForm />} />
+            <Route path="/invoices/edit/:id" element={<InvoiceForm />} />
             <Route path="/calendar" element={<Dashboard />} />
             <Route path="/settings" element={<Dashboard />} />
           </Route>
