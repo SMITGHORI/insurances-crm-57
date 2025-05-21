@@ -14,6 +14,8 @@ import Policies from "./pages/Policies";
 import PolicyDetails from "./pages/PolicyDetails";
 import PolicyEdit from "./pages/PolicyEdit";
 import PolicyCreate from "./pages/PolicyCreate";
+import Agents from "./pages/Agents";
+import AgentDetails from "./pages/AgentDetails";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +38,8 @@ const App = () => (
             <Route path="/policies/:id" element={<PolicyDetails />} />
             <Route path="/policies/create" element={<PolicyCreate />} />
             <Route path="/policies/edit/:id" element={<PolicyEdit />} />
-            <Route path="/agents" element={<Dashboard />} />
+            <Route path="/agents" element={<Agents />} />
+            <Route path="/agents/:id" element={<AgentDetails />} />
             <Route path="/claims" element={<Dashboard />} />
             <Route path="/leads" element={<Dashboard />} />
             <Route path="/quotations" element={<Dashboard />} />
