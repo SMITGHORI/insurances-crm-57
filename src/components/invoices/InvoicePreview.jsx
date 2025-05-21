@@ -1,12 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatInvoiceDateForDisplay } from '@/utils/invoiceUtils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileImage, Image, Layout, PaintBucket } from 'lucide-react';
+import { Download, FileImage, FileText, Image, Layout, PaintBucket, Printer, Share } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const InvoicePreview = ({ invoice }) => {
   const [template, setTemplate] = useState(invoice.layoutTemplate || 'standard');
@@ -14,6 +17,7 @@ const InvoicePreview = ({ invoice }) => {
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [activeCustomizeTab, setActiveCustomizeTab] = useState('layout');
   const [logoUrl, setLogoUrl] = useState('/placeholder.svg');
+  const invoiceRef = useRef(null);
   
   // Get total paid amount if payment details exist
   const getPaidAmount = () => {
@@ -90,9 +94,323 @@ const InvoicePreview = ({ invoice }) => {
     }
   };
 
+  const handlePrint = () => {
+    const printContent = document.getElementById('invoice-container');
+    const printWindow = window.open('', '_blank');
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice - ${invoice.invoiceNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+            .page-header {
+              padding: 20px;
+              border-bottom: 1px solid #ddd;
+              margin-bottom: 20px;
+              background-color: ${template === 'corporate' ? accentColor : '#ffffff'};
+              color: ${template === 'corporate' ? '#ffffff' : '#000000'};
+            }
+            .page-footer {
+              text-align: center;
+              padding: 10px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              margin-top: 20px;
+              position: fixed;
+              bottom: 0;
+              width: 100%;
+              background: white;
+            }
+            table { width: 100%; border-collapse: collapse; }
+            th { background-color: #f3f4f6; text-align: left; padding: 8px; }
+            td { border-bottom: 1px solid #ddd; padding: 8px; }
+            .text-right { text-align: right; }
+            @media print {
+              .page-header { position: fixed; top: 0; width: 100%; }
+              .page-footer { position: fixed; bottom: 0; width: 100%; }
+              .content { margin-top: 150px; margin-bottom: 100px; }
+              .page-break { page-break-after: always; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="page-header">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div>
+                <h1>INVOICE</h1>
+                <p>#${invoice.invoiceNumber}</p>
+              </div>
+              <div style="text-align: right;">
+                <img src="${logoUrl}" alt="Company Logo" style="height: 60px; max-width: 200px; background: white; padding: 5px; border-radius: 5px;" />
+                <p>Ambition Insurance</p>
+                <p>123 Insurance St, Mumbai 400001</p>
+                <p>contact@ambitioninsurance.com</p>
+              </div>
+            </div>
+          </div>
+          <div class="content">
+            ${printContent.innerHTML}
+          </div>
+          <div class="page-footer">
+            <p>Thank you for your business!</p>
+            ${invoice.agentName ? `<p>Your insurance agent: ${invoice.agentName}</p>` : ''}
+          </div>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
+  const handleDownload = () => {
+    try {
+      const element = invoiceRef.current;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Define page dimensions
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Create header
+      if (template === 'corporate') {
+        pdf.setFillColor(accentColor.replace('#', ''));
+        pdf.rect(0, 0, pageWidth, 40, 'F');
+        pdf.setTextColor(255, 255, 255);
+      } else {
+        pdf.setTextColor(0, 0, 0);
+      }
+      
+      // Add invoice title and number
+      pdf.setFontSize(22);
+      pdf.text('INVOICE', 20, 20);
+      pdf.setFontSize(12);
+      pdf.text(`#${invoice.invoiceNumber}`, 20, 30);
+      
+      // Add logo 
+      html2canvas(document.querySelector('img[alt="Company Logo"]')).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', pageWidth - 60, 10, 40, 20);
+        
+        // Add company info
+        pdf.setFontSize(10);
+        if (template === 'corporate') {
+          pdf.setTextColor(255, 255, 255);
+        } else {
+          pdf.setTextColor(0, 0, 0);
+        }
+        pdf.text('Ambition Insurance', pageWidth - 20, 20, { align: 'right' });
+        pdf.text('123 Insurance St, Mumbai 400001', pageWidth - 20, 25, { align: 'right' });
+        pdf.text('contact@ambitioninsurance.com', pageWidth - 20, 30, { align: 'right' });
+        
+        // Add client and invoice details
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(11);
+        pdf.text('Bill To:', 20, 50);
+        pdf.setFontSize(10);
+        pdf.text(invoice.clientName, 20, 57);
+        pdf.text(invoice.clientAddress || '', 20, 62);
+        pdf.text(invoice.clientEmail || '', 20, 67);
+        pdf.text(invoice.clientPhone || '', 20, 72);
+        
+        pdf.text('Invoice Details:', pageWidth - 80, 50);
+        pdf.text(`Issue Date: ${formatInvoiceDateForDisplay(invoice.issueDate)}`, pageWidth - 80, 57);
+        pdf.text(`Due Date: ${formatInvoiceDateForDisplay(invoice.dueDate)}`, pageWidth - 80, 62);
+        pdf.text(`Status: ${invoice.status}`, pageWidth - 80, 67);
+        
+        if (invoice.policyNumber) {
+          pdf.text('Policy Details:', pageWidth - 80, 77);
+          pdf.text(`Policy Number: ${invoice.policyNumber}`, pageWidth - 80, 84);
+          pdf.text(`Insurance Type: ${invoice.insuranceType}`, pageWidth - 80, 89);
+          pdf.text(`Period: ${invoice.premiumPeriod}`, pageWidth - 80, 94);
+        }
+        
+        // Add table header
+        pdf.setFillColor(243, 244, 246);
+        pdf.rect(20, 105, pageWidth - 40, 10, 'F');
+        pdf.setFontSize(9);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Description', 25, 111);
+        pdf.text('Qty', 110, 111, { align: 'right' });
+        pdf.text('Unit Price', 130, 111, { align: 'right' });
+        pdf.text('Tax', 150, 111, { align: 'right' });
+        pdf.text('Total', 170, 111, { align: 'right' });
+        
+        // Add table items
+        let yPosition = 120;
+        invoice.items.forEach((item, index) => {
+          pdf.text(item.description, 25, yPosition);
+          pdf.text(item.quantity.toString(), 110, yPosition, { align: 'right' });
+          pdf.text(formatCurrency(item.unitPrice), 130, yPosition, { align: 'right' });
+          pdf.text(formatCurrency(item.tax), 150, yPosition, { align: 'right' });
+          pdf.text(formatCurrency(item.total), 170, yPosition, { align: 'right' });
+          
+          // Add line separator
+          pdf.setDrawColor(220, 220, 220);
+          yPosition += 5;
+          pdf.line(20, yPosition, pageWidth - 20, yPosition);
+          yPosition += 5;
+        });
+        
+        // Add totals
+        yPosition += 5;
+        pdf.text('Subtotal:', 140, yPosition);
+        pdf.text(formatCurrency(invoice.subtotal), 170, yPosition, { align: 'right' });
+        
+        if (invoice.discount > 0) {
+          yPosition += 5;
+          pdf.text('Discount:', 140, yPosition);
+          pdf.text(`-${formatCurrency(invoice.discount)}`, 170, yPosition, { align: 'right' });
+        }
+        
+        yPosition += 5;
+        pdf.text('Tax:', 140, yPosition);
+        pdf.text(formatCurrency(invoice.tax), 170, yPosition, { align: 'right' });
+        
+        yPosition += 5;
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(140, yPosition, 170, yPosition);
+        yPosition += 5;
+        
+        pdf.setFontSize(10);
+        pdf.text('Total:', 140, yPosition);
+        pdf.text(formatCurrency(invoice.total), 170, yPosition, { align: 'right' });
+        
+        yPosition += 5;
+        pdf.text('Amount Paid:', 140, yPosition);
+        pdf.text(formatCurrency(getPaidAmount()), 170, yPosition, { align: 'right' });
+        
+        yPosition += 5;
+        pdf.setTextColor(invoice.status === 'paid' ? 0x00, 0x80, 0x00 : 0xcc, 0x00, 0x00);
+        pdf.text('Balance Due:', 140, yPosition);
+        pdf.text(formatCurrency(getRemainingBalance()), 170, yPosition, { align: 'right' });
+        
+        // Add notes
+        if (invoice.notes) {
+          yPosition += 15;
+          pdf.setTextColor(0, 0, 0);
+          pdf.setFontSize(10);
+          pdf.text('Notes:', 20, yPosition);
+          pdf.setFontSize(9);
+          pdf.text(invoice.notes, 20, yPosition + 6);
+        }
+        
+        // Add payment terms
+        if (invoice.paymentTerms) {
+          yPosition += 15;
+          pdf.setFontSize(10);
+          pdf.text('Payment Terms:', 20, yPosition);
+          pdf.setFontSize(9);
+          pdf.text(invoice.paymentTerms, 20, yPosition + 6);
+        }
+        
+        // Add footer
+        pdf.setFontSize(10);
+        pdf.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
+        
+        if (invoice.agentName) {
+          pdf.setFontSize(9);
+          pdf.text(`Your insurance agent: ${invoice.agentName}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+        }
+        
+        // Save PDF
+        pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
+        toast.success('PDF downloaded successfully');
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF');
+    }
+  };
+  
+  const handleShare = () => {
+    try {
+      // Generate PDF as Blob for sharing
+      const element = invoiceRef.current;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Define page dimensions
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      
+      // Create basic invoice (simplified for sharing)
+      pdf.setFontSize(22);
+      pdf.text('INVOICE', 20, 20);
+      pdf.setFontSize(12);
+      pdf.text(`#${invoice.invoiceNumber}`, 20, 30);
+      
+      // Convert the invoice element to canvas
+      html2canvas(element).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Calculate scaling
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Add the image
+        pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
+        
+        // Convert to blob for sharing
+        const pdfBlob = pdf.output('blob');
+        
+        // Use Web Share API if available
+        if (navigator.share) {
+          const file = new File([pdfBlob], `invoice-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
+          
+          navigator.share({
+            title: `Invoice #${invoice.invoiceNumber}`,
+            text: 'Please find attached invoice from Ambition Insurance',
+            files: [file]
+          })
+            .then(() => toast.success('Shared successfully'))
+            .catch((error) => {
+              console.error('Sharing failed:', error);
+              toast.error('Failed to share');
+            });
+        } else {
+          // Fallback for browsers without Web Share API
+          toast.info('Direct sharing not supported in this browser. Please use the Download option instead.');
+        }
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+      toast.error('Failed to share');
+    }
+  };
+
   return (
     <div className="relative">
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-between">
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handlePrint}
+            className="flex items-center"
+          >
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleDownload}
+            className="flex items-center"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download PDF
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleShare}
+            className="flex items-center"
+          >
+            <Share className="mr-2 h-4 w-4" />
+            Share
+          </Button>
+        </div>
         <Button 
           variant="outline" 
           onClick={() => setShowCustomizer(!showCustomizer)}
@@ -208,7 +526,7 @@ const InvoicePreview = ({ invoice }) => {
         </Card>
       )}
       
-      <div id="invoice-container" className={currentTemplate.className}>
+      <div id="invoice-container" ref={invoiceRef} className={currentTemplate.className}>
         {/* Header */}
         <div className={currentTemplate.headerClass} style={template === 'corporate' ? { backgroundColor: accentColor } : {}}>
           <div className="flex justify-between items-center">

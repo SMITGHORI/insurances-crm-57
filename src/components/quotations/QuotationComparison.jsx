@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -10,12 +9,15 @@ import {
   XCircle, 
   Download, 
   Share, 
-  Printer 
+  Printer, 
+  FileText
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const QuotationComparison = ({ comparisons }) => {
   const [showCustomizer, setShowCustomizer] = useState(false);
@@ -67,12 +69,14 @@ const QuotationComparison = ({ comparisons }) => {
         <head>
           <title>Quotation - ${companyInfo.name}</title>
           <style>
-            body { font-family: Arial, sans-serif; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
             .page-header {
               text-align: center;
-              padding: 10px;
+              padding: 20px;
               border-bottom: 1px solid #ddd;
               margin-bottom: 20px;
+              background-color: ${accentColor};
+              color: white;
             }
             .page-footer {
               text-align: center;
@@ -89,21 +93,21 @@ const QuotationComparison = ({ comparisons }) => {
             th { background-color: ${accentColor}; color: white; text-align: left; padding: 8px; }
             td { border-bottom: 1px solid #ddd; padding: 8px; }
             @media print {
-              .page-footer {
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-              }
+              .page-header { position: fixed; top: 0; width: 100%; }
+              .page-footer { position: fixed; bottom: 0; width: 100%; }
+              .content { margin-top: 100px; margin-bottom: 100px; }
               .page-break { page-break-after: always; }
             }
           </style>
         </head>
         <body>
           <div class="page-header">
-            <img src="${logoUrl}" alt="${companyInfo.name}" style="max-height: 60px; max-width: 200px;" />
+            <img src="${logoUrl}" alt="${companyInfo.name}" style="max-height: 60px; max-width: 200px; background: white; padding: 10px; border-radius: 5px;" />
             <h2>${companyInfo.name}</h2>
           </div>
-          ${printContent.innerHTML}
+          <div class="content">
+            ${printContent.innerHTML}
+          </div>
           <div class="page-footer">
             <p>${companyInfo.address} | Phone: ${companyInfo.phone} | Email: ${companyInfo.email}</p>
             <p>Website: ${companyInfo.website}</p>
@@ -123,29 +127,121 @@ const QuotationComparison = ({ comparisons }) => {
   const handleDownload = () => {
     try {
       const element = quotationRef.current;
+      const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // This is a placeholder for PDF generation
-      // In a real implementation, you would use a library like jsPDF or html2pdf
-      toast.success('PDF download started');
-      toast.info('For full PDF functionality, please integrate a PDF library like jsPDF or html2pdf');
+      // Define page dimensions
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Create header
+      pdf.setFillColor(accentColor.replace('#', ''));
+      pdf.rect(0, 0, pageWidth, 30, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(16);
+      pdf.text('Insurance Plan Comparison', 105, 15, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.text(`Prepared by ${companyInfo.name}`, 105, 22, { align: 'center' });
+      
+      // Add logo
+      html2canvas(document.querySelector('img[alt="Company Logo"]')).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', pageWidth - 50, 5, 40, 20);
+        
+        // Convert the quotation table to canvas
+        html2canvas(element.querySelector('table')).then(canvas => {
+          const tableImgData = canvas.toDataURL('image/png');
+          
+          // Calculate scaling
+          const imgWidth = pageWidth - 20;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          
+          // Add the table image
+          pdf.addImage(tableImgData, 'PNG', 10, 40, imgWidth, imgHeight);
+          
+          // Add notes section
+          const notesYPosition = 40 + imgHeight + 10;
+          pdf.setTextColor(0, 0, 0);
+          pdf.setFontSize(11);
+          pdf.text('Important Notes:', 10, notesYPosition);
+          pdf.setFontSize(9);
+          pdf.text('• This is a comparison only. Please refer to policy documents for complete details.', 15, notesYPosition + 7);
+          pdf.text('• Terms and conditions may apply. Please consult with your agent.', 15, notesYPosition + 12);
+          pdf.text('• Premium amounts are indicative and may vary based on individual profiles.', 15, notesYPosition + 17);
+          
+          // Add footer
+          pdf.setFontSize(8);
+          pdf.text(`${companyInfo.address} | Phone: ${companyInfo.phone} | Email: ${companyInfo.email} | Website: ${companyInfo.website}`, 105, pageHeight - 10, { align: 'center' });
+          
+          // Save PDF
+          pdf.save('insurance-plan-comparison.pdf');
+          toast.success('PDF downloaded successfully');
+        });
+      });
     } catch (error) {
+      console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF');
     }
   };
 
   const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Insurance Plan Comparison',
-        text: 'Check out this insurance plan comparison from Amba Insurance Services',
-        // In a real app, you would generate a shareable URL here
-        url: window.location.href,
-      })
-        .then(() => toast.success('Shared successfully'))
-        .catch(() => toast.error('Failed to share'));
-    } else {
-      // Fallback for browsers that don't support the Web Share API
-      toast.info('Sharing is not supported in this browser');
+    try {
+      // Generate PDF as Blob for sharing
+      const element = quotationRef.current;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Define page dimensions
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Create header (same as download function)
+      pdf.setFillColor(accentColor.replace('#', ''));
+      pdf.rect(0, 0, pageWidth, 30, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(16);
+      pdf.text('Insurance Plan Comparison', 105, 15, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.text(`Prepared by ${companyInfo.name}`, 105, 22, { align: 'center' });
+      
+      // Convert the quotation to canvas
+      html2canvas(element).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        
+        // Calculate scaling
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // Add the image
+        pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
+        
+        // Add footer
+        pdf.setFontSize(8);
+        pdf.text(`${companyInfo.address} | Phone: ${companyInfo.phone} | Email: ${companyInfo.email} | Website: ${companyInfo.website}`, 105, pageHeight - 10, { align: 'center' });
+        
+        // Convert to blob for sharing
+        const pdfBlob = pdf.output('blob');
+        
+        // Use Web Share API if available
+        if (navigator.share) {
+          const file = new File([pdfBlob], 'insurance-comparison.pdf', { type: 'application/pdf' });
+          
+          navigator.share({
+            title: 'Insurance Plan Comparison',
+            text: 'Check out this insurance plan comparison from ' + companyInfo.name,
+            files: [file]
+          })
+            .then(() => toast.success('Shared successfully'))
+            .catch((error) => {
+              console.error('Sharing failed:', error);
+              toast.error('Failed to share');
+            });
+        } else {
+          // Fallback for browsers without Web Share API
+          toast.info('Direct sharing not supported in this browser. Please use the Download option instead.');
+        }
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+      toast.error('Failed to share');
     }
   };
 
