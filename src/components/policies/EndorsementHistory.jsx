@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Download, Trash, FileUpload } from 'lucide-react';
+import { Plus, Download, Trash, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 const EndorsementHistory = ({ policy, setPolicy }) => {

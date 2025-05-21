@@ -14,7 +14,7 @@ import {
   Plus,
   User,
   Info,
-  Notes,
+  StickyNote,
   Clock as ClockIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -205,7 +205,7 @@ const PolicyDetails = () => {
             Payments
           </TabsTrigger>
           <TabsTrigger value="endorsements" className="flex items-center">
-            <FileUpload className="mr-2 h-4 w-4" />
+            <Upload className="mr-2 h-4 w-4" />
             Endorsements
           </TabsTrigger>
           <TabsTrigger value="commission" className="flex items-center">
@@ -217,7 +217,7 @@ const PolicyDetails = () => {
             History
           </TabsTrigger>
           <TabsTrigger value="notes" className="flex items-center">
-            <Notes className="mr-2 h-4 w-4" />
+            <StickyNote className="mr-2 h-4 w-4" />
             Notes
           </TabsTrigger>
         </TabsList>
