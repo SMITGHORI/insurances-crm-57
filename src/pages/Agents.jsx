@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, UserPlus, Filter } from 'lucide-react';
+import { Plus, Search, FileText, UserPlus, Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -11,6 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import AgentTable from '@/components/agents/AgentTable';
 import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -21,6 +27,7 @@ const Agents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSpecialization, setFilterSpecialization] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const isMobile = useIsMobile();
 
   // Sample data - in production this would come from an API
@@ -158,93 +165,181 @@ const Agents = () => {
         </div>
       </div>
 
-      {/* Action Buttons and Filters */}
-      <div className="flex flex-col space-y-3 sm:space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            onClick={handleCreateAgent}
-            className="bg-amba-blue hover:bg-blue-800 text-white"
-          >
-            <UserPlus size={16} className="mr-2" />
-            {!isMobile ? "New Agent" : "New"}
-          </Button>
-          {!isMobile && (
-            <>
-              <Button 
-                onClick={handleExportData} 
-                variant="outline" 
-                className="border-gray-300"
-              >
-                <FileText size={16} className="mr-2" />
-                Export Data
-              </Button>
-              <Button 
-                onClick={handleBulkUpload} 
-                variant="outline" 
-                className="border-gray-300"
-              >
-                <UserPlus size={16} className="mr-2" />
-                Bulk Upload
-              </Button>
-            </>
-          )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-          {/* Search */}
-          <div className="relative w-full sm:w-auto flex-1 sm:max-w-[250px]">
+      {/* Mobile view - Collapsible sections for better organization */}
+      {isMobile ? (
+        <div className="space-y-3">
+          <div className="flex justify-between">
+            <Button 
+              onClick={handleCreateAgent}
+              className="bg-amba-blue hover:bg-blue-800 text-white"
+            >
+              <UserPlus size={16} className="mr-2" />
+              New Agent
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="border-gray-300"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter size={16} className="mr-2" />
+              Filters
+            </Button>
+          </div>
+          
+          {/* Collapsible Filters Section */}
+          <Accordion type="single" collapsible className={showFilters ? "block" : "hidden"}>
+            <AccordionItem value="filters" className="border rounded-md">
+              <AccordionTrigger className="px-3 py-2 text-sm">Search & Filters</AccordionTrigger>
+              <AccordionContent className="px-3 pb-3 space-y-3">
+                {/* Search */}
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search agents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 w-full"
+                  />
+                </div>
+                
+                {/* Status Filter */}
+                <div className="w-full">
+                  <label className="text-xs text-gray-500 mb-1 block">Filter by Status</label>
+                  <Select
+                    value={filterStatus}
+                    onValueChange={setFilterStatus}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="onboarding">Onboarding</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Specialization Filter */}
+                <div className="w-full">
+                  <label className="text-xs text-gray-500 mb-1 block">Filter by Specialization</label>
+                  <Select
+                    value={filterSpecialization}
+                    onValueChange={setFilterSpecialization}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Specialization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Specializations</SelectItem>
+                      <SelectItem value="Health Insurance">Health Insurance</SelectItem>
+                      <SelectItem value="Term Insurance">Term Insurance</SelectItem>
+                      <SelectItem value="Vehicle Insurance">Vehicle Insurance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+          
+          {/* Quick search always visible for convenience */}
+          <div className={showFilters ? "hidden" : "relative w-full"}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Search agents..."
+              placeholder="Quick search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 w-full"
             />
           </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center w-full sm:w-auto">
-            <Filter size={16} className="mr-1 text-gray-500" />
-            <Select
-              value={filterStatus}
-              onValueChange={setFilterStatus}
-              className="w-full"
+        </div>
+      ) : (
+        /* Desktop view - keep the existing layout */
+        <div className="flex flex-col space-y-3 sm:space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={handleCreateAgent}
+              className="bg-amba-blue hover:bg-blue-800 text-white"
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="onboarding">Onboarding</SelectItem>
-              </SelectContent>
-            </Select>
+              <UserPlus size={16} className="mr-2" />
+              New Agent
+            </Button>
+            <Button 
+              onClick={handleExportData} 
+              variant="outline" 
+              className="border-gray-300"
+            >
+              <FileText size={16} className="mr-2" />
+              Export Data
+            </Button>
+            <Button 
+              onClick={handleBulkUpload} 
+              variant="outline" 
+              className="border-gray-300"
+            >
+              <UserPlus size={16} className="mr-2" />
+              Bulk Upload
+            </Button>
           </div>
 
-          {/* Specialization Filter */}
-          <div className="flex items-center w-full sm:w-auto">
-            <Filter size={16} className="mr-1 text-gray-500" />
-            <Select
-              value={filterSpecialization}
-              onValueChange={setFilterSpecialization}
-              className="w-full"
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Specialization" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Specializations</SelectItem>
-                <SelectItem value="Health Insurance">Health Insurance</SelectItem>
-                <SelectItem value="Term Insurance">Term Insurance</SelectItem>
-                <SelectItem value="Vehicle Insurance">Vehicle Insurance</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            {/* Search */}
+            <div className="relative w-full sm:w-auto flex-1 sm:max-w-[250px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search agents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-full"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center w-full sm:w-auto">
+              <Filter size={16} className="mr-1 text-gray-500" />
+              <Select
+                value={filterStatus}
+                onValueChange={setFilterStatus}
+                className="w-full"
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="onboarding">Onboarding</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Specialization Filter */}
+            <div className="flex items-center w-full sm:w-auto">
+              <Filter size={16} className="mr-1 text-gray-500" />
+              <Select
+                value={filterSpecialization}
+                onValueChange={setFilterSpecialization}
+                className="w-full"
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Specialization" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Specializations</SelectItem>
+                  <SelectItem value="Health Insurance">Health Insurance</SelectItem>
+                  <SelectItem value="Term Insurance">Term Insurance</SelectItem>
+                  <SelectItem value="Vehicle Insurance">Vehicle Insurance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Agents Table */}
+      {/* Agents Table/Cards */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <AgentTable 
           agents={filteredAgents} 
