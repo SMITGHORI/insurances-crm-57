@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   ResponsiveContainer,
   BarChart,
@@ -49,6 +50,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState('month');
+  const isMobile = useIsMobile();
 
   // Sample data for charts
   const policyTypeData = [
@@ -267,16 +269,20 @@ const Dashboard = () => {
     navigate('/recent-activities');
   };
 
+  const getMobileChartHeight = () => {
+    return isMobile ? 200 : 280;
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6 px-1 py-2 md:px-0 md:py-0 overflow-x-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Welcome back! Here's what's happening with your business today.</p>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Dashboard</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-1">Welcome back! Here's what's happening with your business today.</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Tabs defaultValue={periodFilter} onValueChange={setPeriodFilter} className="w-[300px]">
-            <TabsList className="grid grid-cols-3">
+        <div className="w-full md:w-auto mt-2 md:mt-0">
+          <Tabs defaultValue={periodFilter} onValueChange={setPeriodFilter} className="w-full md:w-[300px]">
+            <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="week">Week</TabsTrigger>
               <TabsTrigger value="month">Month</TabsTrigger>
               <TabsTrigger value="year">Year</TabsTrigger>
@@ -286,30 +292,30 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {statsCards.map((card, index) => (
           <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow duration-200">
-            <CardContent className="p-6">
+            <CardContent className="p-3 md:p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium">{card.title}</p>
-                  <h3 className="text-2xl font-bold mt-1">{card.value}</h3>
+                  <p className="text-xs md:text-sm text-gray-500 font-medium">{card.title}</p>
+                  <h3 className="text-lg md:text-2xl font-bold mt-1">{card.value}</h3>
                   <div className="flex items-center mt-1">
                     {card.isPositive ? (
-                      <ArrowUp className="h-4 w-4 text-green-500 mr-1" />
+                      <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-green-500 mr-1" />
                     ) : (
-                      <ArrowDown className="h-4 w-4 text-red-500 mr-1" />
+                      <ArrowDown className="h-3 w-3 md:h-4 md:w-4 text-red-500 mr-1" />
                     )}
                     <span 
                       className={`text-xs font-medium ${
                         card.isPositive ? 'text-green-600' : 'text-red-600'
                       }`}
                     >
-                      {card.change} from last month
+                      {card.change}
                     </span>
                   </div>
                 </div>
-                <div className="bg-gray-100 rounded-full p-3">{card.icon}</div>
+                <div className="bg-gray-100 rounded-full p-2 md:p-3">{card.icon}</div>
               </div>
             </CardContent>
           </Card>
@@ -318,80 +324,80 @@ const Dashboard = () => {
 
       {/* Performance Overview */}
       <Card className="border-none shadow-md">
-        <CardHeader className="pb-2">
-          <CardTitle>Performance Overview</CardTitle>
-          <CardDescription>Compare current month with previous month</CardDescription>
+        <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
+          <CardTitle className="text-base md:text-lg">Performance Overview</CardTitle>
+          <CardDescription className="text-xs md:text-sm">Compare current month with previous month</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
+        <CardContent className="p-3 md:p-6 pt-0">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
+            <div className="p-2 md:p-4 bg-blue-50 rounded-lg">
               <p className="text-xs text-gray-500 font-medium">New Clients</p>
               <div className="flex items-baseline mt-1">
-                <h4 className="text-lg font-bold">{performanceMetrics.thisMonth.newClients}</h4>
-                <span className="ml-2 text-xs text-green-600">{performanceMetrics.growth.newClients}</span>
+                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newClients}</h4>
+                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.newClients}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newClients} last month</p>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newClients} last month</p>
             </div>
             
-            <div className="p-4 bg-orange-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-orange-50 rounded-lg">
               <p className="text-xs text-gray-500 font-medium">New Policies</p>
               <div className="flex items-baseline mt-1">
-                <h4 className="text-lg font-bold">{performanceMetrics.thisMonth.newPolicies}</h4>
-                <span className="ml-2 text-xs text-green-600">{performanceMetrics.growth.newPolicies}</span>
+                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newPolicies}</h4>
+                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.newPolicies}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newPolicies} last month</p>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newPolicies} last month</p>
             </div>
             
-            <div className="p-4 bg-green-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-green-50 rounded-lg">
               <p className="text-xs text-gray-500 font-medium">Premium Revenue</p>
               <div className="flex items-baseline mt-1">
-                <h4 className="text-lg font-bold">{performanceMetrics.thisMonth.revenue}</h4>
-                <span className="ml-2 text-xs text-green-600">{performanceMetrics.growth.revenue}</span>
+                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.revenue}</h4>
+                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.revenue}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.revenue} last month</p>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.revenue} last month</p>
             </div>
             
-            <div className="p-4 bg-yellow-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-yellow-50 rounded-lg">
               <p className="text-xs text-gray-500 font-medium">Claims Processed</p>
               <div className="flex items-baseline mt-1">
-                <h4 className="text-lg font-bold">{performanceMetrics.thisMonth.claims}</h4>
-                <span className="ml-2 text-xs text-green-600">{performanceMetrics.growth.claims}</span>
+                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.claims}</h4>
+                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.claims}</span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.claims} last month</p>
+              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.claims} last month</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:gap-6">
         {/* Monthly Premium */}
-        <Card className="border-none shadow-md lg:col-span-2">
-          <CardHeader className="pb-2">
+        <Card className="border-none shadow-md">
+          <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="flex items-center">
-                  <BarChart4 className="h-5 w-5 mr-2" />
+                <CardTitle className="flex items-center text-base md:text-lg">
+                  <BarChart4 className="h-4 w-4 md:h-5 md:w-5 mr-2" />
                   Monthly Premium Collection
                 </CardTitle>
-                <CardDescription>Monthly revenue from premium collections</CardDescription>
+                <CardDescription className="text-xs md:text-sm">Monthly revenue from premium collections</CardDescription>
               </div>
-              <select className="text-sm border rounded p-1">
+              <select className="text-xs md:text-sm border rounded p-1">
                 <option>This Year</option>
                 <option>Last Year</option>
               </select>
             </div>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className={`h-${isMobile ? '44' : '64'}`}>
             <ChartContainer config={{
               premium: { color: "#1b365d", label: "Premium" }
             }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartLineChart data={monthlyPremiumData}>
-                  <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+              <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
+                <RechartLineChart data={isMobile ? monthlyPremiumData.slice(6) : monthlyPremiumData}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} axisLine={false} />
                   <YAxis
                     stroke="#888888"
-                    fontSize={12}
+                    fontSize={isMobile ? 10 : 12}
                     tickLine={false}
                     axisLine={false}
                     tickFormatter={(value) => `₹${value/1000}k`}
@@ -412,21 +418,21 @@ const Dashboard = () => {
 
         {/* Policy Distribution */}
         <Card className="border-none shadow-md">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center">
-              <PieChart className="h-5 w-5 mr-2" />
+          <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
+            <CardTitle className="flex items-center text-base md:text-lg">
+              <PieChart className="h-4 w-4 md:h-5 md:w-5 mr-2" />
               Policy Distribution
             </CardTitle>
-            <CardDescription>Breakdown by insurance type</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Breakdown by insurance type</CardDescription>
           </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <CardContent className={`h-${isMobile ? '44' : '64'}`}>
+            <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
               <RechartPieChart>
                 <Pie
                   data={policyTypeData}
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  outerRadius={isMobile ? 60 : 80}
                   dataKey="value"
                   labelLine={false}
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -442,60 +448,77 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Second Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
-        <Card className="border-none shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Clock className="h-5 w-5 mr-2" />
-              Recent Activities
-            </CardTitle>
-            <CardDescription>Latest updates from across your business</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ul className="divide-y divide-gray-200">
-              {recentActivities.map((activity) => (
-                <li key={activity.id} className="p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start">
-                    <div className="bg-gray-100 rounded-full p-2 mr-3">
-                      {getActivityIcon(activity.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.action}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Client: {activity.client} | Agent: {activity.agent}
-                      </p>
-                    </div>
-                    <div className="text-xs text-gray-500">{activity.time}</div>
+      {/* Recent Activities */}
+      <Card className="border-none shadow-md">
+        <CardHeader className="p-4 md:p-6 pb-2">
+          <CardTitle className="flex items-center text-base md:text-lg">
+            <Clock className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+            Recent Activities
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">Latest updates from across your business</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+          <ul className="divide-y divide-gray-200">
+            {recentActivities.map((activity) => (
+              <li key={activity.id} className="p-3 md:p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start">
+                  <div className="bg-gray-100 rounded-full p-1.5 md:p-2 mr-2 md:mr-3 flex-shrink-0">
+                    {getActivityIcon(activity.type)}
                   </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-          <CardFooter className="border-t p-4 text-center">
-            <Button 
-              variant="ghost"
-              onClick={handleViewAllActivities}
-              className="text-sm text-blue-600 hover:text-blue-800 w-full"
-            >
-              View All Activities
-            </Button>
-          </CardFooter>
-        </Card>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">
+                      {activity.action}
+                    </p>
+                    <p className="text-xs text-gray-500 line-clamp-1">
+                      Client: {activity.client} | Agent: {activity.agent}
+                    </p>
+                  </div>
+                  <div className="text-[10px] md:text-xs text-gray-500 whitespace-nowrap ml-1">{activity.time}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+        <CardFooter className="border-t p-3 md:p-4 text-center">
+          <Button 
+            variant="ghost"
+            onClick={handleViewAllActivities}
+            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
+          >
+            View All Activities
+          </Button>
+        </CardFooter>
+      </Card>
 
-        {/* Upcoming Renewals */}
-        <Card className="border-none shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Upcoming Renewals
-            </CardTitle>
-            <CardDescription>Policies due for renewal in the next 30 days</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
+      {/* Upcoming Renewals */}
+      <Card className="border-none shadow-md">
+        <CardHeader className="p-4 md:p-6 pb-2">
+          <CardTitle className="flex items-center text-base md:text-lg">
+            <Calendar className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+            Upcoming Renewals
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">Policies due for renewal in the next 30 days</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          {isMobile ? (
+            <div className="divide-y divide-gray-200">
+              {upcomingRenewals.map((renewal) => (
+                <div key={renewal.id} className="p-3 hover:bg-gray-50">
+                  <div className="flex justify-between">
+                    <p className="font-medium text-sm">{renewal.client}</p>
+                    <p className="text-sm">{renewal.premium}</p>
+                  </div>
+                  <div className="mt-1">
+                    <p className="text-xs text-gray-700">{renewal.policyType}</p>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-xs text-gray-500">{renewal.policyNumber}</span>
+                      <span className="text-xs text-gray-500">Due: {renewal.dueDate}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
@@ -519,31 +542,59 @@ const Dashboard = () => {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-          <CardFooter className="border-t p-4 text-center">
-            <Button 
-              variant="ghost"
-              onClick={handleViewAllRenewals}
-              className="text-sm text-blue-600 hover:text-blue-800 w-full"
-            >
-              View All Renewals
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+        <CardFooter className="border-t p-3 md:p-4 text-center">
+          <Button 
+            variant="ghost"
+            onClick={handleViewAllRenewals}
+            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
+          >
+            View All Renewals
+          </Button>
+        </CardFooter>
+      </Card>
 
-      {/* Third Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Performing Agents */}
-        <Card className="border-none shadow-md lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="h-5 w-5 mr-2" />
-              Top Performing Agents
-            </CardTitle>
-            <CardDescription>Based on policies sold and premium generated</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
+      {/* Top Performing Agents */}
+      <Card className="border-none shadow-md">
+        <CardHeader className="p-4 md:p-6 pb-2">
+          <CardTitle className="flex items-center text-base md:text-lg">
+            <Users className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+            Top Performing Agents
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">Based on policies sold and premium generated</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          {isMobile ? (
+            <div className="divide-y divide-gray-200">
+              {topAgents.map((agent, index) => (
+                <div key={index} className="p-3 hover:bg-gray-50">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      {agent.name.charAt(0)}
+                    </div>
+                    <div className="ml-3">
+                      <p className="font-medium text-sm">{agent.name}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                    <div>
+                      <span className="text-gray-500 block">Policies</span>
+                      <span className="font-medium">{agent.policies}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Premium</span>
+                      <span className="font-medium">{agent.premium}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Conversion</span>
+                      <span className="font-medium">{agent.conversion}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
@@ -573,84 +624,84 @@ const Dashboard = () => {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-          <CardFooter className="border-t p-4 text-center">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/agents')}
-              className="text-sm text-blue-600 hover:text-blue-800 w-full"
-            >
-              View All Agents
-            </Button>
-          </CardFooter>
-        </Card>
+          )}
+        </CardContent>
+        <CardFooter className="border-t p-3 md:p-4 text-center">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/agents')}
+            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
+          >
+            View All Agents
+          </Button>
+        </CardFooter>
+      </Card>
 
-        {/* Claims Status */}
-        <Card className="border-none shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <ShieldCheck className="h-5 w-5 mr-2" />
-              Claims Status
-            </CardTitle>
-            <CardDescription>Summary of all claims</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-60 flex justify-center items-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartPieChart>
-                  <Pie
-                    data={claimsData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    dataKey="value"
-                    paddingAngle={2}
-                  >
-                    {claimsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name) => [`${value}%`, name]} />
-                  <Legend verticalAlign="bottom" height={36} />
-                </RechartPieChart>
-              </ResponsiveContainer>
+      {/* Claims Status */}
+      <Card className="border-none shadow-md">
+        <CardHeader className="p-4 md:p-6 pb-2">
+          <CardTitle className="flex items-center text-base md:text-lg">
+            <ShieldCheck className="h-4 w-4 md:h-5 md:w-5 mr-2" />
+            Claims Status
+          </CardTitle>
+          <CardDescription className="text-xs md:text-sm">Summary of all claims</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className={`h-${isMobile ? '40' : '60'} flex justify-center items-center`}>
+            <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
+              <RechartPieChart>
+                <Pie
+                  data={claimsData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={isMobile ? 40 : 60}
+                  outerRadius={isMobile ? 60 : 80}
+                  dataKey="value"
+                  paddingAngle={2}
+                >
+                  {claimsData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name) => [`${value}%`, name]} />
+                <Legend verticalAlign="bottom" height={36} />
+              </RechartPieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-1 md:mt-2 space-y-2 px-2 md:px-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                <span className="text-xs md:text-sm">Approved</span>
+              </div>
+              <span className="text-xs md:text-sm font-medium">65%</span>
             </div>
-            <div className="mt-2 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                  <span className="text-sm">Approved</span>
-                </div>
-                <span className="text-sm font-medium">65%</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
+                <span className="text-xs md:text-sm">Pending</span>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
-                  <span className="text-sm">Pending</span>
-                </div>
-                <span className="text-sm font-medium">25%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                  <span className="text-sm">Rejected</span>
-                </div>
-                <span className="text-sm font-medium">10%</span>
-              </div>
+              <span className="text-xs md:text-sm font-medium">25%</span>
             </div>
-          </CardContent>
-          <CardFooter className="border-t p-4 text-center">
-            <Button 
-              variant="ghost"
-              onClick={() => navigate('/claims')}
-              className="text-sm text-blue-600 hover:text-blue-800 w-full"
-            >
-              View All Claims
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                <span className="text-xs md:text-sm">Rejected</span>
+              </div>
+              <span className="text-xs md:text-sm font-medium">10%</span>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="border-t p-3 md:p-4 text-center">
+          <Button 
+            variant="ghost"
+            onClick={() => navigate('/claims')}
+            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
+          >
+            View All Claims
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
