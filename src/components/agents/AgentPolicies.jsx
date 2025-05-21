@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Copy } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const AgentPolicies = ({ agentId }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -157,6 +158,17 @@ const AgentPolicies = ({ agentId }) => {
     navigate(`/policies/${policyId}`);
   };
 
+  // Function to copy insurance policy number to clipboard
+  const handleCopyPolicyNumber = (e, policyNumber) => {
+    e.stopPropagation(); // Prevent row click
+    if (policyNumber) {
+      navigator.clipboard.writeText(policyNumber);
+      toast.success("Insurance company policy number copied to clipboard");
+    } else {
+      toast.error("No insurance company policy number available");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -252,9 +264,21 @@ const AgentPolicies = ({ agentId }) => {
                     onClick={() => handleRowClick(policy.id)}
                   >
                     <td className="py-3 px-4 text-gray-500">{policy.policyId}</td>
-                    <td className="py-3 px-4 font-mono">
-                      {policy.insuranceCompanyPolicyNumber || 
-                        <span className="text-xs text-amber-600">Pending</span>}
+                    <td className="py-3 px-4">
+                      {policy.insuranceCompanyPolicyNumber ? (
+                        <div className="flex items-center">
+                          <span className="font-mono text-blue-700">{policy.insuranceCompanyPolicyNumber}</span>
+                          <button 
+                            className="ml-2 p-1 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-100"
+                            onClick={(e) => handleCopyPolicyNumber(e, policy.insuranceCompanyPolicyNumber)}
+                            title="Copy to clipboard"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Pending</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-gray-500">{policy.policyType}</td>
                     <td className="py-3 px-4">
