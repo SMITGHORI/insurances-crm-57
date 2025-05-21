@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search, Filter, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -11,10 +10,13 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AgentClients = ({ agentId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const isMobile = useIsMobile();
 
   // Sample data - in a real app, this would be fetched from an API based on agentId
   const clients = [
@@ -110,94 +112,167 @@ const AgentClients = ({ agentId }) => {
     }
   };
 
+  // Mobile-friendly search and filter layout
+  const SearchAndFilterSection = () => (
+    <div className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-between'} gap-4 mb-4`}>
+      <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-2`}>
+        <Button className="bg-amba-blue hover:bg-blue-800 text-white w-full md:w-auto">
+          <UserPlus size={16} className="mr-2" />
+          Assign New Client
+        </Button>
+      </div>
+
+      <div className={`flex flex-col sm:flex-row gap-2 ${isMobile ? 'w-full' : ''}`}>
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search clients..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 w-full"
+          />
+        </div>
+
+        {/* Type Filter */}
+        <div className="flex items-center">
+          <Filter size={16} className={`${isMobile ? 'hidden' : 'mr-1'} text-gray-500`} />
+          <Select
+            value={filterCategory}
+            onValueChange={setFilterCategory}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Client Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="Individual">Individual</SelectItem>
+              <SelectItem value="Corporate">Corporate</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Mobile card view
+  const ClientsMobileView = () => (
+    <div className="space-y-4">
+      {filteredClients.length === 0 ? (
+        <div className="py-8 text-center text-gray-500">
+          No clients found matching your search criteria
+        </div>
+      ) : (
+        filteredClients.map((client) => (
+          <Card key={client.id} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-medium">{client.name}</h3>
+                  <p className="text-xs text-gray-500">{client.id}</p>
+                </div>
+                {getStatusBadge(client.status)}
+              </div>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Type</div>
+                  <div className="font-medium">{client.type}</div>
+                </div>
+                
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Contact</div>
+                  <div>{client.phone}</div>
+                  <div className="text-xs text-blue-500">{client.email}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Active Policies</div>
+                    <div className="font-medium">{client.activePolicies}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Total Premium</div>
+                    <div className="font-medium">{client.totalPremium}</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Last Interaction</div>
+                  <div>{client.lastInteraction}</div>
+                </div>
+              </div>
+              
+              <div className="mt-4 pt-3 border-t border-gray-100 flex justify-end">
+                <Button size="sm" variant="outline" className="mr-2">
+                  Message
+                </Button>
+                <Button size="sm">
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="flex">
-          <Button className="bg-amba-blue hover:bg-blue-800 text-white">
-            <UserPlus size={16} className="mr-2" />
-            Assign New Client
-          </Button>
-        </div>
+      <SearchAndFilterSection />
 
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search clients..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full md:w-[250px]"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <div className="flex items-center">
-            <Filter size={16} className="mr-1 text-gray-500" />
-            <Select
-              value={filterCategory}
-              onValueChange={setFilterCategory}
-            >
-              <SelectTrigger className="w-full md:w-[150px]">
-                <SelectValue placeholder="Client Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Individual">Individual</SelectItem>
-                <SelectItem value="Corporate">Corporate</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Clients Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="amba-table">
-            <thead>
-              <tr>
-                <th className="py-3 px-4 font-medium">Client ID</th>
-                <th className="py-3 px-4 font-medium">Name</th>
-                <th className="py-3 px-4 font-medium">Type</th>
-                <th className="py-3 px-4 font-medium">Contact</th>
-                <th className="py-3 px-4 font-medium">Active Policies</th>
-                <th className="py-3 px-4 font-medium">Total Premium</th>
-                <th className="py-3 px-4 font-medium">Last Interaction</th>
-                <th className="py-3 px-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredClients.length === 0 ? (
+      {isMobile ? (
+        <ClientsMobileView />
+      ) : (
+        /* Clients Table - Desktop View */
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="amba-table">
+              <thead>
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-gray-500">
-                    No clients found matching your search criteria
-                  </td>
+                  <th className="py-3 px-4 font-medium">Client ID</th>
+                  <th className="py-3 px-4 font-medium">Name</th>
+                  <th className="py-3 px-4 font-medium">Type</th>
+                  <th className="py-3 px-4 font-medium">Contact</th>
+                  <th className="py-3 px-4 font-medium">Active Policies</th>
+                  <th className="py-3 px-4 font-medium">Total Premium</th>
+                  <th className="py-3 px-4 font-medium">Last Interaction</th>
+                  <th className="py-3 px-4 font-medium">Status</th>
                 </tr>
-              ) : (
-                filteredClients.map((client) => (
-                  <tr key={client.id} className="border-b hover:bg-gray-50 cursor-pointer">
-                    <td className="py-3 px-4 text-gray-500">{client.id}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{client.name}</div>
+              </thead>
+              <tbody>
+                {filteredClients.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="py-8 text-center text-gray-500">
+                      No clients found matching your search criteria
                     </td>
-                    <td className="py-3 px-4 text-gray-500">{client.type}</td>
-                    <td className="py-3 px-4">
-                      <div className="text-gray-500">{client.phone}</div>
-                      <div className="text-gray-500 text-sm">{client.email}</div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-500">{client.activePolicies}</td>
-                    <td className="py-3 px-4 text-gray-500">{client.totalPremium}</td>
-                    <td className="py-3 px-4 text-gray-500">{client.lastInteraction}</td>
-                    <td className="py-3 px-4">{getStatusBadge(client.status)}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredClients.map((client) => (
+                    <tr key={client.id} className="border-b hover:bg-gray-50 cursor-pointer">
+                      <td className="py-3 px-4 text-gray-500">{client.id}</td>
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-900">{client.name}</div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-500">{client.type}</td>
+                      <td className="py-3 px-4">
+                        <div className="text-gray-500">{client.phone}</div>
+                        <div className="text-gray-500 text-sm">{client.email}</div>
+                      </td>
+                      <td className="py-3 px-4 text-gray-500">{client.activePolicies}</td>
+                      <td className="py-3 px-4 text-gray-500">{client.totalPremium}</td>
+                      <td className="py-3 px-4 text-gray-500">{client.lastInteraction}</td>
+                      <td className="py-3 px-4">{getStatusBadge(client.status)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

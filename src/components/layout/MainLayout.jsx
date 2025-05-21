@@ -38,12 +38,17 @@ const MainLayout = () => {
     };
   }, [isMobile, showMobileSidebar]);
 
+  // Close sidebar when route changes
+  useEffect(() => {
+    closeSidebar();
+  }, [window.location.pathname]);
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile sidebar backdrop */}
       {showMobileSidebar && (
         <div 
-          className="fixed inset-0 z-10 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden animate-fade-in"
           onClick={toggleMobileSidebar}
         ></div>
       )}
@@ -51,8 +56,8 @@ const MainLayout = () => {
       {/* Sidebar */}
       <div 
         id="sidebar-container"
-        className={`fixed lg:relative lg:block z-20 h-full transition-transform duration-300 ease-in-out ${
-          showMobileSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`fixed lg:relative lg:block z-30 h-full transition-transform duration-300 ease-in-out ${
+          showMobileSidebar ? 'translate-x-0 shadow-xl' : '-translate-x-full lg:translate-x-0 lg:shadow-none'
         }`}
       >
         <Sidebar onNavItemClick={closeSidebar} />
@@ -61,7 +66,7 @@ const MainLayout = () => {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden w-full">
         <Header onMenuClick={toggleMobileSidebar} />
-        <main className="flex-1 overflow-y-auto p-2 md:p-4 max-w-full">
+        <main className="flex-1 overflow-y-auto p-1 md:p-4 max-w-full">
           <div className="container mx-auto max-w-full overflow-x-hidden px-0">
             <Outlet />
           </div>

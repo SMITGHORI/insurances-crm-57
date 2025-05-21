@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Eye, Edit, Trash, ArrowUpDown, User, Building, Users, Group, Link } from 'lucide-react';
+import { Eye, Edit, Trash, ArrowUpDown, User, Building, Group, Link } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,9 +9,13 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   const getClientTypeIcon = (type) => {
     switch (type) {
@@ -59,6 +62,99 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
     );
   }
 
+  // Mobile card view
+  if (isMobile) {
+    return (
+      <div className="space-y-4 p-4">
+        {clients.map((client) => (
+          <div 
+            key={client.id} 
+            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+                  {getClientTypeIcon(client.type)}
+                </div>
+                <div>
+                  <div className="font-medium">{client.name}</div>
+                  <div className="text-xs text-gray-500 font-mono">{client.clientId || "-"}</div>
+                </div>
+              </div>
+              <Badge className={`${
+                client.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {client.status}
+              </Badge>
+            </div>
+            
+            <div className="grid grid-cols-1 divide-y divide-gray-100 text-sm">
+              <div className="py-2">
+                <div className="text-xs text-gray-500">Contact</div>
+                <div>{client.contact}</div>
+                <div className="text-xs text-blue-500">{client.email}</div>
+              </div>
+              <div className="py-2">
+                <div className="text-xs text-gray-500">Location</div>
+                <div>{client.location}</div>
+              </div>
+              <div className="py-2 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-gray-500">Policies</div>
+                  {client.policies > 0 ? (
+                    <button 
+                      onClick={(e) => viewClientPolicies(e, client.id)}
+                      className="inline-flex items-center px-2 py-1 text-xs leading-5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    >
+                      <Link className="h-3 w-3 mr-1" />
+                      {client.policies} policies
+                    </button>
+                  ) : (
+                    <span className="text-gray-600">0</span>
+                  )}
+                </div>
+                <div className="flex space-x-1">
+                  <Button
+                    onClick={() => onViewClient(client.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => onEditClient(client.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-yellow-600"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => onDeleteClient(client.id)}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-red-600"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        {/* Simple Mobile Pagination */}
+        <div className="flex justify-between items-center py-4 bg-white px-4">
+          <Button variant="outline" size="sm" disabled>Previous</Button>
+          <span className="text-sm text-gray-500">Page 1</span>
+          <Button variant="outline" size="sm" disabled>Next</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop table view - keep existing code
   return (
     <div className="overflow-x-auto">
       <Table>
