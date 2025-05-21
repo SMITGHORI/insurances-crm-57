@@ -1,5 +1,4 @@
 
-
 // Function to generate IDs with a specific prefix and year
 export const generateClientId = (existingIds = []) => {
   const year = new Date().getFullYear();
@@ -96,3 +95,31 @@ export const generateMemberId = (policyId, existingMembers = []) => {
   return `MBR-${policyId}-${formattedSequence}`;
 };
 
+// Function to generate claim IDs
+export const generateClaimId = () => {
+  const year = new Date().getFullYear();
+  
+  // Try to get existing claims from localStorage
+  const storedClaimsData = localStorage.getItem('claimsData');
+  let claims = [];
+  
+  if (storedClaimsData) {
+    claims = JSON.parse(storedClaimsData);
+  }
+  
+  // Find the highest sequence number in existing claim IDs
+  let sequence = 1;
+  claims.forEach(claim => {
+    if (claim.claimId && claim.claimId.includes(`AMB-CLM-${year}-`)) {
+      const existingSequence = parseInt(claim.claimId.split('-').pop());
+      if (!isNaN(existingSequence) && existingSequence >= sequence) {
+        sequence = existingSequence + 1;
+      }
+    }
+  });
+  
+  // Format the sequence number with leading zeros
+  const formattedSequence = sequence.toString().padStart(4, '0');
+  
+  return `AMB-CLM-${year}-${formattedSequence}`;
+};

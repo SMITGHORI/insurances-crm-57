@@ -1,58 +1,55 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import React from "react";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientDetails from "./pages/ClientDetails";
-import NotFound from "./pages/NotFound";
+import ClientEdit from "./pages/ClientEdit";
+import ClientDetailsView from "./pages/ClientDetailsView";
 import Policies from "./pages/Policies";
+import PolicyCreate from "./pages/PolicyCreate";
 import PolicyDetails from "./pages/PolicyDetails";
 import PolicyEdit from "./pages/PolicyEdit";
-import PolicyCreate from "./pages/PolicyCreate";
 import Agents from "./pages/Agents";
 import AgentDetails from "./pages/AgentDetails";
+import Claims from "./pages/Claims";
+import ClaimCreate from "./pages/ClaimCreate";
+import ClaimDetails from "./pages/ClaimDetails";
+import ClaimEdit from "./pages/ClaimEdit";
+import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+import "./App.css";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/" element={<Navigate to="/auth" replace />} />
-          
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/clients/:id" element={<ClientDetails />} />
-            <Route path="/clients/edit/:id" element={<Clients />} />
-            <Route path="/policies" element={<Policies />} />
-            <Route path="/policies/:id" element={<PolicyDetails />} />
-            <Route path="/policies/create" element={<PolicyCreate />} />
-            <Route path="/policies/edit/:id" element={<PolicyEdit />} />
-            <Route path="/agents" element={<Agents />} />
-            <Route path="/agents/:id" element={<AgentDetails />} />
-            <Route path="/claims" element={<Dashboard />} />
-            <Route path="/leads" element={<Dashboard />} />
-            <Route path="/quotations" element={<Dashboard />} />
-            <Route path="/invoices" element={<Dashboard />} />
-            <Route path="/calendar" element={<Dashboard />} />
-            <Route path="/settings" element={<Dashboard />} />
-          </Route>
-          
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Auth />} />
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/create" element={<ClientDetails />} />
+          <Route path="clients/edit/:id" element={<ClientEdit />} />
+          <Route path="clients/:id" element={<ClientDetailsView />} />
+          <Route path="policies" element={<Policies />} />
+          <Route path="policies/create" element={<PolicyCreate />} />
+          <Route path="policies/:id" element={<PolicyDetails />} />
+          <Route path="policies/edit/:id" element={<PolicyEdit />} />
+          <Route path="agents" element={<Agents />} />
+          <Route path="agents/:id" element={<AgentDetails />} />
+          <Route path="claims" element={<Claims />} />
+          <Route path="claims/create" element={<ClaimCreate />} />
+          <Route path="claims/:id" element={<ClaimDetails />} />
+          <Route path="claims/edit/:id" element={<ClaimEdit />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+        </Route>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 export default App;
