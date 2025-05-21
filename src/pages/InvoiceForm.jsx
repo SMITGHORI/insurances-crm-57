@@ -717,7 +717,7 @@ const InvoiceForm = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No Policy</SelectItem>
+                            <SelectItem value="none">No Policy</SelectItem>
                             {policies
                               .filter(policy => !form.getValues('clientId') || 
                                 (policy.client && policy.client.id.toString() === form.getValues('clientId')))
@@ -802,7 +802,7 @@ const InvoiceForm = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No Agent</SelectItem>
+                          <SelectItem value="none">No Agent</SelectItem>
                           {agents.map(agent => (
                             <SelectItem key={agent.id} value={agent.id.toString()}>
                               {agent.name}
