@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -25,10 +24,14 @@ import { toast } from 'sonner';
 
 const Policies = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const tabFromQuery = queryParams.get('tab');
+  
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(tabFromQuery || 'all');
 
   // Get the policies data from localStorage or use the sample data
   useEffect(() => {
@@ -247,6 +250,14 @@ const Policies = () => {
     setLoading(false);
   }, []);
 
+  // Update the tab when location.search changes
+  useEffect(() => {
+    const tab = queryParams.get('tab');
+    if (tab && ['all', 'active', 'renewal', 'proposal'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
+
   // Filter policies based on search query and active tab
   const filteredPolicies = policies.filter(policy => {
     const matchesSearch = 
@@ -274,6 +285,12 @@ const Policies = () => {
 
   const handleViewPolicy = (id) => {
     navigate(`/policies/${id}`);
+  };
+
+  // Update URL when tab changes
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    navigate(`/policies?tab=${value}`, { replace: true });
   };
 
   // Calculate if a policy is due for renewal (within 30 days)
@@ -335,7 +352,11 @@ const Policies = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+        <Tabs 
+          value={activeTab} 
+          onValueChange={handleTabChange} 
+          className="w-full"
+        >
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="all" className="flex items-center">
               <FileText className="mr-2 h-4 w-4" />

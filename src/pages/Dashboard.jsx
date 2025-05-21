@@ -2,6 +2,7 @@
 import React from 'react';
 import { Bar, Pie, Line } from 'recharts';
 import { BarChart, PieChart, LineChart } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
@@ -18,6 +19,8 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
   // Sample data for charts
   const policyTypeData = [
     { name: 'Health', value: 35, fill: '#1b365d' },
@@ -203,6 +206,11 @@ const Dashboard = () => {
     }
   };
 
+  // Navigation handler for View All Renewals button
+  const handleViewAllRenewals = () => {
+    navigate('/policies?tab=renewal');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -356,7 +364,12 @@ const Dashboard = () => {
             </table>
           </div>
           <div className="p-4 border-t text-center">
-            <button className="text-sm text-amba-blue hover:text-amba-lightblue">View All Renewals</button>
+            <button 
+              onClick={handleViewAllRenewals}
+              className="text-sm text-amba-blue hover:text-amba-lightblue"
+            >
+              View All Renewals
+            </button>
           </div>
         </div>
       </div>
