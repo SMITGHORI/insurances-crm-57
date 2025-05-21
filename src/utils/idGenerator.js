@@ -1,4 +1,5 @@
 
+
 // Function to generate IDs with a specific prefix and year
 export const generateClientId = (existingIds = []) => {
   const year = new Date().getFullYear();
@@ -74,3 +75,24 @@ export const generateAgentId = () => {
   
   return `AMB-AGT-${year}-${formattedSequence}`;
 };
+
+// Function to generate member IDs for policy members
+export const generateMemberId = (policyId, existingMembers = []) => {
+  let sequence = 1;
+  
+  // Find the highest sequence number in existing member IDs for this policy
+  existingMembers.forEach(member => {
+    if (member && member.memberId && member.memberId.includes(`MBR-${policyId}-`)) {
+      const existingSequence = parseInt(member.memberId.split('-').pop());
+      if (!isNaN(existingSequence) && existingSequence >= sequence) {
+        sequence = existingSequence + 1;
+      }
+    }
+  });
+  
+  // Format the sequence number with leading zeros
+  const formattedSequence = sequence.toString().padStart(2, '0');
+  
+  return `MBR-${policyId}-${formattedSequence}`;
+};
+

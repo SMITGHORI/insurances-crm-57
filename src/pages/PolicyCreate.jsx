@@ -41,6 +41,7 @@ const PolicyCreate = () => {
       ...newPolicy,
       id: newId,
       policyNumber: policyNum,
+      members: [], // Initialize empty members array
       renewals: [],
       documents: {
         proposalForm: null,
@@ -114,6 +115,7 @@ const PolicyCreate = () => {
     discountPercentage: 0,
     gstNumber: '',
     nextYearPremium: '',
+    insurerPolicyNumber: '', // Insurance company's policy number
     client: { id: '', name: '' },
     typeSpecificDetails: {}
   };

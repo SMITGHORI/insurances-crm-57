@@ -10,7 +10,7 @@ import {
   TableCell 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileText, Calendar, User } from 'lucide-react';
+import { FileText, Calendar, User, Building } from 'lucide-react';
 
 const AgentPoliciesTable = ({ policies, agentId }) => {
   const navigate = useNavigate();
@@ -53,12 +53,13 @@ const AgentPoliciesTable = ({ policies, agentId }) => {
           <TableHeader>
             <TableRow>
               <TableHead>Policy Number</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead>Insurance Co. Ref</TableHead>
+              <TableHead>Company</TableHead>
               <TableHead>Client</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Premium</TableHead>
               <TableHead>End Date</TableHead>
-              <TableHead>Commission</TableHead>
+              <TableHead>Members</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -71,7 +72,15 @@ const AgentPoliciesTable = ({ policies, agentId }) => {
                     {policy.policyNumber}
                   </div>
                 </TableCell>
-                <TableCell>{policy.type}</TableCell>
+                <TableCell>
+                  {policy.insurerPolicyNumber || '-'}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center">
+                    <Building className="h-4 w-4 mr-1 text-gray-500" />
+                    {policy.insuranceCompany || '-'}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-2 text-gray-500" />
@@ -91,14 +100,7 @@ const AgentPoliciesTable = ({ policies, agentId }) => {
                   </div>
                 </TableCell>
                 <TableCell>
-                  {policy.commission?.percentage && policy.premium ? (
-                    <span>
-                      ₹{Math.round(parseInt(policy.premium) * (policy.commission.percentage / 100)).toLocaleString()}
-                      <span className="text-xs text-gray-500"> ({policy.commission.percentage}%)</span>
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">N/A</span>
-                  )}
+                  {policy.members?.length || 0}
                 </TableCell>
                 <TableCell>
                   <Button 
