@@ -17,6 +17,9 @@ import PolicyCreate from "./pages/PolicyCreate";
 import Agents from "./pages/Agents";
 import AgentDetails from "./pages/AgentDetails";
 import AgentCreate from "./pages/AgentCreate";
+import Claims from "./pages/Claims";
+import ClaimDetails from "./pages/ClaimDetails";
+import ClaimCreate from "./pages/ClaimCreate";
 
 const queryClient = new QueryClient();
 
@@ -43,7 +46,10 @@ const App = () => (
             <Route path="/agents/:id" element={<AgentDetails />} />
             <Route path="/agents/create" element={<AgentCreate />} />
             <Route path="/agents/bulk-upload" element={<Agents />} />
-            <Route path="/claims" element={<Dashboard />} />
+            <Route path="/claims" element={<Claims />} />
+            <Route path="/claims/:id" element={<ClaimDetails />} />
+            <Route path="/claims/create" element={<ClaimCreate />} />
+            <Route path="/claims/edit/:id" element={<ClaimDetails />} />
             <Route path="/leads" element={<Dashboard />} />
             <Route path="/quotations" element={<Dashboard />} />
             <Route path="/invoices" element={<Dashboard />} />
@@ -59,3 +65,4 @@ const App = () => (
 );
 
 export default App;
+
