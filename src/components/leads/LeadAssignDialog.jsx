@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Dummy agents data
 const agents = [
@@ -40,6 +41,7 @@ const agents = [
 ];
 
 const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
+  const isMobile = useIsMobile();
   const [selectedAgent, setSelectedAgent] = useState(
     agents.find(agent => agent.name === lead?.assignedTo)?.id || ''
   );
@@ -80,7 +82,10 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
                   } overflow-hidden`}
                 >
                   <RadioGroupItem value={agent.id} id={`agent-${agent.id}`} />
-                  <Label htmlFor={`agent-${agent.id}`} className="flex flex-1 items-center space-x-3 cursor-pointer overflow-hidden">
+                  <Label 
+                    htmlFor={`agent-${agent.id}`} 
+                    className="flex flex-1 items-center space-x-3 cursor-pointer overflow-hidden"
+                  >
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarFallback className="bg-blue-100 text-blue-600">
                         {agent.avatar}
@@ -98,17 +103,17 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
           </RadioGroup>
         </div>
         
-        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+        <DialogFooter className={`flex ${isMobile ? 'flex-col' : 'flex-row justify-end'} gap-2`}>
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto"
+            className={`${isMobile ? 'w-full' : 'w-auto'}`}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleAssign}
-            className="w-full sm:w-auto"
+            className={`${isMobile ? 'w-full' : 'w-auto'}`}
           >
             Assign
           </Button>

@@ -138,27 +138,31 @@ const LeadsTable = ({ filterParams }) => {
     return (
       <div key={lead.id} className="bg-white p-3 rounded-lg border border-gray-200 mb-3">
         <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="font-medium">{lead.name}</h3>
+          <div className="max-w-[70%]">
+            <h3 className="font-medium truncate">{lead.name}</h3>
             <p className="text-xs text-gray-500">{lead.id}</p>
           </div>
-          <Badge className={`${getStatusColor(lead.status)} text-white`}>
+          <Badge className={`${getStatusColor(lead.status)} text-white shrink-0`}>
             {lead.status}
           </Badge>
         </div>
         
         <div className="space-y-1 text-xs mb-3">
           <div className="flex items-center">
-            <Phone className="h-3 w-3 mr-1" /> {lead.phone}
+            <Phone className="h-3 w-3 mr-1 shrink-0" /> 
+            <span className="truncate">{lead.phone}</span>
           </div>
           <div className="flex items-center">
-            <Mail className="h-3 w-3 mr-1" /> {lead.email}
+            <Mail className="h-3 w-3 mr-1 shrink-0" /> 
+            <span className="truncate">{lead.email}</span>
           </div>
           <div className="flex items-center">
-            <User className="h-3 w-3 mr-1" /> {lead.assignedTo}
+            <User className="h-3 w-3 mr-1 shrink-0" /> 
+            <span className="truncate">{lead.assignedTo}</span>
           </div>
           <div className="flex items-center">
-            <Calendar className="h-3 w-3 mr-1" /> Next: {lead.nextFollowUp}
+            <Calendar className="h-3 w-3 mr-1 shrink-0" /> 
+            <span className="truncate">Next: {lead.nextFollowUp}</span>
           </div>
         </div>
         
@@ -190,7 +194,7 @@ const LeadsTable = ({ filterParams }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white rounded-lg shadow overflow-hidden w-full">
       {isMobile ? (
         // Mobile view
         <div className="p-3">
@@ -202,7 +206,7 @@ const LeadsTable = ({ filterParams }) => {
         </div>
       ) : (
         // Desktop view
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -228,18 +232,24 @@ const LeadsTable = ({ filterParams }) => {
                 filteredLeads.map((lead) => (
                   <TableRow key={lead.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{lead.id}</TableCell>
-                    <TableCell>{lead.name}</TableCell>
+                    <TableCell>
+                      <span className="line-clamp-1">{lead.name}</span>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col space-y-1 text-xs">
                         <div className="flex items-center">
-                          <Phone className="h-3 w-3 mr-1" /> {lead.phone}
+                          <Phone className="h-3 w-3 mr-1 shrink-0" /> 
+                          <span className="truncate">{lead.phone}</span>
                         </div>
                         <div className="flex items-center">
-                          <Mail className="h-3 w-3 mr-1" /> {lead.email}
+                          <Mail className="h-3 w-3 mr-1 shrink-0" /> 
+                          <span className="truncate">{lead.email}</span>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{lead.product}</TableCell>
+                    <TableCell>
+                      <span className="line-clamp-1">{lead.product}</span>
+                    </TableCell>
                     <TableCell>
                       <Badge className={`${getStatusColor(lead.status)} text-white`}>
                         {lead.status}
@@ -247,12 +257,14 @@ const LeadsTable = ({ filterParams }) => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <User className="h-3 w-3 mr-1" /> {lead.assignedTo}
+                        <User className="h-3 w-3 mr-1 shrink-0" /> 
+                        <span className="truncate max-w-[100px]">{lead.assignedTo}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1" /> {lead.nextFollowUp}
+                        <Calendar className="h-3 w-3 mr-1 shrink-0" /> 
+                        <span className="truncate">{lead.nextFollowUp}</span>
                       </div>
                     </TableCell>
                     <TableCell>

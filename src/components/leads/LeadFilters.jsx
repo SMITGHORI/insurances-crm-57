@@ -77,9 +77,9 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
 
   return (
     <div className="bg-white rounded-lg shadow p-3 md:p-4 mb-4 md:mb-6 overflow-hidden">
-      <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 md:grid-cols-4 gap-4'}`}>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
         {/* Search field */}
-        <form onSubmit={handleSubmitSearch} className="flex space-x-2">
+        <form onSubmit={handleSubmitSearch} className="flex space-x-2 w-full">
           <Input
             placeholder="Search name, email, phone..."
             value={searchTerm}

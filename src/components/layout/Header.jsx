@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, Mail, Search, User, Menu } from 'lucide-react';
+import { Bell, Mail, Search, Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Header = ({ onMenuClick }) => {
@@ -17,6 +17,7 @@ const Header = ({ onMenuClick }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center lg:hidden">
           <button
+            data-menu-button="true"
             onClick={onMenuClick}
             className="p-2 rounded-md text-gray-600 hover:text-amba-blue hover:bg-gray-100"
             aria-label="Toggle menu"
@@ -42,7 +43,7 @@ const Header = ({ onMenuClick }) => {
         </div>
 
         {/* Right side icons */}
-        <div className="flex items-center space-x-2 md:space-x-4">
+        <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4 ml-1">
           {!isMobile && (
             <>
               <button className="p-1 rounded-full text-gray-600 hover:text-amba-blue hover:bg-gray-100 relative" aria-label="Messages">
@@ -62,11 +63,11 @@ const Header = ({ onMenuClick }) => {
           <div className="flex items-center">
             <button className="flex items-center text-sm font-medium text-gray-700 hover:text-amba-blue" aria-label="User profile">
               <img
-                className="h-8 w-8 rounded-full"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full"
                 src="https://randomuser.me/api/portraits/men/32.jpg"
                 alt="User"
               />
-              <span className="hidden md:block ml-2">Rahul Sharma</span>
+              <span className="hidden md:block ml-2 max-w-[120px] truncate">Rahul Sharma</span>
             </button>
           </div>
         </div>
