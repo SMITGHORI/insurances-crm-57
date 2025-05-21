@@ -10,16 +10,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 const AgentPolicies = ({ agentId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const navigate = useNavigate();
 
   // Sample data - in a real app, this would be fetched from an API based on agentId
   const policies = [
     {
-      id: 'POL-2025-0125',
+      id: 1,
+      policyId: 'POL-2025-0125',
+      insuranceCompanyPolicyNumber: 'INS-001-20250125-H',
       policyType: 'Health Insurance',
       clientName: 'Vivek Patel',
       clientId: 'AMB-CLI-2025-0001',
@@ -30,7 +34,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0132',
+      id: 2,
+      policyId: 'POL-2025-0132',
+      insuranceCompanyPolicyNumber: 'HDFC-TL-577123',
       policyType: 'Term Insurance',
       clientName: 'Vivek Patel',
       clientId: 'AMB-CLI-2025-0001',
@@ -41,7 +47,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0156',
+      id: 3,
+      policyId: 'POL-2025-0156',
+      insuranceCompanyPolicyNumber: 'STAR-H-A091238',
       policyType: 'Health Insurance',
       clientName: 'Priya Desai',
       clientId: 'AMB-CLI-2025-0012',
@@ -52,7 +60,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0178',
+      id: 4,
+      policyId: 'POL-2025-0178',
+      insuranceCompanyPolicyNumber: 'CARA-GH-09823',
       policyType: 'Group Health Insurance',
       clientName: 'Tech Solutions Ltd',
       clientId: 'AMB-CLI-2025-0024',
@@ -63,7 +73,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0189',
+      id: 5,
+      policyId: 'POL-2025-0189',
+      insuranceCompanyPolicyNumber: 'BAJA-P-112233',
       policyType: 'Property Insurance',
       clientName: 'Tech Solutions Ltd',
       clientId: 'AMB-CLI-2025-0024',
@@ -74,7 +86,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0201',
+      id: 6,
+      policyId: 'POL-2025-0201',
+      insuranceCompanyPolicyNumber: null,
       policyType: 'Vehicle Fleet Insurance',
       clientName: 'Tech Solutions Ltd',
       clientId: 'AMB-CLI-2025-0024',
@@ -85,7 +99,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'pending'
     },
     {
-      id: 'POL-2025-0215',
+      id: 7,
+      policyId: 'POL-2025-0215',
+      insuranceCompanyPolicyNumber: 'ICICI-L-332211',
       policyType: 'Term Insurance',
       clientName: 'Arjun Singh',
       clientId: 'AMB-CLI-2025-0035',
@@ -96,7 +112,9 @@ const AgentPolicies = ({ agentId }) => {
       status: 'active'
     },
     {
-      id: 'POL-2025-0243',
+      id: 8,
+      policyId: 'POL-2025-0243',
+      insuranceCompanyPolicyNumber: 'APOS-H-987654',
       policyType: 'Health Insurance',
       clientName: 'Arjun Singh',
       clientId: 'AMB-CLI-2025-0035',
@@ -109,9 +127,10 @@ const AgentPolicies = ({ agentId }) => {
   ];
 
   const filteredPolicies = policies.filter(policy => {
-    const matchesSearch = policy.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = policy.policyId.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          policy.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         policy.clientId.toLowerCase().includes(searchTerm.toLowerCase());
+                         policy.clientId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (policy.insuranceCompanyPolicyNumber && policy.insuranceCompanyPolicyNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesType = filterType === 'all' || policy.policyType.includes(filterType);
     const matchesStatus = filterStatus === 'all' || policy.status === filterStatus;
@@ -132,6 +151,10 @@ const AgentPolicies = ({ agentId }) => {
       default:
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">{status}</Badge>;
     }
+  };
+
+  const handleRowClick = (policyId) => {
+    navigate(`/policies/${policyId}`);
   };
 
   return (
@@ -204,7 +227,8 @@ const AgentPolicies = ({ agentId }) => {
           <table className="amba-table">
             <thead>
               <tr>
-                <th className="py-3 px-4 font-medium">Policy ID</th>
+                <th className="py-3 px-4 font-medium">Internal ID</th>
+                <th className="py-3 px-4 font-medium">Insurance Policy #</th>
                 <th className="py-3 px-4 font-medium">Policy Type</th>
                 <th className="py-3 px-4 font-medium">Client</th>
                 <th className="py-3 px-4 font-medium">Period</th>
@@ -216,14 +240,22 @@ const AgentPolicies = ({ agentId }) => {
             <tbody>
               {filteredPolicies.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-gray-500">
+                  <td colSpan="8" className="py-8 text-center text-gray-500">
                     No policies found matching your search criteria
                   </td>
                 </tr>
               ) : (
                 filteredPolicies.map((policy) => (
-                  <tr key={policy.id} className="border-b hover:bg-gray-50 cursor-pointer">
-                    <td className="py-3 px-4 text-gray-500">{policy.id}</td>
+                  <tr 
+                    key={policy.id} 
+                    className="border-b hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleRowClick(policy.id)}
+                  >
+                    <td className="py-3 px-4 text-gray-500">{policy.policyId}</td>
+                    <td className="py-3 px-4 font-mono">
+                      {policy.insuranceCompanyPolicyNumber || 
+                        <span className="text-xs text-amber-600">Pending</span>}
+                    </td>
                     <td className="py-3 px-4 text-gray-500">{policy.policyType}</td>
                     <td className="py-3 px-4">
                       <div className="font-medium text-gray-900">{policy.clientName}</div>

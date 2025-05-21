@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -33,6 +32,7 @@ import EndorsementHistory from '../components/policies/EndorsementHistory';
 import PolicyNotes from '../components/policies/PolicyNotes';
 import PolicyHistory from '../components/policies/PolicyHistory';
 import CommissionDetails from '../components/policies/CommissionDetails';
+import PolicyMembers from '../components/policies/PolicyMembers';
 
 const PolicyDetails = () => {
   const { id } = useParams();
@@ -339,6 +339,9 @@ const PolicyDetails = () => {
         </CardContent>
       </Card>
 
+      {/* Add Policy Members component before type-specific details */}
+      <PolicyMembers policy={policy} setPolicy={setPolicy} />
+
       {/* Type-specific details section */}
       {renderTypeSpecificDetails()}
 
@@ -424,6 +427,10 @@ const PolicyDetails = () => {
                     <FileText className="h-4 w-4 text-blue-600" />
                     {policy.planName || 'Not specified'}
                   </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Insurance Company Policy Number</h3>
+                  <p className="font-mono">{policy.insuranceCompanyPolicyNumber || 'Not specified'}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Start Date</h3>
