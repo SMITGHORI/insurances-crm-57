@@ -20,6 +20,9 @@ import AgentCreate from "./pages/AgentCreate";
 import Claims from "./pages/Claims";
 import ClaimDetails from "./pages/ClaimDetails";
 import ClaimCreate from "./pages/ClaimCreate";
+import Leads from "./pages/Leads";
+import LeadDetails from "./pages/LeadDetails";
+import LeadForm from "./pages/LeadForm";
 
 const queryClient = new QueryClient();
 
@@ -50,7 +53,10 @@ const App = () => (
             <Route path="/claims/:id" element={<ClaimDetails />} />
             <Route path="/claims/create" element={<ClaimCreate />} />
             <Route path="/claims/edit/:id" element={<ClaimDetails />} />
-            <Route path="/leads" element={<Dashboard />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/:id" element={<LeadDetails />} />
+            <Route path="/leads/create" element={<LeadForm />} />
+            <Route path="/leads/edit/:id" element={<LeadForm />} />
             <Route path="/quotations" element={<Dashboard />} />
             <Route path="/invoices" element={<Dashboard />} />
             <Route path="/calendar" element={<Dashboard />} />
@@ -65,4 +71,3 @@ const App = () => (
 );
 
 export default App;
-
