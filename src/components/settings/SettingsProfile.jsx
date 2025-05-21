@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SettingsProfile = ({ profileForm, setProfileForm, handleProfileUpdate, loading }) => {
   const [errors, setErrors] = useState({});
+  const isMobile = useIsMobile();
 
   // Advanced validation logic
   const validateField = (name, value) => {
@@ -81,7 +83,7 @@ const SettingsProfile = ({ profileForm, setProfileForm, handleProfileUpdate, loa
   };
 
   return (
-    <Card>
+    <Card className="w-full overflow-hidden">
       <CardHeader>
         <CardTitle>Profile Settings</CardTitle>
         <CardDescription>
@@ -89,7 +91,7 @@ const SettingsProfile = ({ profileForm, setProfileForm, handleProfileUpdate, loa
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="w-full">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
@@ -102,7 +104,7 @@ const SettingsProfile = ({ profileForm, setProfileForm, handleProfileUpdate, loa
               {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-4'}`}>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
@@ -138,7 +140,7 @@ const SettingsProfile = ({ profileForm, setProfileForm, handleProfileUpdate, loa
           </div>
           
           <div className="mt-6">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? "Saving..." : "Save Changes"}
             </Button>
           </div>

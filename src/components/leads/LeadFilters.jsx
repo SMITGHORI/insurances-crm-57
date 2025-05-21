@@ -11,9 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const LeadFilters = ({ filterParams, setFilterParams }) => {
   const [searchTerm, setSearchTerm] = useState(filterParams.searchTerm || '');
+  const isMobile = useIsMobile();
   
   // Dummy agent data
   const agents = ['All Agents', 'Raj Malhotra', 'Anita Kumar', 'Vikram Mehta'];
@@ -74,8 +76,8 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="bg-white rounded-lg shadow p-3 md:p-4 mb-4 md:mb-6 overflow-hidden">
+      <div className={`grid ${isMobile ? 'grid-cols-1 gap-3' : 'grid-cols-1 md:grid-cols-4 gap-4'}`}>
         {/* Search field */}
         <form onSubmit={handleSubmitSearch} className="flex space-x-2">
           <Input
@@ -84,7 +86,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
             onChange={handleSearchChange}
             className="w-full"
           />
-          <Button type="submit" variant="outline" size="icon">
+          <Button type="submit" variant="outline" size="icon" className="flex-shrink-0">
             <Search className="h-4 w-4" />
           </Button>
         </form>
@@ -94,7 +96,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.status} 
           onValueChange={handleStatusChange}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -113,7 +115,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.source} 
           onValueChange={handleSourceChange}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Filter by source" />
           </SelectTrigger>
           <SelectContent>
@@ -132,7 +134,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
           value={filterParams.assignedTo === 'all' ? 'All Agents' : filterParams.assignedTo} 
           onValueChange={handleAgentChange}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Filter by agent" />
           </SelectTrigger>
           <SelectContent>
@@ -152,7 +154,7 @@ const LeadFilters = ({ filterParams, setFilterParams }) => {
         filterParams.source !== 'all' || 
         filterParams.assignedTo !== 'all' || 
         filterParams.searchTerm) && (
-        <div className="mt-4 flex justify-end">
+        <div className="mt-3 flex justify-end">
           <Button 
             variant="ghost" 
             size="sm" 

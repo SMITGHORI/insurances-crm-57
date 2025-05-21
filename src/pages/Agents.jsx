@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, UserPlus, UserCheck, Filter } from 'lucide-react';
+import { Plus, Search, FileText, UserPlus, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import AgentTable from '@/components/agents/AgentTable';
 import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Agents = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Agents = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSpecialization, setFilterSpecialization] = useState('all');
+  const isMobile = useIsMobile();
 
   // Sample data - in production this would come from an API
   const agents = [
@@ -148,62 +150,67 @@ const Agents = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Agents Management</h1>
+    <div className="space-y-4 sm:space-y-6 w-full">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Agents Management</h1>
         <div className="text-sm text-gray-500">
           Total: {agents.length} agents
         </div>
       </div>
 
       {/* Action Buttons and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+      <div className="flex flex-col space-y-3 sm:space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button 
             onClick={handleCreateAgent}
             className="bg-amba-blue hover:bg-blue-800 text-white"
           >
             <UserPlus size={16} className="mr-2" />
-            New Agent
+            {!isMobile ? "New Agent" : "New"}
           </Button>
-          <Button 
-            onClick={handleExportData} 
-            variant="outline" 
-            className="border-gray-300"
-          >
-            <FileText size={16} className="mr-2" />
-            Export Data
-          </Button>
-          <Button 
-            onClick={handleBulkUpload} 
-            variant="outline" 
-            className="border-gray-300"
-          >
-            <UserPlus size={16} className="mr-2" />
-            Bulk Upload
-          </Button>
+          {!isMobile && (
+            <>
+              <Button 
+                onClick={handleExportData} 
+                variant="outline" 
+                className="border-gray-300"
+              >
+                <FileText size={16} className="mr-2" />
+                Export Data
+              </Button>
+              <Button 
+                onClick={handleBulkUpload} 
+                variant="outline" 
+                className="border-gray-300"
+              >
+                <UserPlus size={16} className="mr-2" />
+                Bulk Upload
+              </Button>
+            </>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
           {/* Search */}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto flex-1 sm:max-w-[250px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Search agents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-full md:w-[250px]"
+              className="pl-9 w-full"
             />
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center">
+          <div className="flex items-center w-full sm:w-auto">
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterStatus}
               onValueChange={setFilterStatus}
+              className="w-full"
             >
-              <SelectTrigger className="w-full md:w-[150px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -216,13 +223,14 @@ const Agents = () => {
           </div>
 
           {/* Specialization Filter */}
-          <div className="flex items-center">
+          <div className="flex items-center w-full sm:w-auto">
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterSpecialization}
               onValueChange={setFilterSpecialization}
+              className="w-full"
             >
-              <SelectTrigger className="w-full md:w-[180px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Specialization" />
               </SelectTrigger>
               <SelectContent>

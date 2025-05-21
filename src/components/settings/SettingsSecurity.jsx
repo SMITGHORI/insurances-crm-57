@@ -94,7 +94,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
   };
   
   return (
-    <Card>
+    <Card className="w-full overflow-hidden">
       <CardHeader>
         <CardTitle>Security Settings</CardTitle>
         <CardDescription>
@@ -102,9 +102,9 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="w-full">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
                 <h3 className="font-medium">Two-Factor Authentication</h3>
                 <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
@@ -128,6 +128,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
                 placeholder="Current password" 
                 value={passwordForm.currentPassword}
                 onChange={handlePasswordChange}
+                className="w-full"
               />
               
               <div className="mt-2">
@@ -138,11 +139,12 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
                   placeholder="New password" 
                   value={passwordForm.newPassword}
                   onChange={handlePasswordChange}
+                  className="w-full"
                 />
                 
                 {passwordForm.newPassword && (
                   <div className="mt-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="text-sm text-gray-500">Password strength:</div>
                       <div className="text-sm font-medium">{passwordStrength.message}</div>
                     </div>
@@ -164,7 +166,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
                 name="confirmPassword"
                 type="password" 
                 placeholder="Confirm new password" 
-                className="mt-2"
+                className="mt-2 w-full"
                 value={passwordForm.confirmPassword}
                 onChange={handlePasswordChange}
               />
@@ -185,6 +187,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
                 max="120"
                 value={securitySettings.sessionTimeout}
                 onChange={(e) => setSecuritySettings({...securitySettings, sessionTimeout: e.target.value})}
+                className="w-full"
               />
               <p className="text-xs text-gray-500">
                 Set between 5-120 minutes. After this period of inactivity, you will be logged out.
@@ -193,7 +196,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
             
             <Separator />
             
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div>
                 <h3 className="font-medium">Login Alerts</h3>
                 <p className="text-sm text-gray-500">Receive alerts for unusual login activity</p>
@@ -208,7 +211,7 @@ const SettingsSecurity = ({ securitySettings, setSecuritySettings, handleSecurit
           </div>
           
           <div className="mt-6">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading ? "Saving..." : "Save Security Settings"}
             </Button>
           </div>

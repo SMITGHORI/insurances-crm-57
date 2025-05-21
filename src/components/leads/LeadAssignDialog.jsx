@@ -57,7 +57,7 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <UserPlus className="h-5 w-5 mr-2 text-blue-600" /> 
@@ -71,25 +71,25 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
           </p>
           
           <RadioGroup value={selectedAgent} onValueChange={setSelectedAgent}>
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-full">
               {agents.map((agent) => (
                 <div
                   key={agent.id}
                   className={`flex items-start space-x-4 p-3 rounded-md border ${
                     selectedAgent === agent.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
+                  } overflow-hidden`}
                 >
                   <RadioGroupItem value={agent.id} id={`agent-${agent.id}`} />
-                  <Label htmlFor={`agent-${agent.id}`} className="flex flex-1 items-center space-x-3 cursor-pointer">
-                    <Avatar className="h-10 w-10">
+                  <Label htmlFor={`agent-${agent.id}`} className="flex flex-1 items-center space-x-3 cursor-pointer overflow-hidden">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarFallback className="bg-blue-100 text-blue-600">
                         {agent.avatar}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-gray-500">{agent.email}</p>
-                      <p className="text-xs text-gray-400">{agent.role}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{agent.name}</p>
+                      <p className="text-sm text-gray-500 truncate">{agent.email}</p>
+                      <p className="text-xs text-gray-400 truncate">{agent.role}</p>
                     </div>
                   </Label>
                 </div>
@@ -98,14 +98,18 @@ const LeadAssignDialog = ({ lead, open, onOpenChange }) => {
           </RadioGroup>
         </div>
         
-        <DialogFooter>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
-          <Button onClick={handleAssign}>
+          <Button 
+            onClick={handleAssign}
+            className="w-full sm:w-auto"
+          >
             Assign
           </Button>
         </DialogFooter>

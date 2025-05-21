@@ -19,6 +19,7 @@ import {
   Edit, 
   ArrowRight 
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Dummy lead data
 const dummyLeads = [
@@ -69,6 +70,7 @@ const dummyLeads = [
 const LeadsTable = ({ filterParams }) => {
   const navigate = useNavigate();
   const [leads] = useState(dummyLeads);
+  const isMobile = useIsMobile();
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -131,88 +133,156 @@ const LeadsTable = ({ filterParams }) => {
     navigate(`/leads/${id}`);
   };
 
+  // Mobile view card renderer
+  const renderMobileCard = (lead) => {
+    return (
+      <div key={lead.id} className="bg-white p-3 rounded-lg border border-gray-200 mb-3">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h3 className="font-medium">{lead.name}</h3>
+            <p className="text-xs text-gray-500">{lead.id}</p>
+          </div>
+          <Badge className={`${getStatusColor(lead.status)} text-white`}>
+            {lead.status}
+          </Badge>
+        </div>
+        
+        <div className="space-y-1 text-xs mb-3">
+          <div className="flex items-center">
+            <Phone className="h-3 w-3 mr-1" /> {lead.phone}
+          </div>
+          <div className="flex items-center">
+            <Mail className="h-3 w-3 mr-1" /> {lead.email}
+          </div>
+          <div className="flex items-center">
+            <User className="h-3 w-3 mr-1" /> {lead.assignedTo}
+          </div>
+          <div className="flex items-center">
+            <Calendar className="h-3 w-3 mr-1" /> Next: {lead.nextFollowUp}
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className={`text-xs ${getPriorityColor(lead.priority)}`}>
+            {lead.priority} Priority
+          </span>
+          <div className="flex space-x-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="p-1 h-auto"
+              onClick={() => navigate(`/leads/edit/${lead.id}`)}
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="p-1 h-auto"
+              onClick={() => handleViewDetails(lead.id)}
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact Info</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Assigned To</TableHead>
-              <TableHead>Next Follow-up</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLeads.length === 0 ? (
+      {isMobile ? (
+        // Mobile view
+        <div className="p-3">
+          {filteredLeads.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">No leads found</div>
+          ) : (
+            filteredLeads.map(lead => renderMobileCard(lead))
+          )}
+        </div>
+      ) : (
+        // Desktop view
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-4">
-                  No leads found
-                </TableCell>
+                <TableHead>ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact Info</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Next Follow-up</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredLeads.map((lead) => (
-                <TableRow key={lead.id} className="hover:bg-gray-50">
-                  <TableCell className="font-medium">{lead.id}</TableCell>
-                  <TableCell>{lead.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col space-y-1 text-xs">
-                      <div className="flex items-center">
-                        <Phone className="h-3 w-3 mr-1" /> {lead.phone}
-                      </div>
-                      <div className="flex items-center">
-                        <Mail className="h-3 w-3 mr-1" /> {lead.email}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{lead.product}</TableCell>
-                  <TableCell>
-                    <Badge className={`${getStatusColor(lead.status)} text-white`}>
-                      {lead.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <User className="h-3 w-3 mr-1" /> {lead.assignedTo}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Calendar className="h-3 w-3 mr-1" /> {lead.nextFollowUp}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className={getPriorityColor(lead.priority)}>{lead.priority}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => navigate(`/leads/edit/${lead.id}`)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleViewDetails(lead.id)}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {filteredLeads.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-4">
+                    No leads found
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                filteredLeads.map((lead) => (
+                  <TableRow key={lead.id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">{lead.id}</TableCell>
+                    <TableCell>{lead.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col space-y-1 text-xs">
+                        <div className="flex items-center">
+                          <Phone className="h-3 w-3 mr-1" /> {lead.phone}
+                        </div>
+                        <div className="flex items-center">
+                          <Mail className="h-3 w-3 mr-1" /> {lead.email}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{lead.product}</TableCell>
+                    <TableCell>
+                      <Badge className={`${getStatusColor(lead.status)} text-white`}>
+                        {lead.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <User className="h-3 w-3 mr-1" /> {lead.assignedTo}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Calendar className="h-3 w-3 mr-1" /> {lead.nextFollowUp}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={getPriorityColor(lead.priority)}>{lead.priority}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate(`/leads/edit/${lead.id}`)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewDetails(lead.id)}
+                        >
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

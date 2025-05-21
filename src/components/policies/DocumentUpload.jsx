@@ -6,8 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash } from 'lucide-react';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const DocumentUpload = ({ policy, setPolicy }) => {
+  const isMobile = useIsMobile();
+
   const handleDocumentUpload = (documentType, file) => {
     if (!file) return;
 
@@ -134,27 +137,27 @@ const DocumentUpload = ({ policy, setPolicy }) => {
   ];
 
   return (
-    <Card>
+    <Card className="w-full overflow-hidden">
       <CardHeader>
         <CardTitle>Policy Documents</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`grid grid-cols-1 ${isMobile ? 'gap-4' : 'md:grid-cols-2 gap-6'}`}>
           {documentTypes.map((docType) => (
-            <div key={docType.key} className="border rounded-md p-4">
-              <h3 className="font-medium mb-2">{docType.label}</h3>
+            <div key={docType.key} className="border rounded-md p-4 overflow-hidden">
+              <h3 className="font-medium mb-2 truncate">{docType.label}</h3>
               
               {policy.documents && policy.documents[docType.key] ? (
                 <div className="flex flex-col space-y-2">
                   <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
-                    <div className="flex-1 truncate">
+                    <div className="flex-1 truncate pr-2">
                       <p className="font-medium truncate">{policy.documents[docType.key].name}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 truncate">
                         {formatFileSize(policy.documents[docType.key].size)} • 
                         {new Date(policy.documents[docType.key].uploadDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 flex-shrink-0">
                       <Button 
                         size="sm" 
                         variant="ghost" 
@@ -181,7 +184,7 @@ const DocumentUpload = ({ policy, setPolicy }) => {
                       className="cursor-pointer flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 p-3 rounded-md w-full"
                     >
                       <Upload size={16} />
-                      <span>Upload {docType.label}</span>
+                      <span className="truncate">Upload {docType.label}</span>
                     </Label>
                   </div>
                   <Input 
