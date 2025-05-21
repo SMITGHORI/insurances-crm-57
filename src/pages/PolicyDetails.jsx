@@ -14,7 +14,6 @@ import {
   Download,
   Plus,
   User,
-  Users,
   Info,
   StickyNote,
   Building,
@@ -34,8 +33,6 @@ import EndorsementHistory from '../components/policies/EndorsementHistory';
 import PolicyNotes from '../components/policies/PolicyNotes';
 import PolicyHistory from '../components/policies/PolicyHistory';
 import CommissionDetails from '../components/policies/CommissionDetails';
-import PolicyCard from '../components/policies/PolicyCard';
-import PolicyMembers from '../components/policies/PolicyMembers';
 
 const PolicyDetails = () => {
   const { id } = useParams();
@@ -59,11 +56,6 @@ const PolicyDetails = () => {
     const foundPolicy = policiesList.find(p => p.id === parseInt(id));
     
     if (foundPolicy) {
-      // Initialize members array if it doesn't exist
-      if (!foundPolicy.members) {
-        foundPolicy.members = [];
-      }
-      
       setPolicy(foundPolicy);
     } else {
       toast.error(`Policy with ID ${id} not found`);
@@ -311,17 +303,14 @@ const PolicyDetails = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Members</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Insurance Company</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            <div className="font-medium">{policy.members?.length || 0} covered</div>
+            <Building className="h-5 w-5 text-blue-600" />
+            <div className="font-medium">{policy.insuranceCompany || 'Not specified'}</div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Policy Card from Insurance Company */}
-      <PolicyCard policy={policy} />
 
       <Card className="mb-6">
         <CardHeader className="pb-2">
@@ -354,14 +343,10 @@ const PolicyDetails = () => {
       {renderTypeSpecificDetails()}
 
       <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-9 mb-4">
+        <TabsList className="grid grid-cols-8 mb-4">
           <TabsTrigger value="overview" className="flex items-center">
             <Info className="mr-2 h-4 w-4" />
             Overview
-          </TabsTrigger>
-          <TabsTrigger value="members" className="flex items-center">
-            <Users className="mr-2 h-4 w-4" />
-            Members
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center">
             <FileText className="mr-2 h-4 w-4" />
@@ -401,12 +386,8 @@ const PolicyDetails = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Policy Number (Internal)</h3>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Policy Number</h3>
                   <p>{policy.policyNumber}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Insurance Company Policy Number</h3>
-                  <p className="font-semibold">{policy.insurerPolicyNumber || 'Not Provided'}</p>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Type</h3>
@@ -489,20 +470,9 @@ const PolicyDetails = () => {
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Grace Period</h3>
                   <p>{policy.gracePeriod} days</p>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Members</h3>
-                  <p className="flex items-center gap-1">
-                    <Users className="h-4 w-4 text-blue-600" />
-                    {policy.members?.length || 0}
-                  </p>
-                </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="members">
-          <PolicyMembers policy={policy} setPolicy={setPolicy} />
         </TabsContent>
 
         <TabsContent value="documents">

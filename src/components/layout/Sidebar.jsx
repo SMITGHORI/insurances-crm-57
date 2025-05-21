@@ -1,93 +1,96 @@
 
-import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  BarChart2,
-  Users,
-  FileText,
-  User,
-  LogOut,
-  AlertCircle,
-  Settings
-} from "lucide-react";
-import logo from "../../assets/logo.svg";
+import React, { useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import { 
+  Users, 
+  FileText, 
+  ShieldCheck, 
+  Star, 
+  FileEdit, 
+  Receipt, 
+  ChevronLeft, 
+  ChevronRight,
+  Home,
+  Calendar,
+  Settings,
+  LogOut
+} from 'lucide-react';
 
-const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const location = useLocation();
+const Sidebar = () => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Define navigation items with their paths and icons
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard", icon: <BarChart2 size={20} /> },
-    { name: "Clients", path: "/clients", icon: <Users size={20} /> },
-    { name: "Policies", path: "/policies", icon: <FileText size={20} /> },
-    { name: "Claims", path: "/claims", icon: <AlertCircle size={20} /> },
-    { name: "Agents", path: "/agents", icon: <User size={20} /> },
-    { name: "Settings", path: "/settings", icon: <Settings size={20} /> }
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
+  const menuItems = [
+    { path: '/dashboard', icon: <Home size={20} />, name: 'Dashboard' },
+    { path: '/clients', icon: <Users size={20} />, name: 'Clients' },
+    { path: '/policies', icon: <FileText size={20} />, name: 'Policies' },
+    { path: '/agents', icon: <Users size={20} />, name: 'Agents' },
+    { path: '/claims', icon: <ShieldCheck size={20} />, name: 'Claims' },
+    { path: '/leads', icon: <Star size={20} />, name: 'Leads' },
+    { path: '/quotations', icon: <FileEdit size={20} />, name: 'Quotations' },
+    { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices' },
+    { path: '/calendar', icon: <Calendar size={20} />, name: 'Calendar' },
+    { path: '/settings', icon: <Settings size={20} />, name: 'Settings' },
   ];
 
   return (
-    <div
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      } md:translate-x-0`}
+    <aside
+      className={`bg-amba-blue text-white transition-all duration-300 ease-in-out h-screen flex flex-col ${
+        isCollapsed ? 'w-20' : 'w-64'
+      }`}
     >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center">
-            <img src={logo} alt="AMBA Logo" className="h-8 w-8 mr-2" />
-            <span className="font-bold text-xl text-gray-800">AMBA</span>
-          </div>
-          <button
-            className="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none"
-            onClick={toggleSidebar}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+      {/* Sidebar Header */}
+      <div className="flex items-center justify-between p-4 border-b border-amba-lightblue/30">
+        <div className="flex items-center justify-center flex-1">
+          <img 
+            src="/lovable-uploads/82237eee-d62f-4d61-b7c7-1ef7e3f95f2e.png" 
+            alt="Amba Insurance" 
+            className={`${isCollapsed ? 'h-10' : 'h-12'} transition-all duration-300`} 
+          />
         </div>
-
-        <nav className="flex-1 px-2 py-4 overflow-y-auto">
-          <ul>
-            {navItems.map((item) => (
-              <li key={item.path} className="mb-2">
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center px-4 py-3 rounded-md transition-colors ${
-                      isActive
-                        ? "bg-amba-blue text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`
-                  }
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  <span>{item.name}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t">
-          <button className="flex items-center w-full px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-            <LogOut size={20} className="mr-3" />
-            <span>Logout</span>
-          </button>
-        </div>
+        <button
+          onClick={toggleSidebar}
+          className="p-1 rounded-full hover:bg-amba-lightblue/20 flex-shrink-0"
+        >
+          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
       </div>
-    </div>
+
+      {/* Navigation Links */}
+      <nav className="flex-1 overflow-y-auto py-4">
+        <ul className="space-y-1 px-3">
+          {menuItems.map((item) => (
+            <li key={item.path}>
+              <NavLink
+                to={item.path}
+                className={({ isActive }) =>
+                  `flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 ${
+                    isActive ? 'bg-amba-lightblue/30 font-medium' : ''
+                  }`
+                }
+              >
+                <span className="mr-3">{item.icon}</span>
+                {!isCollapsed && <span>{item.name}</span>}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Sidebar Footer */}
+      <div className="p-4 border-t border-amba-lightblue/30">
+        <NavLink
+          to="/auth"
+          className="flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 text-white/80 hover:text-white"
+        >
+          <LogOut size={20} className="mr-3" />
+          {!isCollapsed && <span>Logout</span>}
+        </NavLink>
+      </div>
+    </aside>
   );
 };
 

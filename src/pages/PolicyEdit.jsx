@@ -32,14 +32,9 @@ const PolicyEdit = () => {
     const foundPolicy = policiesList.find(p => p.id === parseInt(id));
     
     if (foundPolicy) {
-      // Initialize typeSpecificDetails if it doesn't exist
+      // If typeSpecificDetails doesn't exist yet, initialize it
       if (!foundPolicy.typeSpecificDetails) {
         foundPolicy.typeSpecificDetails = {};
-      }
-      
-      // Initialize members if it doesn't exist
-      if (!foundPolicy.members) {
-        foundPolicy.members = [];
       }
       
       setPolicy(foundPolicy);
@@ -66,7 +61,7 @@ const PolicyEdit = () => {
     if (policyIndex !== -1) {
       // Preserve existing fields that aren't in the form
       const existingPolicy = policiesList[policyIndex];
-      const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes', 'members'];
+      const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes'];
       
       fieldsToPreserve.forEach(field => {
         if (existingPolicy[field] && !updatedPolicy[field]) {
