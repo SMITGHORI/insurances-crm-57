@@ -211,6 +211,11 @@ const Dashboard = () => {
     navigate('/policies?tab=renewal');
   };
 
+  // Navigation handler for View All Activities button
+  const handleViewAllActivities = () => {
+    navigate('/recent-activities');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -323,7 +328,12 @@ const Dashboard = () => {
             </ul>
           </div>
           <div className="p-4 border-t text-center">
-            <button className="text-sm text-amba-blue hover:text-amba-lightblue">View All Activities</button>
+            <button 
+              onClick={handleViewAllActivities}
+              className="text-sm text-amba-blue hover:text-amba-lightblue"
+            >
+              View All Activities
+            </button>
           </div>
         </div>
 

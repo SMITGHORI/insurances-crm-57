@@ -11,9 +11,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   Home,
-  Calendar,
   Settings,
-  LogOut
+  LogOut,
+  Clock
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -32,7 +32,7 @@ const Sidebar = () => {
     { path: '/leads', icon: <Star size={20} />, name: 'Leads' },
     { path: '/quotations', icon: <FileEdit size={20} />, name: 'Quotations' },
     { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices' },
-    { path: '/calendar', icon: <Calendar size={20} />, name: 'Calendar' },
+    { path: '/recent-activities', icon: <Clock size={20} />, name: 'Recent Activities' },
     { path: '/settings', icon: <Settings size={20} />, name: 'Settings' },
   ];
 

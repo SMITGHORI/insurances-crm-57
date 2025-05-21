@@ -29,6 +29,7 @@ import QuotationForm from "./pages/QuotationForm";
 import Invoices from "./pages/Invoices";
 import InvoiceDetails from "./pages/InvoiceDetails";
 import InvoiceForm from "./pages/InvoiceForm";
+import RecentActivities from "./pages/RecentActivities";
 
 const queryClient = new QueryClient();
 
@@ -71,7 +72,7 @@ const App = () => (
             <Route path="/invoices/:id" element={<InvoiceDetails />} />
             <Route path="/invoices/create" element={<InvoiceForm />} />
             <Route path="/invoices/edit/:id" element={<InvoiceForm />} />
-            <Route path="/calendar" element={<Dashboard />} />
+            <Route path="/recent-activities" element={<RecentActivities />} />
             <Route path="/settings" element={<Dashboard />} />
           </Route>
           
