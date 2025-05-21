@@ -251,44 +251,6 @@ const PolicyDetails = () => {
     );
   }
 
-  // Calculate days remaining until renewal
-  const daysUntilRenewal = Math.floor(
-    (new Date(policy.endDate) - new Date()) / (1000 * 60 * 60 * 24)
-  );
-
-  // Calculate renewal progress
-  const calculateRenewalProgress = () => {
-    const startDate = new Date(policy.startDate);
-    const endDate = new Date(policy.endDate);
-    const today = new Date();
-    
-    const totalPeriodDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
-    const daysElapsed = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-    
-    const progress = (daysElapsed / totalPeriodDays) * 100;
-    return Math.min(Math.max(progress, 0), 100);
-  };
-
-  // Get badge color based on policy status
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'In Force':
-        return 'bg-green-100 text-green-800';
-      case 'Proposal':
-        return 'bg-blue-100 text-blue-800';
-      case 'Grace':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Lapsed':
-      case 'Cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'Surrendered':
-      case 'Matured':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
-    }
-  };
-
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
       {/* Header section with back button for mobile */}
