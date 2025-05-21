@@ -30,6 +30,7 @@ import Invoices from "./pages/Invoices";
 import InvoiceDetails from "./pages/InvoiceDetails";
 import InvoiceForm from "./pages/InvoiceForm";
 import RecentActivities from "./pages/RecentActivities";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -73,7 +74,7 @@ const App = () => (
             <Route path="/invoices/create" element={<InvoiceForm />} />
             <Route path="/invoices/edit/:id" element={<InvoiceForm />} />
             <Route path="/recent-activities" element={<RecentActivities />} />
-            <Route path="/settings" element={<Dashboard />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />

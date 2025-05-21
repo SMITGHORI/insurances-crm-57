@@ -1,73 +1,69 @@
-# Welcome to your Lovable project
 
-## Project info
+# Amba Insurance CRM
 
-**URL**: https://lovable.dev/projects/da19e3d2-99b9-4f1c-bed9-dcb120370b5b
+## Project Overview
 
-## How can I edit this code?
+The Amba Insurance CRM is a comprehensive customer relationship management system designed specifically for insurance agencies. This platform streamlines client management, policy tracking, claims processing, and sales activities to enhance operational efficiency.
 
-There are several ways of editing your application.
+## Key Features
 
-**Use Lovable**
+- **Dashboard**: Overview of key metrics, upcoming renewals, and recent activities
+- **Client Management**: Comprehensive client profiles and document management
+- **Policy Administration**: Policy creation, tracking, and renewal management
+- **Claims Processing**: End-to-end claims lifecycle management
+- **Lead Management**: Lead tracking and conversion optimization
+- **Quotation System**: Quick quote generation and comparison
+- **Agent Performance**: Track agent productivity and commission management
+- **Reporting & Analytics**: Customizable reports and business intelligence
+- **Invoicing**: Generate and manage invoices
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/da19e3d2-99b9-4f1c-bed9-dcb120370b5b) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd amba-insurance-crm
 
-# Step 3: Install the necessary dependencies.
+# Step 3: Install dependencies
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Technologies Used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
+- Vite
 - Tailwind CSS
+- shadcn/ui
+- React Router
+- TanStack Query
+- Recharts
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/da19e3d2-99b9-4f1c-bed9-dcb120370b5b) and click on Share -> Publish.
+To deploy this project, run:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm run build
+```
 
-Yes, you can!
+This will create a production-ready build in the `dist` directory.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Customization
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+The CRM system is designed to be highly customizable to fit the specific needs of different insurance agencies. Key configuration options can be found in the Settings module.
+
+## Support
+
+For support, please contact the Amba Insurance IT team at support@ambainsurance.com.
