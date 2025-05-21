@@ -42,3 +42,9 @@ export const ensureClientIds = (clients) => {
     return client;
   });
 };
+
+// Function to generate a generic ID with a specific prefix and year
+export const generateId = (prefix, year, id) => {
+  // Format: PREFIX-YYYY-XXXX where XXXX is the sequence padded to 4 digits
+  return `${prefix}-${year}-${String(id).padStart(4, '0')}`;
+};
