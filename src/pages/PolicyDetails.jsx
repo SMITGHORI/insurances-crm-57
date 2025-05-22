@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -36,6 +35,16 @@ import PolicyNotes from '../components/policies/PolicyNotes';
 import PolicyHistory from '../components/policies/PolicyHistory';
 import CommissionDetails from '../components/policies/CommissionDetails';
 import PolicyMembers from '../components/policies/PolicyMembers';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PolicyDetails = () => {
   const { id } = useParams();
@@ -43,6 +52,7 @@ const PolicyDetails = () => {
   const [policy, setPolicy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -91,6 +101,61 @@ const PolicyDetails = () => {
 
   const handleEditPolicy = () => {
     navigate(`/policies/edit/${id}`);
+  };
+
+  const handleDeletePolicy = () => {
+    try {
+      // Get current policies from localStorage
+      const storedPoliciesData = localStorage.getItem('policiesData');
+      
+      if (storedPoliciesData) {
+        let policiesList = JSON.parse(storedPoliciesData);
+        
+        // Filter out the policy to delete
+        policiesList = policiesList.filter(p => p.id !== parseInt(id));
+        
+        // Save updated policies list back to localStorage
+        localStorage.setItem('policiesData', JSON.stringify(policiesList));
+        
+        toast.success('Policy deleted successfully');
+        navigate('/policies');
+      } else {
+        toast.error('No policies found');
+      }
+    } catch (error) {
+      console.error('Error deleting policy:', error);
+      toast.error('Failed to delete policy');
+    }
+  };
+  
+  const handleExportPolicy = () => {
+    if (!policy) return;
+    
+    // Create a formatted policy object for export
+    const exportData = {
+      policyNumber: policy.policyNumber,
+      type: policy.type,
+      insuranceCompany: policy.insuranceCompany,
+      planName: policy.planName,
+      client: policy.client.name,
+      status: policy.status,
+      startDate: new Date(policy.startDate).toLocaleDateString(),
+      endDate: new Date(policy.endDate).toLocaleDateString(),
+      sumAssured: policy.sumAssured,
+      premium: policy.premium,
+      paymentFrequency: policy.paymentFrequency
+    };
+    
+    // Convert to JSON and create download
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `policy-${policy.policyNumber}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+    
+    toast.success('Policy exported successfully');
   };
 
   // Get badge color based on policy status
@@ -281,13 +346,31 @@ const PolicyDetails = () => {
             </Button>
           </div>
         </div>
-        <Button 
-          onClick={handleEditPolicy}
-          className="w-full sm:w-auto"
-          size={isMobile ? "sm" : "default"}
-        >
-          <Edit className="mr-2 h-4 w-4" /> Edit Policy
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={handleExportPolicy}
+            size={isMobile ? "sm" : "default"}
+            className="flex-1 sm:flex-none"
+          >
+            <Download className="mr-2 h-4 w-4" /> Export
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setShowDeleteDialog(true)}
+            size={isMobile ? "sm" : "default"}
+            className="flex-1 sm:flex-none text-red-600 hover:bg-red-50"
+          >
+            <Trash className="mr-2 h-4 w-4" /> Delete
+          </Button>
+          <Button 
+            onClick={handleEditPolicy}
+            className="flex-1 sm:flex-none"
+            size={isMobile ? "sm" : "default"}
+          >
+            <Edit className="mr-2 h-4 w-4" /> Edit
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-6">
@@ -359,11 +442,9 @@ const PolicyDetails = () => {
         </CardContent>
       </Card>
 
-      {/* Add Policy Members component before type-specific details */}
       <PolicyMembers policy={policy} setPolicy={setPolicy} />
 
-      {/* Type-specific details section - kept as is */}
-      {renderTypeSpecificDetails && renderTypeSpecificDetails()}
+      {renderTypeSpecificDetails()}
 
       <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab}>
         {isMobile ? (
@@ -452,7 +533,6 @@ const PolicyDetails = () => {
                   </Badge>
                 </div>
                 
-                {/* Continue with other details in the same pattern */}
                 <div>
                   <h3 className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Insurance Company</h3>
                   <p className="flex items-center gap-1 text-sm sm:text-base">
@@ -527,6 +607,26 @@ const PolicyDetails = () => {
           <PolicyNotes policy={policy} setPolicy={setPolicy} />
         </TabsContent>
       </Tabs>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Policy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this policy? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeletePolicy}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

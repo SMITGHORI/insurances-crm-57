@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { Search, Filter, Download } from 'lucide-react';
+import { Search, Filter, Download, SortAsc, SortDesc, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 const ClientFilters = ({ 
   searchTerm, 
@@ -10,8 +11,23 @@ const ClientFilters = ({
   selectedFilter, 
   setSelectedFilter,
   filterOptions,
-  handleExport
+  handleExport,
+  sortField,
+  sortDirection,
+  setSortField,
+  setSortDirection,
+  activeFilters,
+  removeFilter
 }) => {
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
@@ -43,6 +59,36 @@ const ClientFilters = ({
               ))}
             </select>
           </div>
+          
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1 px-2"
+              onClick={() => toggleSort('name')}
+            >
+              Name
+              {sortField === 'name' && (
+                sortDirection === 'asc' ? 
+                <SortAsc className="h-3 w-3" /> : 
+                <SortDesc className="h-3 w-3" />
+              )}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-1 px-2"
+              onClick={() => toggleSort('type')}
+            >
+              Type
+              {sortField === 'type' && (
+                sortDirection === 'asc' ? 
+                <SortAsc className="h-3 w-3" /> : 
+                <SortDesc className="h-3 w-3" />
+              )}
+            </Button>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -56,6 +102,24 @@ const ClientFilters = ({
           </Button>
         </div>
       </div>
+      
+      {activeFilters && activeFilters.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {activeFilters.map((filter, index) => (
+            <Badge key={index} variant="secondary" className="flex items-center gap-1">
+              {filter.name}: {filter.value}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-4 w-4 p-0 ml-1" 
+                onClick={() => removeFilter(filter.name)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
