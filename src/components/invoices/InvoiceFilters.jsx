@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -17,8 +16,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const InvoiceFilters = ({ filterParams, setFilterParams }) => {
+  const isMobile = useIsMobile();
   const [agents, setAgents] = useState([]);
   const [clients, setClients] = useState([]);
   const [policyTypes, setPolicyTypes] = useState([]);
@@ -84,127 +85,237 @@ const InvoiceFilters = ({ filterParams, setFilterParams }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded-md border mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-        <Select
-          value={filterParams.status}
-          onValueChange={handleStatusChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="space-y-4">
+      <div className={`grid grid-cols-1 ${isMobile ? 'gap-3' : 'md:grid-cols-5 gap-4'}`}>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <Select
+            value={filterParams.status}
+            onValueChange={handleStatusChange}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {isMobile ? (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+              <Select
+                value={filterParams.agentId}
+                onValueChange={handleAgentChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Agents</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id.toString()}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "dd MMM")} - {format(dateRange.to, "dd MMM")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "dd MMM yyyy")
+                      )
+                    ) : (
+                      <span>Select dates</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={handleDateChange}
+                    initialFocus
+                    className="rounded-md border"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+              <Select
+                value={filterParams.agentId}
+                onValueChange={handleAgentChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Agents</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id.toString()}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+              <Select
+                value={filterParams.clientId}
+                onValueChange={handleClientChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Type</label>
+              <Select
+                value={filterParams.policyType}
+                onValueChange={handlePolicyTypeChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {policyTypes.map((type, index) => (
+                    <SelectItem key={index} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateRange.from && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "dd MMM yyyy")} - {format(dateRange.to, "dd MMM yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "dd MMM yyyy")
+                      )
+                    ) : (
+                      <span>Select date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="range"
+                    selected={dateRange}
+                    onSelect={handleDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </>
+        )}
+
+        {isMobile && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+              <Select
+                value={filterParams.clientId}
+                onValueChange={handleClientChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clients</SelectItem>
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Type</label>
+              <Select
+                value={filterParams.policyType}
+                onValueChange={handlePolicyTypeChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {policyTypes.map((type, index) => (
+                    <SelectItem key={index} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-        <Select
-          value={filterParams.agentId}
-          onValueChange={handleAgentChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select Agent" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Agents</SelectItem>
-            {agents.map(agent => (
-              <SelectItem key={agent.id} value={agent.id.toString()}>
-                {agent.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-        <Select
-          value={filterParams.clientId}
-          onValueChange={handleClientChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select Client" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Clients</SelectItem>
-            {clients.map(client => (
-              <SelectItem key={client.id} value={client.id.toString()}>
-                {client.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Insurance Type</label>
-        <Select
-          value={filterParams.policyType}
-          onValueChange={handlePolicyTypeChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {policyTypes.map((type, index) => (
-              <SelectItem key={index} value={type}>
-                {type}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal",
-                !dateRange.from && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "dd MMM yyyy")} - {format(dateRange.to, "dd MMM yyyy")}
-                  </>
-                ) : (
-                  format(dateRange.from, "dd MMM yyyy")
-                )
-              ) : (
-                <span>Select date range</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={handleDateChange}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-      
-      <div className="col-span-1 md:col-span-5 flex justify-end">
+      <div className="flex justify-end">
         <Button 
           variant="outline" 
           onClick={handleResetFilters}
+          size={isMobile ? "sm" : "default"}
           className="flex items-center"
         >
           <RefreshCw className="mr-1 h-4 w-4" />

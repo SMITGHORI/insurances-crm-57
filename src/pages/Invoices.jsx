@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import {
   TableCell 
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
 import { 
   FileText, 
   Plus, 
@@ -25,15 +25,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import InvoiceFilters from '@/components/invoices/InvoiceFilters';
+import InvoicesMobileView from '@/components/invoices/InvoicesMobileView';
 import { getSampleInvoices, getStatusBadgeClass, formatInvoiceDateForDisplay } from '@/utils/invoiceUtils';
 import { formatCurrency } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Invoices = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [filterParams, setFilterParams] = useState({
     status: 'all',
     agentId: 'all',
@@ -119,25 +123,29 @@ const Invoices = () => {
     navigate(`/clients/${clientId}`);
   };
 
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Invoice Management</h1>
+    <div className="container mx-auto px-4 py-4 sm:py-6">
+      <div className="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Invoice Management</h1>
         <Button 
           onClick={handleCreateInvoice}
-          className="bg-primary hover:bg-primary/90 text-white"
+          className="w-full sm:w-auto"
         >
-          <Plus className="mr-1 h-4 w-4" /> Create Invoice
+          <Plus className="mr-2 h-4 w-4" /> {isMobile ? 'Create' : 'Create Invoice'}
         </Button>
       </div>
 
-      <div className="mb-6">
-        <div className="flex items-center gap-4 mb-4">
+      <Card className="mb-4 p-3 sm:p-4 border-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
             <Input
               type="text"
-              placeholder="Search invoices by number, client, policy or agent..."
+              placeholder="Search invoices..."
               className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -145,27 +153,33 @@ const Invoices = () => {
           </div>
           <Button 
             variant="outline" 
-            onClick={() => document.getElementById('filterSection').classList.toggle('hidden')}
+            onClick={toggleFilters}
+            className="sm:w-auto"
           >
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
+            <Filter className="mr-2 h-4 w-4" /> Filters {showFilters ? '↑' : '↓'}
           </Button>
         </div>
 
-        <div id="filterSection" className="hidden mb-4">
-          <InvoiceFilters filterParams={filterParams} setFilterParams={setFilterParams} />
-        </div>
+        {showFilters && (
+          <div className="mt-3 sm:mt-4 animate-fade-in">
+            <InvoiceFilters filterParams={filterParams} setFilterParams={setFilterParams} />
+          </div>
+        )}
+      </Card>
 
+      <div className="mb-4">
         <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className={`grid ${isMobile ? 'grid-cols-3' : 'grid-cols-5'} mb-4`}>
             <TabsTrigger value="all" className="flex items-center">
               <FileText className="mr-2 h-4 w-4" />
-              All Invoices
+              <span className="hidden sm:inline">All</span> Invoices
             </TabsTrigger>
-            <TabsTrigger value="drafts" className="flex items-center">
-              <FileEdit className="mr-2 h-4 w-4" />
-              Drafts
-            </TabsTrigger>
+            {!isMobile && (
+              <TabsTrigger value="drafts" className="flex items-center">
+                <FileEdit className="mr-2 h-4 w-4" />
+                Drafts
+              </TabsTrigger>
+            )}
             <TabsTrigger value="pending" className="flex items-center">
               <Calendar className="mr-2 h-4 w-4" />
               Pending
@@ -174,11 +188,25 @@ const Invoices = () => {
               <FileText className="mr-2 h-4 w-4" />
               Paid
             </TabsTrigger>
-            <TabsTrigger value="overdue" className="flex items-center">
-              <Calendar className="mr-2 h-4 w-4" />
-              Overdue
-            </TabsTrigger>
+            {!isMobile && (
+              <TabsTrigger value="overdue" className="flex items-center">
+                <Calendar className="mr-2 h-4 w-4" />
+                Overdue
+              </TabsTrigger>
+            )}
           </TabsList>
+          {isMobile && (
+            <div className="flex gap-2 mb-4">
+              <TabsTrigger value="drafts" className="flex-1 flex items-center justify-center">
+                <FileEdit className="mr-2 h-4 w-4" />
+                Drafts
+              </TabsTrigger>
+              <TabsTrigger value="overdue" className="flex-1 flex items-center justify-center">
+                <Calendar className="mr-2 h-4 w-4" />
+                Overdue
+              </TabsTrigger>
+            </div>
+          )}
         </Tabs>
       </div>
 
@@ -186,6 +214,8 @@ const Invoices = () => {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
+      ) : isMobile ? (
+        <InvoicesMobileView invoices={filteredInvoices} />
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <Table>
