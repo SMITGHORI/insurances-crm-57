@@ -6,9 +6,12 @@ import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import QuotationsMobileView from './QuotationsMobileView';
 
 const QuotationsTable = ({ filterParams }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   // Sample data - in a real app, this would be fetched from an API based on filterParams
   const quotations = [
@@ -198,6 +201,10 @@ const QuotationsTable = ({ filterParams }) => {
     navigator.clipboard.writeText(quoteId);
     toast.success("Quote ID copied to clipboard");
   };
+
+  if (isMobile) {
+    return <QuotationsMobileView quotations={filteredQuotations} />;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow overflow-x-auto">
