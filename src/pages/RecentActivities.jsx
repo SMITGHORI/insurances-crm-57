@@ -1,39 +1,19 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
   FileText, 
   ShieldCheck, 
-  Star, 
-  FileEdit, 
-  Calendar,
+  Star,
   Clock,
-  Search,
-  Filter,
-  CheckCircle,
   AlertCircle,
-  Link
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import ActivityFilters from '@/components/activities/ActivityFilters';
+import ActivityTabs from '@/components/activities/ActivityTabs';
+import ActivitiesMobileView from '@/components/activities/ActivitiesMobileView';
+import ActivitiesDesktopView from '@/components/activities/ActivitiesDesktopView';
 
 const RecentActivities = () => {
   const navigate = useNavigate();
@@ -45,6 +25,7 @@ const RecentActivities = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [agentFilter, setAgentFilter] = useState('all');
+  const isMobile = useIsMobile();
 
   // Sample activities data
   useEffect(() => {
@@ -372,11 +353,11 @@ const RecentActivities = () => {
       case 'policy':
         return <FileText className="h-5 w-5 text-amba-orange" />;
       case 'claim':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <ShieldCheck className="h-5 w-5 text-green-500" />;
       case 'reminder':
         return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'quotation':
-        return <FileEdit className="h-5 w-5 text-purple-500" />;
+        return <FileText className="h-5 w-5 text-purple-500" />;
       case 'lead':
         return <Star className="h-5 w-5 text-yellow-500" />;
       case 'payment':
@@ -388,31 +369,6 @@ const RecentActivities = () => {
       default:
         return <AlertCircle className="h-5 w-5 text-gray-500" />;
     }
-  };
-
-  // Handle navigation to related entities
-  const handleNavigateToClient = (id) => {
-    if (id) navigate(`/clients/${id}`);
-  };
-
-  const handleNavigateToAgent = (id) => {
-    if (id) navigate(`/agents/${id}`);
-  };
-
-  const handleNavigateToPolicy = (id) => {
-    if (id) navigate(`/policies/${id}`);
-  };
-
-  const handleNavigateToQuotation = (id) => {
-    if (id) navigate(`/quotations/${id}`);
-  };
-
-  const handleNavigateToClaim = (id) => {
-    if (id) navigate(`/claims/${id}`);
-  };
-
-  const handleNavigateToLead = (id) => {
-    if (id) navigate(`/leads/${id}`);
   };
 
   // Format date for display
@@ -433,215 +389,38 @@ const RecentActivities = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Recent Activities</h1>
+    <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
+      <div className="flex justify-between items-center mb-4 md:mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Recent Activities</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow mb-6 p-4">
-        <div className="flex flex-col md:flex-row gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-            <Input
-              type="text"
-              placeholder="Search activities by action, client, agent or details..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[150px]">
-                <Calendar className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Date Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Dates</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="yesterday">Yesterday</SelectItem>
-                <SelectItem value="week">Last 7 Days</SelectItem>
-                <SelectItem value="month">Last 30 Days</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-[150px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Activity Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="client">Client</SelectItem>
-                <SelectItem value="policy">Policy</SelectItem>
-                <SelectItem value="claim">Claim</SelectItem>
-                <SelectItem value="reminder">Reminder</SelectItem>
-                <SelectItem value="quotation">Quotation</SelectItem>
-                <SelectItem value="lead">Lead</SelectItem>
-                <SelectItem value="payment">Payment</SelectItem>
-                <SelectItem value="document">Document</SelectItem>
-                <SelectItem value="commission">Commission</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={agentFilter} onValueChange={setAgentFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Users className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by Agent" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Agents</SelectItem>
-                {uniqueAgents.map((agent) => (
-                  <SelectItem key={agent} value={agent}>{agent}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Button 
-              variant="outline" 
-              onClick={handleResetFilters}
-              className="flex items-center"
-            >
-              Reset Filters
-            </Button>
-          </div>
-        </div>
+      <ActivityFilters 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        dateFilter={dateFilter}
+        setDateFilter={setDateFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        agentFilter={agentFilter}
+        setAgentFilter={setAgentFilter}
+        uniqueAgents={uniqueAgents}
+        handleResetFilters={handleResetFilters}
+      />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-5 mb-4">
-            <TabsTrigger value="all" className="flex items-center">
-              All Activities
-            </TabsTrigger>
-            <TabsTrigger value="client" className="flex items-center">
-              <Users className="mr-2 h-4 w-4" />
-              Client
-            </TabsTrigger>
-            <TabsTrigger value="policy" className="flex items-center">
-              <FileText className="mr-2 h-4 w-4" />
-              Policy
-            </TabsTrigger>
-            <TabsTrigger value="claim" className="flex items-center">
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Claims
-            </TabsTrigger>
-            <TabsTrigger value="lead" className="flex items-center">
-              <Star className="mr-2 h-4 w-4" />
-              Leads
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      <ActivityTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-        </div>
+      {isMobile ? (
+        <ActivitiesMobileView 
+          activities={filteredActivities} 
+          loading={loading} 
+        />
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Activity</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredActivities.length > 0 ? (
-                filteredActivities.map((activity) => (
-                  <TableRow key={activity.id}>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <div className="bg-gray-100 rounded-full p-2 mr-3">
-                          {getActivityIcon(activity.type)}
-                        </div>
-                        <span>{activity.action}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="capitalize">{activity.type}</span>
-                    </TableCell>
-                    <TableCell>
-                      {activity.client ? (
-                        <div 
-                          className="flex items-center text-primary hover:underline cursor-pointer"
-                          onClick={() => handleNavigateToClient(activity.clientId)}
-                        >
-                          <Link className="h-4 w-4 mr-1" />
-                          {activity.client}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div 
-                        className="flex items-center text-primary hover:underline cursor-pointer"
-                        onClick={() => handleNavigateToAgent(activity.agentId)}
-                      >
-                        <Link className="h-4 w-4 mr-1" />
-                        {activity.agent}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm">{formatDate(activity.time)}</div>
-                        <div className="text-xs text-gray-500">{activity.timestamp}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="text-sm">{activity.details}</div>
-                        {activity.policyId && (
-                          <button 
-                            className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                            onClick={() => handleNavigateToPolicy(activity.policyId)}
-                          >
-                            View Policy
-                          </button>
-                        )}
-                        {activity.claimId && (
-                          <button 
-                            className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                            onClick={() => handleNavigateToClaim(activity.claimId)}
-                          >
-                            View Claim
-                          </button>
-                        )}
-                        {activity.quotationId && (
-                          <button 
-                            className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                            onClick={() => handleNavigateToQuotation(activity.quotationId)}
-                          >
-                            View Quotation
-                          </button>
-                        )}
-                        {activity.leadId && (
-                          <button 
-                            className="text-xs text-amba-blue hover:text-amba-lightblue"
-                            onClick={() => handleNavigateToLead(activity.leadId)}
-                          >
-                            View Lead
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    No activities found matching your filters
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <ActivitiesDesktopView 
+          activities={filteredActivities} 
+          loading={loading} 
+          getActivityIcon={getActivityIcon} 
+          formatDate={formatDate} 
+        />
       )}
     </div>
   );
