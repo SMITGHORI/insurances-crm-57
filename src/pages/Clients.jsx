@@ -1,28 +1,26 @@
+
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  Filter,
-  Users,
-  Building,
-  User,
-  Group
-} from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Plus, Users, Building, User, Group } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
+import ClientFilters from '../components/clients/ClientFilters';
 import { generateClientId, ensureClientIds } from '../utils/idGenerator';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ClientTable from '../components/clients/ClientTable';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Clients = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [clientTypeFilter, setClientTypeFilter] = useState('all');
+  const [sortField, setSortField] = useState('name');
+  const [sortDirection, setSortDirection] = useState('asc');
 
   // Initialize clients state with sample data
   const [clients, setClients] = useState([
@@ -122,7 +120,14 @@ const Clients = () => {
       setClients(updatedClients);
       localStorage.setItem('clientsData', JSON.stringify(updatedClients));
     }
-  }, []);
+    
+    // Check if we have a client filter from another page
+    const params = new URLSearchParams(location.search);
+    const clientFilter = params.get('filter');
+    if (clientFilter) {
+      setSelectedFilter(clientFilter);
+    }
+  }, [location]);
 
   // Update localStorage whenever clients change
   useEffect(() => {
@@ -132,7 +137,17 @@ const Clients = () => {
   // Filter options
   const filterOptions = ['All', 'Individual', 'Corporate', 'Group', 'Active', 'Inactive'];
 
-  // Filtered clients based on searchTerm, selectedFilter and clientTypeFilter
+  // Handle sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filtered and sorted clients
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -146,6 +161,17 @@ const Clients = () => {
       client.type?.toLowerCase() === clientTypeFilter;
     
     return matchesSearch && matchesStatusFilter && matchesTypeFilter;
+  }).sort((a, b) => {
+    if (!a[sortField] && !b[sortField]) return 0;
+    if (!a[sortField]) return 1;
+    if (!b[sortField]) return -1;
+
+    const compareA = typeof a[sortField] === 'string' ? a[sortField].toLowerCase() : a[sortField];
+    const compareB = typeof b[sortField] === 'string' ? b[sortField].toLowerCase() : b[sortField];
+
+    if (compareA < compareB) return sortDirection === 'asc' ? -1 : 1;
+    if (compareA > compareB) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
   });
 
   // Handle adding a new client
@@ -255,49 +281,14 @@ const Clients = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-          <div className="flex flex-col md:flex-row md:items-center gap-2">
-            <div className="relative w-full md:w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-amba-blue focus:border-amba-blue sm:text-sm"
-                placeholder="Search clients..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="relative flex items-center gap-2">
-              <Filter className="h-5 w-5 text-gray-400" />
-              <select
-                className="block pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-amba-blue focus:border-amba-blue sm:text-sm"
-                value={selectedFilter}
-                onChange={(e) => setSelectedFilter(e.target.value)}
-              >
-                {filterOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Export
-            </button>
-          </div>
-        </div>
-      </div>
+      <ClientFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedFilter={selectedFilter}
+        setSelectedFilter={setSelectedFilter}
+        filterOptions={filterOptions}
+        handleExport={handleExport}
+      />
 
       {/* Enhanced Client Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -345,6 +336,10 @@ const Clients = () => {
               onViewClient={handleViewClient}
               onEditClient={handleEditClient}
               onDeleteClient={handleDeleteClient}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              isMobile={isMobile}
             />
           </TabsContent>
           
@@ -354,6 +349,10 @@ const Clients = () => {
               onViewClient={handleViewClient}
               onEditClient={handleEditClient}
               onDeleteClient={handleDeleteClient}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              isMobile={isMobile}
             />
           </TabsContent>
           
@@ -363,6 +362,10 @@ const Clients = () => {
               onViewClient={handleViewClient}
               onEditClient={handleEditClient}
               onDeleteClient={handleDeleteClient}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              isMobile={isMobile}
             />
           </TabsContent>
           
@@ -372,6 +375,10 @@ const Clients = () => {
               onViewClient={handleViewClient}
               onEditClient={handleEditClient}
               onDeleteClient={handleDeleteClient}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              isMobile={isMobile}
             />
           </TabsContent>
         </Tabs>

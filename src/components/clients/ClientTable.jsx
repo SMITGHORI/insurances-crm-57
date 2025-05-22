@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Eye, Edit, Trash, ArrowUpDown, User, Building, Group, Link } from 'lucide-react';
 import {
@@ -9,13 +10,20 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { useNavigate } from 'react-router-dom';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) => {
+const ClientTable = ({ 
+  clients, 
+  onViewClient, 
+  onEditClient, 
+  onDeleteClient, 
+  sortField, 
+  sortDirection, 
+  onSort,
+  isMobile 
+}) => {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   
   const getClientTypeIcon = (type) => {
     switch (type) {
@@ -52,6 +60,12 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
     } else {
       alert('No policies found for this client');
     }
+  };
+
+  const getSortIcon = (field) => {
+    return sortField === field ? (
+      sortDirection === 'asc' ? '↑' : '↓'
+    ) : '';
   };
 
   if (!clients || clients.length === 0) {
@@ -154,46 +168,70 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
     );
   }
 
-  // Desktop table view - keep existing code
+  // Desktop table view
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[180px]">
-              <div className="flex items-center space-x-1">
+              <div 
+                className="flex items-center space-x-1 cursor-pointer" 
+                onClick={() => onSort('clientId')}
+              >
                 <span>Client ID</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('clientId')}</span>
               </div>
             </TableHead>
             <TableHead>
-              <div className="flex items-center space-x-1">
+              <div 
+                className="flex items-center space-x-1 cursor-pointer"
+                onClick={() => onSort('name')}
+              >
                 <span>Client</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('name')}</span>
               </div>
             </TableHead>
             <TableHead>
-              <div className="flex items-center space-x-1">
+              <div 
+                className="flex items-center space-x-1 cursor-pointer"
+                onClick={() => onSort('type')}
+              >
                 <span>Type</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('type')}</span>
               </div>
             </TableHead>
             <TableHead>
-              <div className="flex items-center space-x-1">
+              <div 
+                className="flex items-center space-x-1 cursor-pointer"
+                onClick={() => onSort('contact')}
+              >
                 <span>Contact</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('contact')}</span>
               </div>
             </TableHead>
             <TableHead className="text-center">
-              <div className="flex items-center space-x-1 justify-center">
+              <div 
+                className="flex items-center space-x-1 justify-center cursor-pointer"
+                onClick={() => onSort('policies')}
+              >
                 <span>Policies</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('policies')}</span>
               </div>
             </TableHead>
             <TableHead>
-              <div className="flex items-center space-x-1">
+              <div 
+                className="flex items-center space-x-1 cursor-pointer"
+                onClick={() => onSort('status')}
+              >
                 <span>Status</span>
                 <ArrowUpDown className="h-4 w-4" />
+                <span>{getSortIcon('status')}</span>
               </div>
             </TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -201,7 +239,11 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
         </TableHeader>
         <TableBody>
           {clients.map((client) => (
-            <TableRow key={client.id} className="hover:bg-gray-50">
+            <TableRow 
+              key={client.id} 
+              className="hover:bg-gray-50 cursor-pointer"
+              onClick={() => onViewClient(client.id)}
+            >
               <TableCell className="font-mono text-sm text-gray-500">
                 {client.clientId || "-"}
               </TableCell>
@@ -250,7 +292,7 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
                 </span>
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex justify-end space-x-2">
+                <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => onViewClient(client.id)}
                     className="text-blue-600 hover:text-blue-900"
@@ -279,7 +321,7 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
         </TableBody>
       </Table>
       
-      {/* Simple Pagination Example */}
+      {/* Pagination */}
       <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
@@ -290,27 +332,15 @@ const ClientTable = ({ clients, onViewClient, onEditClient, onDeleteClient }) =>
           </div>
           <div>
             <nav className="relative z-0 inline-flex shadow-sm -space-x-px" aria-label="Pagination">
-              <a
-                href="#"
-                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                <span className="sr-only">Previous</span>
+              <Button variant="outline" size="sm" disabled className="rounded-l-md">
                 Previous
-              </a>
-              <a
-                href="#"
-                aria-current="page"
-                className="z-10 bg-amba-blue border-amba-blue text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-              >
+              </Button>
+              <Button variant="outline" size="sm" className="bg-amba-blue text-white">
                 1
-              </a>
-              <a
-                href="#"
-                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-              >
-                <span className="sr-only">Next</span>
+              </Button>
+              <Button variant="outline" size="sm" disabled className="rounded-r-md">
                 Next
-              </a>
+              </Button>
             </nav>
           </div>
         </div>
