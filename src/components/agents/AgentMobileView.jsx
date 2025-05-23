@@ -1,12 +1,18 @@
 
 import React from 'react';
-import { Eye, Edit, User, ShieldCheck, Phone, Mail } from 'lucide-react';
+import { Eye, Edit, User, ShieldCheck, Phone, Mail, Trash2, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-const AgentMobileView = ({ agents, onAgentClick }) => {
+const AgentMobileView = ({ agents, onAgentClick, onDeleteAgent }) => {
   // Helper function to get status badge styling
   const getStatusBadge = (status) => {
     switch (status) {
@@ -86,7 +92,7 @@ const AgentMobileView = ({ agents, onAgentClick }) => {
                   <span className="font-medium">{agent.conversionRate}</span>
                 </div>
               </div>
-              <div className="p-3 flex justify-end">
+              <div className="p-3 flex items-center justify-between">
                 <Button 
                   size="sm" 
                   variant="ghost" 
@@ -99,6 +105,33 @@ const AgentMobileView = ({ agents, onAgentClick }) => {
                   <Eye className="h-4 w-4 mr-1" />
                   View Details
                 </Button>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={(e) => {
+                      e.stopPropagation();
+                      onAgentClick(agent.id);
+                    }}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Agent
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-red-600"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteAgent(agent, e);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Agent
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </CardContent>

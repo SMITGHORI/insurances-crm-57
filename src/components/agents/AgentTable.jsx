@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, MoreHorizontal } from 'lucide-react';
+import { Eye, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,11 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import AgentMobileView from './AgentMobileView';
 
-const AgentTable = ({ agents, onAgentClick }) => {
+const AgentTable = ({ agents, onAgentClick, onDeleteAgent }) => {
   const isMobile = useIsMobile();
   
   if (isMobile) {
-    return <AgentMobileView agents={agents} onAgentClick={onAgentClick} />;
+    return <AgentMobileView agents={agents} onAgentClick={onAgentClick} onDeleteAgent={onDeleteAgent} />;
   }
 
   const getStatusBadge = (status) => {
@@ -97,11 +97,16 @@ const AgentTable = ({ agents, onAgentClick }) => {
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onAgentClick(agent.id)}>
+                          <Edit className="mr-2 h-4 w-4" />
                           Edit Agent
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          Deactivate Agent
+                        <DropdownMenuItem 
+                          className="text-red-600"
+                          onClick={(e) => onDeleteAgent(agent, e)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Agent
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

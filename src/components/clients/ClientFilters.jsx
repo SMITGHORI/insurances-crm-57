@@ -17,7 +17,8 @@ const ClientFilters = ({
   setSortField,
   setSortDirection,
   activeFilters,
-  removeFilter
+  removeFilter,
+  placeholderText = "Search clients..."
 }) => {
   const toggleSort = (field) => {
     if (sortField === field) {
@@ -39,7 +40,7 @@ const ClientFilters = ({
             <Input
               type="text"
               className="pl-10 pr-3"
-              placeholder="Search clients..."
+              placeholder={placeholderText}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
