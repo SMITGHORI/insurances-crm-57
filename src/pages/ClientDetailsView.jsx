@@ -5,20 +5,13 @@ import {
   Edit, 
   Download, 
   User, 
-  Building, 
-  Users, 
-  Mail, 
+  MailOpen, 
   Phone, 
   MapPin,
-  FileText,
-  Activity,
-  Clock,
   Calendar,
-  Check,
-  X,
   File,
   FileImage,
-  FilePdf,
+  FileText,
   IdCard,
   FileLock,
   FileUp
@@ -210,7 +203,7 @@ const ClientDetailsView = () => {
     if (fileType.includes('image')) {
       return <FileImage className="h-5 w-5 text-blue-500" />;
     } else if (fileType.includes('pdf')) {
-      return <FilePdf className="h-5 w-5 text-red-500" />;
+      return <FileText className="h-5 w-5 text-red-500" />;
     } else {
       return <FileText className="h-5 w-5 text-gray-500" />;
     }
@@ -394,7 +387,7 @@ const ClientDetailsView = () => {
                 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
+                    <MailOpen className="h-4 w-4 text-gray-500" />
                     <span className="text-sm">{client.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
