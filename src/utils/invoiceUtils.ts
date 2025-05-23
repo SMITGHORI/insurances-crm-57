@@ -227,7 +227,7 @@ export function getSampleInvoices(): Invoice[] {
         },
         {
           action: "Sent",
-          date: "2025-05-11",
+          date: "2025-05-10",
           user: "Admin",
           details: "Invoice sent to client via email"
         }
@@ -237,10 +237,10 @@ export function getSampleInvoices(): Invoice[] {
       id: "3",
       invoiceNumber: "INV-202505-0003",
       clientId: "3",
-      clientName: "Sanjay Group",
-      clientEmail: "contact@sanjaygroup.com",
-      clientPhone: "+91 8765432109",
-      clientAddress: "789 Business Tower, Delhi, Delhi",
+      clientName: "Priya Patel",
+      clientEmail: "priya.patel@example.com",
+      clientPhone: "+91 8876543210",
+      clientAddress: "789 Residency Road, Chennai, Tamil Nadu",
       policyId: "3",
       policyNumber: "AMB-POL-2025-0003",
       insuranceType: "Life Insurance",
@@ -248,35 +248,166 @@ export function getSampleInvoices(): Invoice[] {
       agentName: "Priya Singh",
       issueDate: "2025-05-15",
       dueDate: "2025-05-30",
-      status: "draft",
+      status: "overdue",
       items: [
         {
           id: "item1",
-          description: "Group Life Insurance - 10 Employees",
-          quantity: 10,
-          unitPrice: 5000,
-          tax: 9000,
-          total: 59000
+          description: "Term Life Insurance Premium - 20 Year Plan",
+          quantity: 1,
+          unitPrice: 15000,
+          tax: 2700,
+          total: 17700
         }
       ],
-      subtotal: 50000,
+      subtotal: 15000,
       discount: 0,
-      tax: 9000,
-      total: 59000,
-      notes: "Draft invoice for review.",
+      tax: 2700,
+      total: 17700,
+      notes: "Payment is overdue. Please settle the amount immediately to avoid policy lapse.",
       paymentTerms: "Net 15",
       premiumType: "Annual",
       premiumPeriod: "May 2025 - May 2026",
-      customFields: {},
       layoutTemplate: "standard",
       history: [
         {
           action: "Created",
           date: "2025-05-15",
           user: "Admin",
-          details: "Draft invoice created"
+          details: "Invoice created"
+        },
+        {
+          action: "Sent",
+          date: "2025-05-15",
+          user: "Admin",
+          details: "Invoice sent to client via email"
+        },
+        {
+          action: "Reminder",
+          date: "2025-05-25",
+          user: "System",
+          details: "Payment reminder sent"
+        },
+        {
+          action: "Overdue",
+          date: "2025-05-31",
+          user: "System",
+          details: "Invoice marked as overdue"
+        }
+      ]
+    },
+    {
+      id: "4",
+      invoiceNumber: "INV-202505-0004",
+      clientId: "4",
+      clientName: "Global Enterprises",
+      clientEmail: "finance@global-ent.com",
+      clientPhone: "+91 2299887766",
+      clientAddress: "101 Business Park, Pune, Maharashtra",
+      policyId: "4",
+      policyNumber: "AMB-POL-2025-0004",
+      insuranceType: "Property Insurance",
+      agentId: "3",
+      agentName: "Ananya Das",
+      issueDate: "2025-05-20",
+      dueDate: "2025-06-05",
+      status: "draft",
+      items: [
+        {
+          id: "item1",
+          description: "Commercial Property Insurance - Comprehensive Plan",
+          quantity: 1,
+          unitPrice: 25000,
+          tax: 4500,
+          total: 29500
+        },
+        {
+          id: "item2",
+          description: "Inventory Coverage Add-on",
+          quantity: 1,
+          unitPrice: 8000,
+          tax: 1440,
+          total: 9440
+        },
+        {
+          id: "item3",
+          description: "Business Interruption Coverage",
+          quantity: 1,
+          unitPrice: 12000,
+          tax: 2160,
+          total: 14160
+        }
+      ],
+      subtotal: 45000,
+      discount: 2000,
+      tax: 8100,
+      total: 51100,
+      notes: "Draft invoice for review. Please check all details before finalization.",
+      paymentTerms: "Net 15",
+      premiumType: "Annual",
+      premiumPeriod: "June 2025 - June 2026",
+      customFields: {
+        "GST Number": "GST456789012",
+        "PO Number": "PO123456",
+        "Contract Reference": "CNT-2025-0056"
+      },
+      layoutTemplate: "corporate",
+      history: [
+        {
+          action: "Created",
+          date: "2025-05-20",
+          user: "Admin",
+          details: "Invoice created as draft"
         }
       ]
     }
   ];
+}
+
+export function calculateDueStatus(dueDate: string): 'upcoming' | 'due-soon' | 'overdue' {
+  const today = new Date();
+  const due = new Date(dueDate);
+  const diffTime = due.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return 'overdue';
+  } else if (diffDays <= 3) {
+    return 'due-soon';
+  } else {
+    return 'upcoming';
+  }
+}
+
+export function groupInvoicesByMonth(invoices: Invoice[]): Record<string, Invoice[]> {
+  return invoices.reduce((acc, invoice) => {
+    const date = new Date(invoice.issueDate);
+    const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    if (!acc[monthYear]) {
+      acc[monthYear] = [];
+    }
+    
+    acc[monthYear].push(invoice);
+    return acc;
+  }, {} as Record<string, Invoice[]>);
+}
+
+export function calculateTotalsByStatus(invoices: Invoice[]): Record<string, number> {
+  const result = {
+    draft: 0,
+    sent: 0,
+    paid: 0,
+    overdue: 0,
+    cancelled: 0,
+    total: 0
+  };
+  
+  invoices.forEach(invoice => {
+    if (invoice.status in result) {
+      result[invoice.status] += invoice.total;
+    }
+    result.total += invoice.total;
+  });
+  
+  return result;
 }

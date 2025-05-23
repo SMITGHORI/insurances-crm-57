@@ -1,15 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableHead, 
-  TableRow, 
-  TableCell 
-} from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { 
@@ -17,17 +10,12 @@ import {
   Plus, 
   Search,
   Calendar,
-  User,
-  Building,
-  FileEdit,
-  Link,
   Filter
 } from 'lucide-react';
-import { toast } from 'sonner';
 import InvoiceFilters from '@/components/invoices/InvoiceFilters';
 import InvoicesMobileView from '@/components/invoices/InvoicesMobileView';
-import { getSampleInvoices, getStatusBadgeClass, formatInvoiceDateForDisplay } from '@/utils/invoiceUtils';
-import { formatCurrency } from '@/lib/utils';
+import InvoicesTable from '@/components/invoices/InvoicesTable';
+import { getSampleInvoices } from '@/utils/invoiceUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Invoices = () => {
@@ -44,6 +32,10 @@ const Invoices = () => {
     clientId: 'all',
     dateRange: 'all',
     policyType: 'all'
+  });
+  const [sortConfig, setSortConfig] = useState({
+    key: 'issueDate',
+    direction: 'desc'
   });
 
   // Get invoice data from localStorage or sample data
@@ -67,9 +59,10 @@ const Invoices = () => {
     setLoading(false);
   }, []);
 
-  // Filter invoices based on search query, active tab and filter params
+  // Filter invoices based on search query and active tab
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = 
+      searchQuery === '' ||
       (invoice.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
       (invoice.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
       (invoice.policyNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
@@ -87,44 +80,32 @@ const Invoices = () => {
       matchesTab = invoice.status === 'draft';
     }
     
-    // Filter by additional filters
-    let matchesFilters = true;
-    if (filterParams.status !== 'all') {
-      matchesFilters = matchesFilters && invoice.status === filterParams.status;
-    }
-    if (filterParams.agentId !== 'all') {
-      matchesFilters = matchesFilters && invoice.agentId === filterParams.agentId;
-    }
-    if (filterParams.clientId !== 'all') {
-      matchesFilters = matchesFilters && invoice.clientId === filterParams.clientId;
-    }
-    if (filterParams.policyType !== 'all') {
-      matchesFilters = matchesFilters && invoice.insuranceType === filterParams.policyType;
-    }
-    if (filterParams.dateRange !== 'all') {
-      // Date range logic would go here
-      // For now, we'll just return true
-      matchesFilters = matchesFilters && true;
-    }
-    
-    return matchesSearch && matchesTab && matchesFilters;
+    return matchesSearch && matchesTab;
   });
 
   const handleCreateInvoice = () => {
     navigate('/invoices/create');
   };
 
-  const handleViewInvoice = (id) => {
-    navigate(`/invoices/${id}`);
-  };
-
-  const handleViewClient = (e, clientId) => {
-    e.stopPropagation(); // Prevent triggering the row click
-    navigate(`/clients/${clientId}`);
-  };
-
   const toggleFilters = () => {
     setShowFilters(!showFilters);
+  };
+  
+  const clearAllFilters = () => {
+    setFilterParams({
+      status: 'all',
+      agentId: 'all',
+      clientId: 'all',
+      dateRange: 'all',
+      policyType: 'all'
+    });
+  };
+  
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc',
+    }));
   };
 
   return (
@@ -162,7 +143,11 @@ const Invoices = () => {
 
         {showFilters && (
           <div className="mt-3 sm:mt-4 animate-fade-in">
-            <InvoiceFilters filterParams={filterParams} setFilterParams={setFilterParams} />
+            <InvoiceFilters 
+              filterParams={filterParams} 
+              setFilterParams={setFilterParams}
+              clearAllFilters={clearAllFilters} 
+            />
           </div>
         )}
       </Card>
@@ -176,7 +161,7 @@ const Invoices = () => {
             </TabsTrigger>
             {!isMobile && (
               <TabsTrigger value="drafts" className="flex items-center">
-                <FileEdit className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 h-4 w-4" />
                 Drafts
               </TabsTrigger>
             )}
@@ -196,11 +181,11 @@ const Invoices = () => {
             )}
           </TabsList>
 
-          {/* Modified this part to use a proper TabsList for mobile extra tabs */}
+          {/* Mobile extra tabs */}
           {isMobile && (
             <TabsList className="flex gap-2 mb-4">
               <TabsTrigger value="drafts" className="flex-1 flex items-center justify-center">
-                <FileEdit className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 h-4 w-4" />
                 Drafts
               </TabsTrigger>
               <TabsTrigger value="overdue" className="flex-1 flex items-center justify-center">
@@ -209,8 +194,7 @@ const Invoices = () => {
               </TabsTrigger>
             </TabsList>
           )}
-
-          {/* Add TabsContent component that was missing */}
+          
           <TabsContent value="all">
             {loading ? (
               <div className="flex items-center justify-center h-64">
@@ -219,87 +203,15 @@ const Invoices = () => {
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices} />
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Policy</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.length > 0 ? (
-                      filteredInvoices.map((invoice) => (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div 
-                              className="flex items-center text-primary hover:underline cursor-pointer"
-                              onClick={(e) => handleViewClient(e, invoice.clientId)}
-                            >
-                              <User className="h-4 w-4 mr-1" />
-                              {invoice.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.policyNumber ? (
-                              <div className="flex items-center">
-                                <Link 
-                                  className="h-4 w-4 mr-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/policies/${invoice.policyId}`);
-                                  }}
-                                />
-                                {invoice.policyNumber}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.agentName ? (
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {invoice.agentName}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No invoices found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                filterParams={filterParams}
+                sortConfig={sortConfig}
+                handleSort={handleSort}
+              />
             )}
           </TabsContent>
           
+          {/* Status-specific tabs will display filtered content */}
           <TabsContent value="drafts">
             {loading ? (
               <div className="flex items-center justify-center h-64">
@@ -308,84 +220,11 @@ const Invoices = () => {
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'draft')} />
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Policy</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.filter(invoice => invoice.status === 'draft').length > 0 ? (
-                      filteredInvoices.filter(invoice => invoice.status === 'draft').map((invoice) => (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div 
-                              className="flex items-center text-primary hover:underline cursor-pointer"
-                              onClick={(e) => handleViewClient(e, invoice.clientId)}
-                            >
-                              <User className="h-4 w-4 mr-1" />
-                              {invoice.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.policyNumber ? (
-                              <div className="flex items-center">
-                                <Link 
-                                  className="h-4 w-4 mr-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/policies/${invoice.policyId}`);
-                                  }}
-                                />
-                                {invoice.policyNumber}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.agentName ? (
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {invoice.agentName}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No invoices found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                filterParams={{...filterParams, status: 'draft'}}
+                sortConfig={sortConfig}
+                handleSort={handleSort}
+              />
             )}
           </TabsContent>
           
@@ -397,84 +236,11 @@ const Invoices = () => {
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'sent')} />
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Policy</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.filter(invoice => invoice.status === 'sent').length > 0 ? (
-                      filteredInvoices.filter(invoice => invoice.status === 'sent').map((invoice) => (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div 
-                              className="flex items-center text-primary hover:underline cursor-pointer"
-                              onClick={(e) => handleViewClient(e, invoice.clientId)}
-                            >
-                              <User className="h-4 w-4 mr-1" />
-                              {invoice.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.policyNumber ? (
-                              <div className="flex items-center">
-                                <Link 
-                                  className="h-4 w-4 mr-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/policies/${invoice.policyId}`);
-                                  }}
-                                />
-                                {invoice.policyNumber}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.agentName ? (
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {invoice.agentName}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No invoices found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                filterParams={{...filterParams, status: 'sent'}}
+                sortConfig={sortConfig}
+                handleSort={handleSort}
+              />
             )}
           </TabsContent>
           
@@ -486,84 +252,11 @@ const Invoices = () => {
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'paid')} />
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Policy</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.filter(invoice => invoice.status === 'paid').length > 0 ? (
-                      filteredInvoices.filter(invoice => invoice.status === 'paid').map((invoice) => (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div 
-                              className="flex items-center text-primary hover:underline cursor-pointer"
-                              onClick={(e) => handleViewClient(e, invoice.clientId)}
-                            >
-                              <User className="h-4 w-4 mr-1" />
-                              {invoice.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.policyNumber ? (
-                              <div className="flex items-center">
-                                <Link 
-                                  className="h-4 w-4 mr-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/policies/${invoice.policyId}`);
-                                  }}
-                                />
-                                {invoice.policyNumber}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.agentName ? (
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {invoice.agentName}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No invoices found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                filterParams={{...filterParams, status: 'paid'}}
+                sortConfig={sortConfig}
+                handleSort={handleSort}
+              />
             )}
           </TabsContent>
           
@@ -575,84 +268,11 @@ const Invoices = () => {
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'overdue')} />
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice Number</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Policy</TableHead>
-                      <TableHead>Issue Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Agent</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInvoices.filter(invoice => invoice.status === 'overdue').length > 0 ? (
-                      filteredInvoices.filter(invoice => invoice.status === 'overdue').map((invoice) => (
-                        <TableRow 
-                          key={invoice.id} 
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleViewInvoice(invoice.id)}
-                        >
-                          <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                          <TableCell>
-                            <div 
-                              className="flex items-center text-primary hover:underline cursor-pointer"
-                              onClick={(e) => handleViewClient(e, invoice.clientId)}
-                            >
-                              <User className="h-4 w-4 mr-1" />
-                              {invoice.clientName}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.policyNumber ? (
-                              <div className="flex items-center">
-                                <Link 
-                                  className="h-4 w-4 mr-1 cursor-pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/policies/${invoice.policyId}`);
-                                  }}
-                                />
-                                {invoice.policyNumber}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                          <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                              {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {invoice.agentName ? (
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {invoice.agentName}
-                              </div>
-                            ) : (
-                              <span className="text-gray-500">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No invoices found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <InvoicesTable 
+                filterParams={{...filterParams, status: 'overdue'}}
+                sortConfig={sortConfig}
+                handleSort={handleSort}
+              />
             )}
           </TabsContent>
         </Tabs>

@@ -27,6 +27,7 @@ import QuotationEdit from './pages/QuotationEdit';
 import Invoices from './pages/Invoices';
 import InvoiceDetails from './pages/InvoiceDetails';
 import InvoiceForm from './pages/InvoiceForm';
+import InvoiceEdit from './pages/InvoiceEdit';
 import Agents from './pages/Agents';
 import AgentDetails from './pages/AgentDetails';
 import AgentCreate from './pages/AgentCreate';
@@ -76,6 +77,7 @@ function App() {
           <Route path="invoices" element={<Invoices />} />
           <Route path="invoices/:id" element={<InvoiceDetails />} />
           <Route path="invoices/create" element={<InvoiceForm />} />
+          <Route path="invoices/edit/:id" element={<InvoiceEdit />} />
           
           {/* Agents Routes */}
           <Route path="agents" element={<Agents />} />
