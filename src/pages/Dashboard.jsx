@@ -80,7 +80,7 @@ const Dashboard = () => {
     { name: 'Rejected', value: 10, fill: '#f43f5e' },
   ];
 
-  // Stats cards data
+  // Stats cards data with navigation handlers
   const statsCards = [
     {
       title: 'Total Clients',
@@ -88,6 +88,7 @@ const Dashboard = () => {
       change: '+8%',
       isPositive: true,
       icon: <Users className="h-6 w-6 text-blue-600" />,
+      onClick: () => navigate('/clients')
     },
     {
       title: 'Active Policies',
@@ -95,6 +96,7 @@ const Dashboard = () => {
       change: '+12%',
       isPositive: true,
       icon: <FileText className="h-6 w-6 text-orange-500" />,
+      onClick: () => navigate('/policies')
     },
     {
       title: 'Total Claims',
@@ -102,6 +104,7 @@ const Dashboard = () => {
       change: '+5%',
       isPositive: true,
       icon: <ShieldCheck className="h-6 w-6 text-green-600" />,
+      onClick: () => navigate('/claims')
     },
     {
       title: 'New Leads',
@@ -109,6 +112,7 @@ const Dashboard = () => {
       change: '-3%',
       isPositive: false,
       icon: <Star className="h-6 w-6 text-yellow-500" />,
+      onClick: () => navigate('/leads')
     },
   ];
 
@@ -266,15 +270,22 @@ const Dashboard = () => {
 
   // Navigation handler for View All Activities button
   const handleViewAllActivities = () => {
-    navigate('/recent-activities');
+    navigate('/activities');
   };
 
-  const getMobileChartHeight = () => {
-    return isMobile ? 200 : 280;
+  // Responsive chart dimensions
+  const getChartHeight = () => {
+    if (isMobile) return 180;
+    return 300;
+  };
+
+  const getPieChartRadius = () => {
+    if (isMobile) return { inner: 30, outer: 50 };
+    return { inner: 60, outer: 90 };
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 px-1 py-2 md:px-0 md:py-0 overflow-x-hidden">
+    <div className="space-y-4 md:space-y-6 px-2 py-2 md:px-4 md:py-4 overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800">Dashboard</h1>
@@ -294,7 +305,11 @@ const Dashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {statsCards.map((card, index) => (
-          <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow duration-200">
+          <Card 
+            key={index} 
+            className="border-none shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
+            onClick={card.onClick}
+          >
             <CardContent className="p-3 md:p-6">
               <div className="flex justify-between items-start">
                 <div>
@@ -323,14 +338,14 @@ const Dashboard = () => {
       </div>
 
       {/* Performance Overview */}
-      <Card className="border-none shadow-md">
+      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/dashboard')}>
         <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
           <CardTitle className="text-base md:text-lg">Performance Overview</CardTitle>
           <CardDescription className="text-xs md:text-sm">Compare current month with previous month</CardDescription>
         </CardHeader>
         <CardContent className="p-3 md:p-6 pt-0">
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
-            <div className="p-2 md:p-4 bg-blue-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/clients'); }}>
               <p className="text-xs text-gray-500 font-medium">New Clients</p>
               <div className="flex items-baseline mt-1">
                 <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newClients}</h4>
@@ -339,7 +354,7 @@ const Dashboard = () => {
               <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newClients} last month</p>
             </div>
             
-            <div className="p-2 md:p-4 bg-orange-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/policies'); }}>
               <p className="text-xs text-gray-500 font-medium">New Policies</p>
               <div className="flex items-baseline mt-1">
                 <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newPolicies}</h4>
@@ -348,7 +363,7 @@ const Dashboard = () => {
               <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newPolicies} last month</p>
             </div>
             
-            <div className="p-2 md:p-4 bg-green-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/invoices'); }}>
               <p className="text-xs text-gray-500 font-medium">Premium Revenue</p>
               <div className="flex items-baseline mt-1">
                 <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.revenue}</h4>
@@ -357,7 +372,7 @@ const Dashboard = () => {
               <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.revenue} last month</p>
             </div>
             
-            <div className="p-2 md:p-4 bg-yellow-50 rounded-lg">
+            <div className="p-2 md:p-4 bg-yellow-50 rounded-lg cursor-pointer hover:bg-yellow-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/claims'); }}>
               <p className="text-xs text-gray-500 font-medium">Claims Processed</p>
               <div className="flex items-baseline mt-1">
                 <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.claims}</h4>
@@ -370,9 +385,9 @@ const Dashboard = () => {
       </Card>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Monthly Premium */}
-        <Card className="border-none shadow-md">
+        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/invoices')}>
           <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
             <div className="flex justify-between items-center">
               <div>
@@ -388,36 +403,49 @@ const Dashboard = () => {
               </select>
             </div>
           </CardHeader>
-          <CardContent className={`h-${isMobile ? '44' : '64'}`}>
-            <ChartContainer config={{
-              premium: { color: "#1b365d", label: "Premium" }
-            }}>
-              <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
-                <RechartLineChart data={isMobile ? monthlyPremiumData.slice(6) : monthlyPremiumData}>
-                  <XAxis dataKey="name" stroke="#888888" fontSize={isMobile ? 10 : 12} tickLine={false} axisLine={false} />
+          <CardContent className="p-2 md:p-6">
+            <div className="w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height={getChartHeight()}>
+                <RechartLineChart data={isMobile ? monthlyPremiumData.slice(-6) : monthlyPremiumData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#888888" 
+                    fontSize={isMobile ? 10 : 12} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    interval={isMobile ? 1 : 0}
+                  />
                   <YAxis
                     stroke="#888888"
                     fontSize={isMobile ? 10 : 12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `₹${value/1000}k`}
+                    tickFormatter={(value) => isMobile ? `₹${value/1000}k` : `₹${value/1000}k`}
+                    width={isMobile ? 40 : 60}
                   />
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      fontSize: isMobile ? '12px' : '14px',
+                      padding: isMobile ? '8px' : '12px'
+                    }}
+                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Premium']}
+                  />
                   <Line
                     type="monotone"
                     dataKey="premium"
                     stroke="#1b365d"
-                    strokeWidth={2}
-                    activeDot={{ r: 6, fill: "#1b365d" }}
+                    strokeWidth={isMobile ? 2 : 3}
+                    activeDot={{ r: isMobile ? 4 : 6, fill: "#1b365d" }}
+                    dot={false}
                   />
                 </RechartLineChart>
               </ResponsiveContainer>
-            </ChartContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* Policy Distribution */}
-        <Card className="border-none shadow-md">
+        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/policies')}>
           <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center text-base md:text-lg">
               <PieChart className="h-4 w-4 md:h-5 md:w-5 mr-2" />
@@ -425,25 +453,37 @@ const Dashboard = () => {
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">Breakdown by insurance type</CardDescription>
           </CardHeader>
-          <CardContent className={`h-${isMobile ? '44' : '64'}`}>
-            <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
-              <RechartPieChart>
-                <Pie
-                  data={policyTypeData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={isMobile ? 60 : 80}
-                  dataKey="value"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {policyTypeData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Legend verticalAlign="bottom" height={36} />
-              </RechartPieChart>
-            </ResponsiveContainer>
+          <CardContent className="p-2 md:p-6">
+            <div className="w-full overflow-hidden">
+              <ResponsiveContainer width="100%" height={getChartHeight()}>
+                <RechartPieChart>
+                  <Pie
+                    data={policyTypeData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={getPieChartRadius().outer}
+                    dataKey="value"
+                    labelLine={false}
+                    label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {policyTypeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      fontSize: isMobile ? '12px' : '14px',
+                      padding: isMobile ? '8px' : '12px'
+                    }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                  />
+                </RechartPieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -503,7 +543,7 @@ const Dashboard = () => {
           {isMobile ? (
             <div className="divide-y divide-gray-200">
               {upcomingRenewals.map((renewal) => (
-                <div key={renewal.id} className="p-3 hover:bg-gray-50">
+                <div key={renewal.id} className="p-3 hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/policies')}>
                   <div className="flex justify-between">
                     <p className="font-medium text-sm">{renewal.client}</p>
                     <p className="text-sm">{renewal.premium}</p>
@@ -530,7 +570,7 @@ const Dashboard = () => {
               </TableHeader>
               <TableBody>
                 {upcomingRenewals.map((renewal) => (
-                  <TableRow key={renewal.id} className="hover:bg-gray-50">
+                  <TableRow key={renewal.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/policies')}>
                     <TableCell className="font-medium">{renewal.client}</TableCell>
                     <TableCell>
                       <div>{renewal.policyType}</div>
@@ -556,7 +596,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Top Performing Agents */}
-      <Card className="border-none shadow-md">
+      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/agents')}>
         <CardHeader className="p-4 md:p-6 pb-2">
           <CardTitle className="flex items-center text-base md:text-lg">
             <Users className="h-4 w-4 md:h-5 md:w-5 mr-2" />
@@ -629,7 +669,7 @@ const Dashboard = () => {
         <CardFooter className="border-t p-3 md:p-4 text-center">
           <Button 
             variant="ghost" 
-            onClick={() => navigate('/agents')}
+            onClick={(e) => { e.stopPropagation(); navigate('/agents'); }}
             className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
           >
             View All Agents
@@ -638,7 +678,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Claims Status */}
-      <Card className="border-none shadow-md">
+      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/claims')}>
         <CardHeader className="p-4 md:p-6 pb-2">
           <CardTitle className="flex items-center text-base md:text-lg">
             <ShieldCheck className="h-4 w-4 md:h-5 md:w-5 mr-2" />
@@ -647,15 +687,15 @@ const Dashboard = () => {
           <CardDescription className="text-xs md:text-sm">Summary of all claims</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className={`h-${isMobile ? '40' : '60'} flex justify-center items-center`}>
-            <ResponsiveContainer width="100%" height={getMobileChartHeight()}>
+          <div className="w-full overflow-hidden">
+            <ResponsiveContainer width="100%" height={getChartHeight()}>
               <RechartPieChart>
                 <Pie
                   data={claimsData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={isMobile ? 40 : 60}
-                  outerRadius={isMobile ? 60 : 80}
+                  innerRadius={getPieChartRadius().inner}
+                  outerRadius={getPieChartRadius().outer}
                   dataKey="value"
                   paddingAngle={2}
                 >
@@ -663,8 +703,18 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value, name) => [`${value}%`, name]} />
-                <Legend verticalAlign="bottom" height={36} />
+                <Tooltip 
+                  formatter={(value, name) => [`${value}%`, name]} 
+                  contentStyle={{ 
+                    fontSize: isMobile ? '12px' : '14px',
+                    padding: isMobile ? '8px' : '12px'
+                  }}
+                />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+                />
               </RechartPieChart>
             </ResponsiveContainer>
           </div>
@@ -695,7 +745,7 @@ const Dashboard = () => {
         <CardFooter className="border-t p-3 md:p-4 text-center">
           <Button 
             variant="ghost"
-            onClick={() => navigate('/claims')}
+            onClick={(e) => { e.stopPropagation(); navigate('/claims'); }}
             className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
           >
             View All Claims
