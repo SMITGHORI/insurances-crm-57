@@ -5,8 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const QuotationsMobileView = ({ quotations }) => {
   const navigate = useNavigate();
@@ -39,6 +46,11 @@ const QuotationsMobileView = ({ quotations }) => {
     e.stopPropagation();
     navigator.clipboard.writeText(quoteId);
     toast.success("Quote ID copied to clipboard");
+  };
+  
+  const handleDeleteQuote = (e, id) => {
+    e.stopPropagation();
+    toast.success(`Quotation ${id} deleted successfully`);
   };
 
   const getActionButton = (quote) => {
@@ -157,8 +169,34 @@ const QuotationsMobileView = ({ quotations }) => {
               </div>
             </div>
             
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
               {getActionButton(quote)}
+              
+              <div onClick={(e) => e.stopPropagation()} className="ml-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal size={16} />
+                      <span className="sr-only">More</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-white">
+                    <DropdownMenuItem onClick={() => navigate(`/quotations/edit/${quote.id}`)}>
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={(e) => handleSendQuote(e, quote.quoteId)}>
+                      Send to Client
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="text-red-600"
+                      onClick={(e) => handleDeleteQuote(e, quote.quoteId)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </CardContent>
         </Card>

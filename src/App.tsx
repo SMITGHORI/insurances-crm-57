@@ -1,109 +1,94 @@
 
-import React, { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import "./App.css";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
-
-// Lazy loaded components
-const Auth = lazy(() => import('./pages/Auth'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Clients = lazy(() => import('./pages/Clients'));
-const ClientDetails = lazy(() => import('./pages/ClientDetails'));
-const ClientDetailsView = lazy(() => import('./pages/ClientDetailsView'));
-const ClientEdit = lazy(() => import('./pages/ClientEdit'));
-const Policies = lazy(() => import('./pages/Policies'));
-const PolicyDetails = lazy(() => import('./pages/PolicyDetails'));
-const PolicyCreate = lazy(() => import('./pages/PolicyCreate'));
-const PolicyEdit = lazy(() => import('./pages/PolicyEdit'));
-const Claims = lazy(() => import('./pages/Claims'));
-const ClaimDetails = lazy(() => import('./pages/ClaimDetails'));
-const ClaimCreate = lazy(() => import('./pages/ClaimCreate'));
-const ClaimEdit = lazy(() => import('./pages/ClaimEdit'));
-const Quotations = lazy(() => import('./pages/Quotations'));
-const QuotationDetails = lazy(() => import('./pages/QuotationDetails'));
-const QuotationForm = lazy(() => import('./pages/QuotationForm'));
-const Invoices = lazy(() => import('./pages/Invoices'));
-const InvoiceDetails = lazy(() => import('./pages/InvoiceDetails'));
-const InvoiceForm = lazy(() => import('./pages/InvoiceForm'));
-const Agents = lazy(() => import('./pages/Agents'));
-const AgentDetails = lazy(() => import('./pages/AgentDetails'));
-const AgentCreate = lazy(() => import('./pages/AgentCreate'));
-const Leads = lazy(() => import('./pages/Leads'));
-const LeadDetails = lazy(() => import('./pages/LeadDetails'));
-const LeadForm = lazy(() => import('./pages/LeadForm'));
-const RecentActivities = lazy(() => import('./pages/RecentActivities'));
-const Settings = lazy(() => import('./pages/Settings'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+import Index from './pages/Index';
+import Dashboard from './pages/Dashboard';
+import Auth from './pages/Auth';
+import Leads from './pages/Leads';
+import LeadDetails from './pages/LeadDetails';
+import LeadForm from './pages/LeadForm';
+import Clients from './pages/Clients';
+import ClientDetails from './pages/ClientDetails';
+import ClientEdit from './pages/ClientEdit';
+import ClientDetailsView from './pages/ClientDetailsView';
+import Policies from './pages/Policies';
+import PolicyDetails from './pages/PolicyDetails';
+import PolicyCreate from './pages/PolicyCreate';
+import PolicyEdit from './pages/PolicyEdit';
+import Claims from './pages/Claims';
+import ClaimDetails from './pages/ClaimDetails';
+import ClaimCreate from './pages/ClaimCreate';
+import ClaimEdit from './pages/ClaimEdit';
+import Quotations from './pages/Quotations';
+import QuotationDetails from './pages/QuotationDetails';
+import QuotationForm from './pages/QuotationForm';
+import QuotationEdit from './pages/QuotationEdit';
+import Invoices from './pages/Invoices';
+import InvoiceDetails from './pages/InvoiceDetails';
+import InvoiceForm from './pages/InvoiceForm';
+import Agents from './pages/Agents';
+import AgentDetails from './pages/AgentDetails';
+import AgentCreate from './pages/AgentCreate';
+import Settings from './pages/Settings';
+import RecentActivities from './pages/RecentActivities';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Suspense fallback={<div className="flex items-center justify-center h-screen w-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>}>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
+    <Router>
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Index />} />
+          <Route path="dashboard" element={<Dashboard />} />
           
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            
-            <Route path="clients">
-              <Route index element={<Clients />} />
-              <Route path="create" element={<ClientDetails />} />
-              <Route path=":id" element={<ClientDetailsView />} />
-              <Route path="edit/:id" element={<ClientEdit />} />
-            </Route>
-            
-            <Route path="policies">
-              <Route index element={<Policies />} />
-              <Route path="create" element={<PolicyCreate />} />
-              <Route path=":id" element={<PolicyDetails />} />
-              <Route path="edit/:id" element={<PolicyEdit />} />
-            </Route>
-            
-            <Route path="claims">
-              <Route index element={<Claims />} />
-              <Route path="create" element={<ClaimCreate />} />
-              <Route path=":id" element={<ClaimDetails />} />
-              <Route path="edit/:id" element={<ClaimEdit />} />
-            </Route>
-            
-            <Route path="quotations">
-              <Route index element={<Quotations />} />
-              <Route path="create" element={<QuotationForm />} />
-              <Route path=":id" element={<QuotationDetails />} />
-              <Route path="edit/:id" element={<QuotationForm />} />
-            </Route>
-            
-            <Route path="invoices">
-              <Route index element={<Invoices />} />
-              <Route path="create" element={<InvoiceForm />} />
-              <Route path=":id" element={<InvoiceDetails />} />
-              <Route path="edit/:id" element={<InvoiceForm />} />
-            </Route>
-            
-            <Route path="agents">
-              <Route index element={<Agents />} />
-              <Route path="create" element={<AgentCreate />} />
-              <Route path=":id" element={<AgentDetails />} />
-            </Route>
-            
-            <Route path="leads">
-              <Route index element={<Leads />} />
-              <Route path="create" element={<LeadForm />} />
-              <Route path=":id" element={<LeadDetails />} />
-              <Route path="edit/:id" element={<LeadForm />} />
-            </Route>
-            
-            <Route path="activities" element={<RecentActivities />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
+          {/* Leads Routes */}
+          <Route path="leads" element={<Leads />} />
+          <Route path="leads/:id" element={<LeadDetails />} />
+          <Route path="leads/create" element={<LeadForm />} />
+          <Route path="leads/edit/:id" element={<LeadForm />} />
           
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+          {/* Clients Routes */}
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/:id" element={<ClientDetailsView />} />
+          <Route path="clients/edit/:id" element={<ClientEdit />} />
+          
+          {/* Policies Routes */}
+          <Route path="policies" element={<Policies />} />
+          <Route path="policies/:id" element={<PolicyDetails />} />
+          <Route path="policies/create" element={<PolicyCreate />} />
+          <Route path="policies/edit/:id" element={<PolicyEdit />} />
+          
+          {/* Claims Routes */}
+          <Route path="claims" element={<Claims />} />
+          <Route path="claims/:id" element={<ClaimDetails />} />
+          <Route path="claims/create" element={<ClaimCreate />} />
+          <Route path="claims/edit/:id" element={<ClaimEdit />} />
+          
+          {/* Quotations Routes */}
+          <Route path="quotations" element={<Quotations />} />
+          <Route path="quotations/:id" element={<QuotationDetails />} />
+          <Route path="quotations/create" element={<QuotationForm />} />
+          <Route path="quotations/edit/:id" element={<QuotationEdit />} />
+          
+          {/* Invoices Routes */}
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="invoices/:id" element={<InvoiceDetails />} />
+          <Route path="invoices/create" element={<InvoiceForm />} />
+          
+          {/* Agents Routes */}
+          <Route path="agents" element={<Agents />} />
+          <Route path="agents/:id" element={<AgentDetails />} />
+          <Route path="agents/create" element={<AgentCreate />} />
+          
+          {/* Settings & Activities */}
+          <Route path="settings" element={<Settings />} />
+          <Route path="activities" element={<RecentActivities />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
   );
 }
 

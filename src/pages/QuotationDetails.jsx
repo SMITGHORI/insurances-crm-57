@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Edit, Send, Download, Copy, CheckCircle, XCircle, Eye, File, Mail
+  ArrowLeft, Edit, Send, Download, Copy, CheckCircle, XCircle, Eye, File, Mail, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,11 +13,22 @@ import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import QuotationComparison from '@/components/quotations/QuotationComparison';
 import QuotationHistory from '@/components/quotations/QuotationHistory';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const QuotationDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Sample data - in a real app, this would be fetched from an API based on id
   const quotation = {
@@ -158,6 +169,12 @@ const QuotationDetails = () => {
     navigator.clipboard.writeText(quotation.quoteId);
     toast.success('Quotation ID copied to clipboard');
   };
+  
+  const handleDelete = () => {
+    setDeleteDialogOpen(false);
+    toast.success('Quotation deleted successfully');
+    navigate('/quotations');
+  };
 
   const handleConvert = () => {
     toast.success('Converting quotation to policy...');
@@ -167,6 +184,27 @@ const QuotationDetails = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col gap-6">
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete Quotation {quotation.quoteId}. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                className="bg-red-600 text-white hover:bg-red-700"
+                onClick={handleDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div className="flex items-center">
@@ -214,6 +252,14 @@ const QuotationDetails = () => {
                 <File className="mr-2 h-4 w-4" /> Convert to Policy
               </Button>
             )}
+            
+            <Button 
+              variant="outline" 
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
           </div>
         </div>
 

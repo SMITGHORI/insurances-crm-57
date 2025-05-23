@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Filter, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, Calendar, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -19,24 +19,64 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
-const QuotationFilters = ({ filterParams, setFilterParams }) => {
+const QuotationFilters = ({ 
+  filterParams, 
+  setFilterParams, 
+  activeFilters = {}, 
+  updateActiveFilters,
+  clearAllFilters
+}) => {
   const [date, setDate] = useState(null);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const isMobile = useIsMobile();
 
   const handleFilterChange = (key, value) => {
     setFilterParams((prev) => ({ ...prev, [key]: value }));
+    if (key !== 'searchTerm') {
+      updateActiveFilters(
+        key === 'insuranceType' ? 'Insurance Type' : 
+        key === 'status' ? 'Status' : 
+        key === 'agentId' ? 'Agent' : 
+        key === 'dateRange' ? 'Date' : key, 
+        value === 'all' ? null : value
+      );
+    }
   };
 
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
     const dateRange = selectedDate ? 'custom' : 'all';
     handleFilterChange('dateRange', dateRange);
+    if (selectedDate) {
+      updateActiveFilters('Date', format(selectedDate, 'PPP'));
+    } else {
+      updateActiveFilters('Date', null);
+    }
   };
 
   const toggleFilters = () => {
     setFiltersExpanded(!filtersExpanded);
+  };
+
+  const removeFilter = (key) => {
+    const filterKey = 
+      key === 'Insurance Type' ? 'insuranceType' : 
+      key === 'Status' ? 'status' : 
+      key === 'Agent' ? 'agentId' : 
+      key === 'Date' ? 'dateRange' : key.toLowerCase();
+      
+    if (filterKey === 'dateRange') {
+      setDate(null);
+    }
+    
+    setFilterParams(prev => ({
+      ...prev,
+      [filterKey]: 'all'
+    }));
+    
+    updateActiveFilters(key, null);
   };
 
   return (
@@ -51,6 +91,35 @@ const QuotationFilters = ({ filterParams, setFilterParams }) => {
           className="pl-9 w-full"
         />
       </div>
+
+      {/* Active filters display */}
+      {Object.keys(activeFilters).length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {Object.entries(activeFilters).map(([key, value]) => (
+            <Badge 
+              key={key} 
+              variant="outline" 
+              className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+            >
+              {key}: {value}
+              <button 
+                onClick={() => removeFilter(key)} 
+                className="ml-1 hover:bg-blue-100 rounded-full"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+          
+          <Button 
+            variant="ghost" 
+            className="text-sm h-7 px-2 text-gray-500 hover:text-gray-700" 
+            onClick={clearAllFilters}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
 
       {isMobile && (
         <Button 
@@ -128,6 +197,7 @@ const QuotationFilters = ({ filterParams, setFilterParams }) => {
                   selected={date}
                   onSelect={handleDateSelect}
                   initialFocus
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
