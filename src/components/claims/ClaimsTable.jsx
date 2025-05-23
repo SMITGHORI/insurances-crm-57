@@ -23,7 +23,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ClaimsMobileView from './ClaimsMobileView';
 
-const ClaimsTable = ({ filterParams, setFilterParams }) => {
+const ClaimsTable = ({ filterParams, setFilterParams, sortField, sortDirection, handleExport, updateActiveFilters }) => {
   const navigate = useNavigate();
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -165,8 +165,41 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  // Sort the filtered claims
+  const sortedClaims = [...filteredClaims].sort((a, b) => {
+    if (!sortField) return 0;
+    
+    let aValue, bValue;
+    
+    switch (sortField) {
+      case 'client':
+        aValue = a.clientName.toLowerCase();
+        bValue = b.clientName.toLowerCase();
+        break;
+      case 'status':
+        aValue = a.status.toLowerCase();
+        bValue = b.status.toLowerCase();
+        break;
+      case 'amount':
+        aValue = a.claimAmount;
+        bValue = b.claimAmount;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const handleRowClick = (claimId) => {
     navigate(`/claims/${claimId}`);
+  };
+
+  const handleStatusFilter = (status) => {
+    setFilterParams({...filterParams, status});
+    updateActiveFilters('Status', status === 'all' ? null : status);
   };
 
   // Get appropriate status badge based on claim status
@@ -226,7 +259,10 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterParams.policyType}
-              onValueChange={(value) => setFilterParams({...filterParams, policyType: value})}
+              onValueChange={(value) => {
+                setFilterParams({...filterParams, policyType: value});
+                updateActiveFilters('Policy Type', value === 'all' ? null : value);
+              }}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Policy Type" />
@@ -247,7 +283,7 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
             <Filter size={16} className="mr-1 text-gray-500" />
             <Select
               value={filterParams.status}
-              onValueChange={(value) => setFilterParams({...filterParams, status: value})}
+              onValueChange={handleStatusFilter}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
@@ -268,7 +304,7 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
 
       {/* Claims display - Table for desktop, Cards for mobile */}
       {isMobile ? (
-        <ClaimsMobileView claims={claims} filterParams={filterParams} />
+        <ClaimsMobileView claims={sortedClaims} filterParams={filterParams} />
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
@@ -286,14 +322,14 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClaims.length === 0 ? (
+                {sortedClaims.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan="8" className="py-8 text-center text-gray-500">
                       No claims found matching your search criteria
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClaims.map((claim) => (
+                  sortedClaims.map((claim) => (
                     <TableRow 
                       key={claim.id} 
                       className="cursor-pointer hover:bg-gray-50"
@@ -347,6 +383,15 @@ const ClaimsTable = ({ filterParams, setFilterParams }) => {
                 )}
               </TableBody>
             </Table>
+          </div>
+          <div className="p-4 border-t border-gray-200 flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport(sortedClaims)}
+            >
+              Export Claims Data
+            </Button>
           </div>
         </div>
       )}

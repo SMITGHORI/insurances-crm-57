@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,19 +8,22 @@ import {
   FileText, 
   Edit, 
   Calendar, 
-  Check,
-  X,
-  Clock,
-  BarChart,
-  MessageCircle,
-  Upload,
-  Download,
-  User,
-  Clipboard,
+  Trash2,
+  ArrowLeft,
   Building,
   FileCheck,
   AlertTriangle
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import ClaimDocuments from '@/components/claims/ClaimDocuments';
 import ClaimTimeline from '@/components/claims/ClaimTimeline';
@@ -34,6 +36,7 @@ const ClaimDetails = () => {
   const [claim, setClaim] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -252,6 +255,24 @@ const ClaimDetails = () => {
     navigate(`/claims/edit/${id}`);
   };
 
+  const handleDeleteClaim = () => {
+    // In a real app, call API to delete claim
+    toast.success(`Claim ${claim.claimNumber} deleted successfully`);
+    navigate('/claims');
+  };
+
+  const handleBackToList = () => {
+    navigate('/claims');
+  };
+
+  const handleClientClick = () => {
+    navigate(`/clients/${claim.clientId}`);
+  };
+
+  const handlePolicyClick = () => {
+    navigate(`/policies/${claim.policyId}`);
+  };
+
   if (loading || !claim) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -262,8 +283,14 @@ const ClaimDetails = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="sm" onClick={handleBackToList} className="p-0 h-8 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Claims
+            </Button>
+          </div>
           <h1 className="text-2xl font-bold text-gray-800">
             {claim.claimNumber}
           </h1>
@@ -272,13 +299,16 @@ const ClaimDetails = () => {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleEditClaim}>
+          <Button onClick={handleEditClaim} variant="outline">
             <Edit className="mr-2 h-4 w-4" /> Edit Claim
+          </Button>
+          <Button onClick={() => setShowDeleteDialog(true)} variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" /> Delete
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Claim Status</CardTitle>
@@ -311,7 +341,7 @@ const ClaimDetails = () => {
               <Button 
                 variant="link" 
                 className="p-0 h-auto text-blue-600" 
-                onClick={() => navigate(`/policies/${claim.policyId}`)}
+                onClick={handlePolicyClick}
               >
                 {claim.policyNumber}
               </Button>
@@ -329,7 +359,7 @@ const ClaimDetails = () => {
               <Button 
                 variant="link" 
                 className="p-0 h-auto text-blue-600" 
-                onClick={() => navigate(`/clients/${claim.clientId}`)}
+                onClick={handleClientClick}
               >
                 {claim.clientName}
               </Button>
@@ -531,11 +561,11 @@ const ClaimDetails = () => {
             Documents
           </TabsTrigger>
           <TabsTrigger value="timeline" className="flex items-center">
-            <Clock className="mr-2 h-4 w-4" />
+            <Calendar className="mr-2 h-4 w-4" />
             Timeline
           </TabsTrigger>
           <TabsTrigger value="notes" className="flex items-center">
-            <MessageCircle className="mr-2 h-4 w-4" />
+            <FileText className="mr-2 h-4 w-4" />
             Notes
           </TabsTrigger>
         </TabsList>
@@ -552,6 +582,24 @@ const ClaimDetails = () => {
           <ClaimNotes claim={claim} setClaim={setClaim} />
         </TabsContent>
       </Tabs>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this claim?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to delete claim <strong>{claim.claimNumber}</strong>. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClaim} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

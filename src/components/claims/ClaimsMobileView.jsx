@@ -5,24 +5,11 @@ import { Calendar, FileText, Badge as BadgeIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
-const ClaimsMobileView = ({ claims, filterParams }) => {
+const ClaimsMobileView = ({ claims, filterParams, handleExport }) => {
   const navigate = useNavigate();
   
-  // Filter claims based on filter parameters
-  const filteredClaims = claims.filter(claim => {
-    const matchesSearch = 
-      claim.claimNumber.toLowerCase().includes(filterParams.searchTerm.toLowerCase()) ||
-      claim.clientName.toLowerCase().includes(filterParams.searchTerm.toLowerCase()) ||
-      claim.memberName.toLowerCase().includes(filterParams.searchTerm.toLowerCase()) ||
-      (claim.insuranceCompanyClaimId && claim.insuranceCompanyClaimId.toLowerCase().includes(filterParams.searchTerm.toLowerCase()));
-    
-    const matchesStatus = filterParams.status === 'all' || claim.status === filterParams.status;
-    const matchesType = filterParams.policyType === 'all' || claim.policyType.includes(filterParams.policyType);
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
   // Handle claim card click
   const handleClaimClick = (claimId) => {
     navigate(`/claims/${claimId}`);
@@ -48,7 +35,7 @@ const ClaimsMobileView = ({ claims, filterParams }) => {
     }
   };
 
-  if (filteredClaims.length === 0) {
+  if (claims.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
         No claims found matching your search criteria
@@ -58,7 +45,7 @@ const ClaimsMobileView = ({ claims, filterParams }) => {
 
   return (
     <div className="space-y-4 pb-16">
-      {filteredClaims.map((claim) => (
+      {claims.map((claim) => (
         <Card 
           key={claim.id} 
           className="overflow-hidden border border-gray-200 shadow-sm"
@@ -121,6 +108,21 @@ const ClaimsMobileView = ({ claims, filterParams }) => {
           </CardContent>
         </Card>
       ))}
+      
+      {claims.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-10">
+          <Button 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleExport && handleExport(claims);
+            }}
+            className="shadow-lg"
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
