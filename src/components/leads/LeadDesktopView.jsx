@@ -10,10 +10,19 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Mail, User, Calendar, Edit, ArrowRight } from 'lucide-react';
+import { 
+  Phone, 
+  Mail, 
+  User, 
+  Calendar, 
+  Edit, 
+  ArrowRight,
+  Trash2,
+  AlertCircle
+} from 'lucide-react';
 import { getStatusColor, getPriorityColor } from './LeadUtils';
 
-const LeadDesktopView = ({ leads, onViewDetails, navigate }) => {
+const LeadDesktopView = ({ leads, onViewDetails, onEdit, onDelete, navigate }) => {
   return (
     <div className="overflow-x-auto w-full">
       <Table>
@@ -33,8 +42,14 @@ const LeadDesktopView = ({ leads, onViewDetails, navigate }) => {
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-4">
-                No leads found
+              <TableCell colSpan={9} className="text-center py-8">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="bg-gray-100 p-3 rounded-full mb-2">
+                    <AlertCircle className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <h3 className="font-medium text-gray-700">No leads found</h3>
+                  <p className="text-gray-500 text-sm mt-1">Try adjusting your filters or create a new lead</p>
+                </div>
               </TableCell>
             </TableRow>
           ) : (
@@ -84,14 +99,24 @@ const LeadDesktopView = ({ leads, onViewDetails, navigate }) => {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={() => navigate(`/leads/edit/${lead.id}`)}
+                      onClick={() => onEdit(lead.id)}
+                      className="text-gray-500 hover:text-gray-700"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
+                      onClick={() => onDelete(lead.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
                       onClick={() => onViewDetails(lead.id)}
+                      className="text-blue-500 hover:text-blue-700"
                     >
                       <ArrowRight className="h-4 w-4" />
                     </Button>

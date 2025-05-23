@@ -3,10 +3,10 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from "@/components/ui/card";
-import { Phone, Mail, User, Calendar, Edit, ArrowRight, Clock, Tag, Users, Package } from 'lucide-react';
+import { Phone, Mail, User, Calendar, Edit, ArrowRight, Clock, Tag, Users, Package, Trash2 } from 'lucide-react';
 import { getStatusColor, getPriorityColor } from './LeadUtils';
 
-const LeadMobileView = ({ leads, onViewDetails, navigate }) => {
+const LeadMobileView = ({ leads, onViewDetails, onEdit, onDelete, navigate }) => {
   if (leads.length === 0) {
     return (
       <div className="text-center py-10 px-4 bg-white rounded-md">
@@ -88,12 +88,21 @@ const LeadMobileView = ({ leads, onViewDetails, navigate }) => {
               </div>
               
               <div className="flex justify-between items-center border-t border-gray-100 pt-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => onDelete(lead.id)} 
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
                 <div className="flex space-x-2">
                   <Button 
                     variant="outline"
                     size="sm"
                     className="border-gray-200 text-gray-700"
-                    onClick={() => navigate(`/leads/edit/${lead.id}`)}
+                    onClick={() => onEdit(lead.id)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Dummy lead data
 const dummyLeadData = {
@@ -64,15 +65,18 @@ const formSchema = z.object({
 const LeadForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = id !== undefined;
+  const [showCancelDialog, setShowCancelDialog] = React.useState(false);
+  const [formHasChanges, setFormHasChanges] = React.useState(false);
   
   // Initialize form
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: isEdit ? dummyLeadData : {
-      name: '',
-      phone: '',
-      email: '',
+      name: location?.state?.clientName || '',
+      phone: location?.state?.clientPhone || '',
+      email: location?.state?.clientEmail || '',
       address: '',
       source: '',
       product: '',
@@ -82,8 +86,15 @@ const LeadForm = () => {
       nextFollowUp: new Date().toISOString().split('T')[0],
       priority: 'Medium',
       additionalInfo: '',
-    }
+    },
+    mode: 'onChange'
   });
+
+  // Track form changes
+  React.useEffect(() => {
+    const subscription = form.watch(() => setFormHasChanges(true));
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
 
   // Handle form submission
   const onSubmit = (data) => {
@@ -96,7 +107,15 @@ const LeadForm = () => {
         : `New lead "${data.name}" created successfully`
     );
     
-    navigate('/leads');
+    navigate(`/leads${isEdit ? `/${id}` : ''}`);
+  };
+
+  const handleCancel = () => {
+    if (formHasChanges) {
+      setShowCancelDialog(true);
+    } else {
+      navigate(isEdit ? `/leads/${id}` : '/leads');
+    }
   };
 
   return (
@@ -263,8 +282,8 @@ const LeadForm = () => {
                         <SelectItem value="New">New</SelectItem>
                         <SelectItem value="In Progress">In Progress</SelectItem>
                         <SelectItem value="Qualified">Qualified</SelectItem>
+                        <SelectItem value="Not Interested">Not Interested</SelectItem>
                         <SelectItem value="Closed">Closed</SelectItem>
-                        <SelectItem value="Lost">Lost</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -398,7 +417,7 @@ const LeadForm = () => {
           </Card>
           
           <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/leads')}>
+            <Button type="button" variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
             <Button type="submit">
@@ -407,6 +426,25 @@ const LeadForm = () => {
           </div>
         </form>
       </Form>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to discard them?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Editing</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => navigate(isEdit ? `/leads/${id}` : '/leads')}
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

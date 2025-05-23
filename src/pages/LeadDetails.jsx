@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Mail, Phone, User, Edit, ArrowLeft } from 'lucide-react';
+import { Calendar, Mail, Phone, User, Edit, ArrowLeft, Trash2, UserPlus } from 'lucide-react';
 import LeadFollowUps from '@/components/leads/LeadFollowUps';
 import LeadNotes from '@/components/leads/LeadNotes';
 import LeadAssignDialog from '@/components/leads/LeadAssignDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 // Dummy lead data
 const dummyLeadData = {
@@ -75,6 +77,8 @@ const getStatusColor = (status) => {
       return 'bg-gray-500';
     case 'Lost':
       return 'bg-red-500';
+    case 'Not Interested':
+      return 'bg-red-500';
     default:
       return 'bg-gray-500';
   }
@@ -85,6 +89,8 @@ const LeadDetails = () => {
   const navigate = useNavigate();
   const [lead] = useState(dummyLeadData);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('followups');
   
   if (!lead) {
     return (
@@ -93,6 +99,24 @@ const LeadDetails = () => {
       </div>
     );
   }
+
+  const handleDelete = () => {
+    // In a real app, this would call an API endpoint to delete the lead
+    setShowDeleteDialog(false);
+    toast.success(`Lead "${lead.name}" deleted successfully`);
+    navigate('/leads');
+  };
+
+  const handleConvertToClient = () => {
+    // In a real app, this would call an API endpoint to convert the lead to a client
+    toast.success(`Lead "${lead.name}" converted to client successfully`);
+    navigate('/clients');
+  };
+
+  const handleCreateQuotation = () => {
+    // Navigate to quotation creation page with lead info
+    navigate('/quotations/create', { state: { leadId: lead.id, leadName: lead.name } });
+  };
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -117,12 +141,20 @@ const LeadDetails = () => {
             <p className="text-sm text-gray-500">Lead ID: {lead.id}</p>
           </div>
         </div>
-        <div className="flex space-x-2 self-end sm:self-auto">
+        <div className="flex flex-wrap gap-2 self-end sm:self-auto">
           <Button 
             variant="outline"
             onClick={() => setShowAssignDialog(true)}
           >
+            <User className="h-4 w-4 mr-2" />
             Reassign
+          </Button>
+          <Button 
+            variant="secondary"
+            onClick={handleConvertToClient}
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Convert to Client
           </Button>
           <Button 
             variant="outline"
@@ -130,10 +162,16 @@ const LeadDetails = () => {
           >
             <Edit className="h-4 w-4 mr-2" /> Edit
           </Button>
+          <Button 
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Delete
+          </Button>
         </div>
       </div>
 
-      {/* Lead information card */}
+      {/* Lead information cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card className="col-span-1">
           <CardHeader>
@@ -219,6 +257,11 @@ const LeadDetails = () => {
         </Card>
       </div>
 
+      {/* Quick action buttons */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <Button onClick={handleCreateQuotation}>Create Quotation</Button>
+      </div>
+
       {/* Additional information */}
       <Card className="mb-6">
         <CardHeader>
@@ -230,7 +273,7 @@ const LeadDetails = () => {
       </Card>
 
       {/* Tabs for follow-ups and notes */}
-      <Tabs defaultValue="followups" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="followups">Follow-ups</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -249,6 +292,24 @@ const LeadDetails = () => {
         open={showAssignDialog} 
         onOpenChange={setShowAssignDialog} 
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this lead? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
