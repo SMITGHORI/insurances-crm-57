@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -850,7 +849,7 @@ const InvoicePreview = ({ invoice }) => {
               <p>Thank you for your business!</p>
               {invoice.agentName && (
                 <p className="mt-1">Your insurance agent: {invoice.agentName}</p>
-              </p>
+              )}
             </div>
           )}
         </div>
