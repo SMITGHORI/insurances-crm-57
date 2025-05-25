@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,7 +9,6 @@ import { Download, FileImage, FileText, Image, Layout, PaintBucket, Printer, Sha
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 const InvoicePreview = ({ invoice }) => {
   const [template, setTemplate] = useState(invoice.layoutTemplate || 'standard');
@@ -167,214 +167,340 @@ const InvoicePreview = ({ invoice }) => {
     }, 500);
   };
 
-  const handleDownload = () => {
-    try {
-      const element = invoiceRef.current;
-      const pdf = new jsPDF('p', 'mm', 'a4');
+  const handleDownloadHTML = () => {
+    const invoiceElement = document.getElementById('invoice-container');
+    if (invoiceElement) {
+      const content = `
+        <html>
+          <head>
+            <title>Invoice ${invoice.invoiceNumber}</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              th { background-color: #f3f4f6; }
+              .text-right { text-align: right; }
+              .header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px; }
+              .company-info { text-align: right; }
+              .client-info { margin: 20px 0; }
+              .totals { margin-top: 20px; text-align: right; }
+            </style>
+          </head>
+          <body>
+            <div class="invoice-container">
+              ${invoiceElement.innerHTML}
+            </div>
+          </body>
+        </html>
+      `;
       
-      // Define page dimensions
+      const blob = new Blob([content], { type: 'text/html' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Invoice_${invoice.invoiceNumber}.html`;
+      link.click();
+      toast.success('HTML downloaded successfully');
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
       
-      // Create header
+      // Helper function to convert hex to RGB
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : { r: 26, g: 86, b: 219 };
+      };
+      
+      const accentRgb = hexToRgb(accentColor);
+      
+      // Header Section
       if (template === 'corporate') {
-        pdf.setFillColor(accentColor.replace('#', ''));
-        pdf.rect(0, 0, pageWidth, 40, 'F');
+        pdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        pdf.rect(0, 0, pageWidth, 50, 'F');
         pdf.setTextColor(255, 255, 255);
       } else {
         pdf.setTextColor(0, 0, 0);
       }
       
-      // Add invoice title and number
-      pdf.setFontSize(22);
-      pdf.text('INVOICE', 20, 20);
-      pdf.setFontSize(12);
-      pdf.text(`#${invoice.invoiceNumber}`, 20, 30);
+      // Invoice Title
+      pdf.setFontSize(28);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('INVOICE', margin, 25);
       
-      // Add logo 
-      html2canvas(document.querySelector('img[alt="Company Logo"]')).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        pdf.addImage(imgData, 'PNG', pageWidth - 60, 10, 40, 20);
+      // Invoice Number
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`#${invoice.invoiceNumber}`, margin, 35);
+      
+      // Company Info (Right side)
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Ambition Insurance', pageWidth - margin, 20, { align: 'right' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.text('123 Insurance St, Mumbai 400001', pageWidth - margin, 26, { align: 'right' });
+      pdf.text('contact@ambitioninsurance.com', pageWidth - margin, 32, { align: 'right' });
+      pdf.text('+91 22 1234 5678', pageWidth - margin, 38, { align: 'right' });
+      
+      // Reset text color for main content
+      pdf.setTextColor(0, 0, 0);
+      
+      let currentY = template === 'corporate' ? 65 : 55;
+      
+      // Client Information
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Bill To:', margin, currentY);
+      currentY += 8;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(invoice.clientName, margin, currentY);
+      currentY += 5;
+      if (invoice.clientAddress) {
+        pdf.text(invoice.clientAddress, margin, currentY);
+        currentY += 5;
+      }
+      if (invoice.clientEmail) {
+        pdf.text(invoice.clientEmail, margin, currentY);
+        currentY += 5;
+      }
+      if (invoice.clientPhone) {
+        pdf.text(invoice.clientPhone, margin, currentY);
+        currentY += 5;
+      }
+      
+      // Invoice Details (Right side)
+      let detailsY = template === 'corporate' ? 65 : 55;
+      const detailsX = pageWidth - 80;
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.text('Invoice Details:', detailsX, detailsY);
+      detailsY += 8;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Issue Date: ${formatInvoiceDateForDisplay(invoice.issueDate)}`, detailsX, detailsY);
+      detailsY += 5;
+      pdf.text(`Due Date: ${formatInvoiceDateForDisplay(invoice.dueDate)}`, detailsX, detailsY);
+      detailsY += 5;
+      pdf.text(`Status: ${invoice.status.toUpperCase()}`, detailsX, detailsY);
+      detailsY += 5;
+      
+      // Policy Details (if available)
+      if (invoice.policyNumber) {
+        detailsY += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Policy Details:', detailsX, detailsY);
+        detailsY += 8;
         
-        // Add company info
-        pdf.setFontSize(10);
-        if (template === 'corporate') {
-          pdf.setTextColor(255, 255, 255);
-        } else {
-          pdf.setTextColor(0, 0, 0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Policy: ${invoice.policyNumber}`, detailsX, detailsY);
+        detailsY += 5;
+        if (invoice.insuranceType) {
+          pdf.text(`Type: ${invoice.insuranceType}`, detailsX, detailsY);
+          detailsY += 5;
         }
-        pdf.text('Ambition Insurance', pageWidth - 20, 20, { align: 'right' });
-        pdf.text('123 Insurance St, Mumbai 400001', pageWidth - 20, 25, { align: 'right' });
-        pdf.text('contact@ambitioninsurance.com', pageWidth - 20, 30, { align: 'right' });
+        if (invoice.premiumPeriod) {
+          pdf.text(`Period: ${invoice.premiumPeriod}`, detailsX, detailsY);
+          detailsY += 5;
+        }
+      }
+      
+      // Items Table
+      currentY = Math.max(currentY, detailsY) + 15;
+      
+      // Table Header
+      const tableStartY = currentY;
+      const rowHeight = 8;
+      const headerHeight = 10;
+      
+      pdf.setFillColor(243, 244, 246);
+      pdf.rect(margin, currentY, pageWidth - (margin * 2), headerHeight, 'F');
+      
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Table headers
+      pdf.text('Description', margin + 2, currentY + 6);
+      pdf.text('Qty', margin + 90, currentY + 6, { align: 'center' });
+      pdf.text('Unit Price', margin + 115, currentY + 6, { align: 'center' });
+      pdf.text('Tax', margin + 140, currentY + 6, { align: 'center' });
+      pdf.text('Total', pageWidth - margin - 15, currentY + 6, { align: 'center' });
+      
+      currentY += headerHeight;
+      
+      // Table Items
+      pdf.setFont('helvetica', 'normal');
+      invoice.items.forEach((item, index) => {
+        if (currentY > pageHeight - 60) {
+          pdf.addPage();
+          currentY = 20;
+        }
         
-        // Add client and invoice details
+        // Alternate row background
+        if (index % 2 === 1) {
+          pdf.setFillColor(249, 250, 251);
+          pdf.rect(margin, currentY, pageWidth - (margin * 2), rowHeight, 'F');
+        }
+        
         pdf.setTextColor(0, 0, 0);
-        pdf.setFontSize(11);
-        pdf.text('Bill To:', 20, 50);
-        pdf.setFontSize(10);
-        pdf.text(invoice.clientName, 20, 57);
-        pdf.text(invoice.clientAddress || '', 20, 62);
-        pdf.text(invoice.clientEmail || '', 20, 67);
-        pdf.text(invoice.clientPhone || '', 20, 72);
+        pdf.text(item.description, margin + 2, currentY + 5);
+        pdf.text(item.quantity.toString(), margin + 90, currentY + 5, { align: 'center' });
+        pdf.text(formatCurrency(item.unitPrice), margin + 115, currentY + 5, { align: 'center' });
+        pdf.text(formatCurrency(item.tax), margin + 140, currentY + 5, { align: 'center' });
+        pdf.text(formatCurrency(item.total), pageWidth - margin - 15, currentY + 5, { align: 'center' });
         
-        pdf.text('Invoice Details:', pageWidth - 80, 50);
-        pdf.text(`Issue Date: ${formatInvoiceDateForDisplay(invoice.issueDate)}`, pageWidth - 80, 57);
-        pdf.text(`Due Date: ${formatInvoiceDateForDisplay(invoice.dueDate)}`, pageWidth - 80, 62);
-        pdf.text(`Status: ${invoice.status}`, pageWidth - 80, 67);
-        
-        if (invoice.policyNumber) {
-          pdf.text('Policy Details:', pageWidth - 80, 77);
-          pdf.text(`Policy Number: ${invoice.policyNumber}`, pageWidth - 80, 84);
-          pdf.text(`Insurance Type: ${invoice.insuranceType}`, pageWidth - 80, 89);
-          pdf.text(`Period: ${invoice.premiumPeriod}`, pageWidth - 80, 94);
-        }
-        
-        // Add table header
-        pdf.setFillColor(243, 244, 246);
-        pdf.rect(20, 105, pageWidth - 40, 10, 'F');
-        pdf.setFontSize(9);
-        pdf.setTextColor(0, 0, 0);
-        pdf.text('Description', 25, 111);
-        pdf.text('Qty', 110, 111, { align: 'right' });
-        pdf.text('Unit Price', 130, 111, { align: 'right' });
-        pdf.text('Tax', 150, 111, { align: 'right' });
-        pdf.text('Total', 170, 111, { align: 'right' });
-        
-        // Add table items
-        let yPosition = 120;
-        invoice.items.forEach((item, index) => {
-          pdf.text(item.description, 25, yPosition);
-          pdf.text(item.quantity.toString(), 110, yPosition, { align: 'right' });
-          pdf.text(formatCurrency(item.unitPrice), 130, yPosition, { align: 'right' });
-          pdf.text(formatCurrency(item.tax), 150, yPosition, { align: 'right' });
-          pdf.text(formatCurrency(item.total), 170, yPosition, { align: 'right' });
-          
-          // Add line separator
-          pdf.setDrawColor(220, 220, 220);
-          yPosition += 5;
-          pdf.line(20, yPosition, pageWidth - 20, yPosition);
-          yPosition += 5;
-        });
-        
-        // Add totals
-        yPosition += 5;
-        pdf.text('Subtotal:', 140, yPosition);
-        pdf.text(formatCurrency(invoice.subtotal), 170, yPosition, { align: 'right' });
-        
-        if (invoice.discount > 0) {
-          yPosition += 5;
-          pdf.text('Discount:', 140, yPosition);
-          pdf.text(`-${formatCurrency(invoice.discount)}`, 170, yPosition, { align: 'right' });
-        }
-        
-        yPosition += 5;
-        pdf.text('Tax:', 140, yPosition);
-        pdf.text(formatCurrency(invoice.tax), 170, yPosition, { align: 'right' });
-        
-        yPosition += 5;
-        pdf.setDrawColor(220, 220, 220);
-        pdf.line(140, yPosition, 170, yPosition);
-        yPosition += 5;
-        
-        pdf.setFontSize(10);
-        pdf.text('Total:', 140, yPosition);
-        pdf.text(formatCurrency(invoice.total), 170, yPosition, { align: 'right' });
-        
-        yPosition += 5;
-        pdf.text('Amount Paid:', 140, yPosition);
-        pdf.text(formatCurrency(getPaidAmount()), 170, yPosition, { align: 'right' });
-        
-        yPosition += 5;
-        pdf.setTextColor(invoice.status === 'paid' ? 0x008000 : 0xcc0000);
-        pdf.text('Balance Due:', 140, yPosition);
-        pdf.text(formatCurrency(getRemainingBalance()), 170, yPosition, { align: 'right' });
-        
-        // Add notes
-        if (invoice.notes) {
-          yPosition += 15;
-          pdf.setTextColor(0, 0, 0);
-          pdf.setFontSize(10);
-          pdf.text('Notes:', 20, yPosition);
-          pdf.setFontSize(9);
-          pdf.text(invoice.notes, 20, yPosition + 6);
-        }
-        
-        // Add payment terms
-        if (invoice.paymentTerms) {
-          yPosition += 15;
-          pdf.setFontSize(10);
-          pdf.text('Payment Terms:', 20, yPosition);
-          pdf.setFontSize(9);
-          pdf.text(invoice.paymentTerms, 20, yPosition + 6);
-        }
-        
-        // Add footer
-        pdf.setFontSize(10);
-        pdf.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
-        
-        if (invoice.agentName) {
-          pdf.setFontSize(9);
-          pdf.text(`Your insurance agent: ${invoice.agentName}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
-        }
-        
-        // Save PDF
-        pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
-        toast.success('PDF downloaded successfully');
+        currentY += rowHeight;
       });
+      
+      // Totals Section
+      currentY += 10;
+      const totalsX = pageWidth - 80;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      
+      // Subtotal
+      pdf.text('Subtotal:', totalsX, currentY);
+      pdf.text(formatCurrency(invoice.subtotal), pageWidth - margin, currentY, { align: 'right' });
+      currentY += 6;
+      
+      // Discount (if any)
+      if (invoice.discount > 0) {
+        pdf.text('Discount:', totalsX, currentY);
+        pdf.text(`-${formatCurrency(invoice.discount)}`, pageWidth - margin, currentY, { align: 'right' });
+        currentY += 6;
+      }
+      
+      // Tax
+      pdf.text('Tax:', totalsX, currentY);
+      pdf.text(formatCurrency(invoice.tax), pageWidth - margin, currentY, { align: 'right' });
+      currentY += 6;
+      
+      // Line separator
+      pdf.setDrawColor(0, 0, 0);
+      pdf.line(totalsX, currentY, pageWidth - margin, currentY);
+      currentY += 6;
+      
+      // Total
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.text('Total:', totalsX, currentY);
+      pdf.text(formatCurrency(invoice.total), pageWidth - margin, currentY, { align: 'right' });
+      currentY += 8;
+      
+      // Payment Status
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text('Amount Paid:', totalsX, currentY);
+      pdf.text(formatCurrency(getPaidAmount()), pageWidth - margin, currentY, { align: 'right' });
+      currentY += 6;
+      
+      // Balance Due
+      const balanceDue = getRemainingBalance();
+      const balanceColor = invoice.status === 'paid' ? [0, 128, 0] : [204, 0, 0];
+      pdf.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Balance Due:', totalsX, currentY);
+      pdf.text(formatCurrency(balanceDue), pageWidth - margin, currentY, { align: 'right' });
+      
+      // Reset color
+      pdf.setTextColor(0, 0, 0);
+      currentY += 15;
+      
+      // Notes Section
+      if (invoice.notes) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.text('Notes:', margin, currentY);
+        currentY += 8;
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        const notesLines = pdf.splitTextToSize(invoice.notes, pageWidth - (margin * 2));
+        pdf.text(notesLines, margin, currentY);
+        currentY += notesLines.length * 4 + 5;
+      }
+      
+      // Payment Terms
+      if (invoice.paymentTerms) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.text('Payment Terms:', margin, currentY);
+        currentY += 8;
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        const termsLines = pdf.splitTextToSize(invoice.paymentTerms, pageWidth - (margin * 2));
+        pdf.text(termsLines, margin, currentY);
+        currentY += termsLines.length * 4 + 10;
+      }
+      
+      // Footer
+      const footerY = pageHeight - 30;
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Thank you for your business!', pageWidth / 2, footerY, { align: 'center' });
+      
+      if (invoice.agentName) {
+        pdf.setFontSize(9);
+        pdf.text(`Your insurance agent: ${invoice.agentName}`, pageWidth / 2, footerY + 6, { align: 'center' });
+      }
+      
+      // Save the PDF
+      pdf.save(`invoice-${invoice.invoiceNumber}.pdf`);
+      toast.success('PDF downloaded successfully');
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast.error('Failed to generate PDF');
+      toast.error('Failed to generate PDF. Please try again.');
     }
   };
   
   const handleShare = () => {
     try {
       // Generate PDF as Blob for sharing
-      const element = invoiceRef.current;
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // Define page dimensions
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      
-      // Create basic invoice (simplified for sharing)
+      // Simplified PDF for sharing
       pdf.setFontSize(22);
       pdf.text('INVOICE', 20, 20);
       pdf.setFontSize(12);
       pdf.text(`#${invoice.invoiceNumber}`, 20, 30);
       
-      // Convert the invoice element to canvas
-      html2canvas(element).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
+      // Convert to blob for sharing
+      const pdfBlob = pdf.output('blob');
+      
+      // Use Web Share API if available
+      if (navigator.share) {
+        const file = new File([pdfBlob], `invoice-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
         
-        // Calculate scaling
-        const imgWidth = pageWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        // Add the image
-        pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
-        
-        // Convert to blob for sharing
-        const pdfBlob = pdf.output('blob');
-        
-        // Use Web Share API if available
-        if (navigator.share) {
-          const file = new File([pdfBlob], `invoice-${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
-          
-          navigator.share({
-            title: `Invoice #${invoice.invoiceNumber}`,
-            text: 'Please find attached invoice from Ambition Insurance',
-            files: [file]
-          })
-            .then(() => toast.success('Shared successfully'))
-            .catch((error) => {
-              console.error('Sharing failed:', error);
-              toast.error('Failed to share');
-            });
-        } else {
-          // Fallback for browsers without Web Share API
-          toast.info('Direct sharing not supported in this browser. Please use the Download option instead.');
-        }
-      });
+        navigator.share({
+          title: `Invoice #${invoice.invoiceNumber}`,
+          text: 'Please find attached invoice from Ambition Insurance',
+          files: [file]
+        })
+          .then(() => toast.success('Shared successfully'))
+          .catch((error) => {
+            console.error('Sharing failed:', error);
+            toast.error('Failed to share');
+          });
+      } else {
+        // Fallback for browsers without Web Share API
+        toast.info('Direct sharing not supported in this browser. Please use the Download option instead.');
+      }
     } catch (error) {
       console.error('Share error:', error);
       toast.error('Failed to share');
@@ -395,11 +521,19 @@ const InvoicePreview = ({ invoice }) => {
           </Button>
           <Button 
             variant="outline" 
-            onClick={handleDownload}
+            onClick={handleDownloadPDF}
             className="flex items-center"
           >
             <Download className="mr-2 h-4 w-4" />
             Download PDF
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadHTML}
+            className="flex items-center"
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Download HTML
           </Button>
           <Button 
             variant="outline" 
@@ -716,7 +850,7 @@ const InvoicePreview = ({ invoice }) => {
               <p>Thank you for your business!</p>
               {invoice.agentName && (
                 <p className="mt-1">Your insurance agent: {invoice.agentName}</p>
-              )}
+              </p>
             </div>
           )}
         </div>
