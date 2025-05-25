@@ -31,23 +31,23 @@ const InvoicePreview = ({ invoice }) => {
   const templates = {
     standard: {
       className: "bg-white max-w-4xl mx-auto p-8 rounded shadow",
-      headerClass: "border-b pb-8",
+      headerClass: "mb-8",
       titleClass: "text-2xl font-bold",
-      contentClass: "",
+      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-8 mt-8",
       tableClass: "mt-6",
       footerClass: "mt-8 pt-8 border-t",
     },
     corporate: {
       className: "bg-white max-w-4xl mx-auto p-8 rounded-lg shadow-md",
-      headerClass: `bg-[${accentColor}] -m-8 mb-8 p-8 text-white rounded-t-lg`,
-      titleClass: "text-3xl font-bold",
-      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-8",
+      headerClass: "mb-8",
+      titleClass: "text-3xl font-bold text-white",
+      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-8 mt-8",
       tableClass: "mt-8",
       footerClass: "mt-8 pt-8 border-t flex justify-between",
     },
     minimal: {
       className: "bg-white max-w-4xl mx-auto p-8",
-      headerClass: "border-b pb-4",
+      headerClass: "mb-6",
       titleClass: "text-xl font-medium",
       contentClass: "grid grid-cols-1 md:grid-cols-3 gap-4 mt-4",
       tableClass: "mt-6",
@@ -55,7 +55,7 @@ const InvoicePreview = ({ invoice }) => {
     },
     modern: {
       className: "bg-white max-w-4xl mx-auto p-8 rounded-xl shadow-lg",
-      headerClass: "flex flex-col md:flex-row justify-between items-start md:items-center pb-8",
+      headerClass: "mb-8",
       titleClass: "text-3xl font-bold",
       contentClass: "grid grid-cols-1 md:grid-cols-2 gap-8 mt-8",
       tableClass: "mt-10",
@@ -63,15 +63,66 @@ const InvoicePreview = ({ invoice }) => {
     },
     elegant: {
       className: "bg-white max-w-4xl mx-auto p-12 rounded shadow-md border",
-      headerClass: "text-center border-b pb-8 mb-8",
+      headerClass: "text-center mb-8",
       titleClass: "text-4xl font-light",
-      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-12",
+      contentClass: "grid grid-cols-1 md:grid-cols-2 gap-12 mt-8",
       tableClass: "mt-12",
       footerClass: "mt-12 pt-8 border-t text-center",
     }
   };
   
   const currentTemplate = templates[template] || templates.standard;
+  
+  // Common header component for all templates
+  const renderHeader = () => {
+    const isElegant = template === 'elegant';
+    const isCorporate = template === 'corporate';
+    
+    return (
+      <div className={`${currentTemplate.headerClass} ${isCorporate ? `bg-[${accentColor}] -m-8 mb-8 p-8 text-white rounded-t-lg` : isElegant ? 'border-b pb-8' : 'border-b pb-6'}`}>
+        <div className={`flex ${isElegant ? 'flex-col items-center' : 'justify-between items-start'}`}>
+          {/* Left side - Invoice title and number */}
+          <div className={isElegant ? 'text-center mb-6' : ''}>
+            <h1 className={`${currentTemplate.titleClass} ${isElegant ? `text-[${accentColor}]` : isCorporate ? 'text-white' : 'text-gray-900'}`}>
+              INVOICE
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <p className={`text-lg font-semibold ${isCorporate ? 'text-white' : 'text-gray-700'}`}>
+                #{invoice.invoiceNumber}
+              </p>
+              <span className={`text-xs px-2 py-1 rounded ${isCorporate ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                ID: {invoice.invoiceNumber}
+              </span>
+            </div>
+          </div>
+          
+          {/* Right side - Company branding */}
+          <div className={`${isElegant ? 'text-center' : 'text-right'} ${isCorporate ? 'text-white' : 'text-gray-600'}`}>
+            <div className={`flex items-center ${isElegant ? 'justify-center' : 'justify-end'} mb-3`}>
+              <img 
+                src={logoUrl} 
+                alt="Amba Insurance Logo"
+                className={`h-12 max-w-32 object-contain ${isCorporate ? 'bg-white/10 p-1 rounded' : ''}`}
+              />
+            </div>
+            <div className={`space-y-1 ${isElegant ? 'text-center' : 'text-right'}`}>
+              <h2 className={`font-bold text-lg ${isCorporate ? 'text-white' : `text-[${accentColor}]`}`}>
+                AMBA INSURANCE SERVICES
+              </h2>
+              <p className="text-sm">Mumbai Corporate Office</p>
+              <p className="text-sm">123 Business District, Bandra Kurla Complex</p>
+              <p className="text-sm">Mumbai, Maharashtra 400051, India</p>
+              <div className="flex flex-col text-xs mt-2 space-y-1">
+                <span>📞 +91 22 6789 1234</span>
+                <span>📧 info@ambainsurance.com</span>
+                <span>🌐 www.ambainsurance.com</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   
   const handleTemplateChange = (newTemplate) => {
     setTemplate(newTemplate);
@@ -837,113 +888,39 @@ const InvoicePreview = ({ invoice }) => {
       )}
       
       <div id="invoice-container" ref={invoiceRef} className={currentTemplate.className}>
-        {/* Header */}
-        <div className={currentTemplate.headerClass} style={template === 'corporate' ? { backgroundColor: accentColor } : {}}>
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className={currentTemplate.titleClass} style={template === 'elegant' ? { color: accentColor } : {}}>INVOICE</h1>
-              <p className={`text-lg font-semibold ${template === 'corporate' ? 'text-white' : 'text-gray-700'} mt-1`}>
-                #{invoice.invoiceNumber}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center justify-end mb-2">
-                <img 
-                  src={logoUrl} 
-                  alt="Company Logo"
-                  className="h-12"
-                />
-              </div>
-              <div className={template === 'corporate' ? 'text-white' : 'text-gray-600'}>
-                <p>Amba Insurance Services</p>
-                <p>123 Insurance St, Mumbai 400001</p>
-                <p>contact@ambainsurance.com</p>
-              </div>
-            </div>
-          </div>
-          
-          {template === 'standard' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-              <div>
-                <h3 className="font-bold text-gray-700 mb-2">Bill To:</h3>
-                <p className="font-medium">{invoice.clientName}</p>
-                <p>{invoice.clientAddress}</p>
-                <p>{invoice.clientEmail}</p>
-                <p>{invoice.clientPhone}</p>
-                {invoice.customFields?.["GST Number"] && (
-                  <p>GST: {invoice.customFields["GST Number"]}</p>
-                )}
-              </div>
-              <div className="text-right">
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Issue Date:</span> 
-                    <span>{formatInvoiceDateForDisplay(invoice.issueDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Due Date:</span> 
-                    <span>{formatInvoiceDateForDisplay(invoice.dueDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Status:</span> 
-                    <span className="capitalize">{invoice.status}</span>
-                  </div>
-                  {invoice.policyNumber && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Policy Number:</span> 
-                        <span>{invoice.policyNumber}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Insurance Type:</span> 
-                        <span>{invoice.insuranceType}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Period:</span> 
-                        <span>{invoice.premiumPeriod}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Render header for all templates */}
+        {renderHeader()}
         
         {/* Content */}
         <div className={currentTemplate.contentClass}>
-          {template !== 'standard' && (
-            <>
-              <div>
-                <h3 className="font-bold text-gray-700 mb-2">Bill To:</h3>
-                <p className="font-medium">{invoice.clientName}</p>
-                <p>{invoice.clientAddress}</p>
-                <p>{invoice.clientEmail}</p>
-                <p>{invoice.clientPhone}</p>
-                {invoice.customFields?.["GST Number"] && (
-                  <p>GST: {invoice.customFields["GST Number"]}</p>
-                )}
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-gray-700 mb-2">Invoice Details:</h3>
-                <p><span className="font-semibold">Issue Date:</span> {formatInvoiceDateForDisplay(invoice.issueDate)}</p>
-                <p><span className="font-semibold">Due Date:</span> {formatInvoiceDateForDisplay(invoice.dueDate)}</p>
-                <p><span className="font-semibold">Status:</span> <span className="capitalize">{invoice.status}</span></p>
-                {invoice.paymentMethod && (
-                  <p><span className="font-semibold">Payment Method:</span> {invoice.paymentMethod}</p>
-                )}
-              </div>
-              
-              {invoice.policyNumber && (
-                <div>
-                  <h3 className="font-bold text-gray-700 mb-2">Policy Details:</h3>
-                  <p><span className="font-semibold">Policy Number:</span> {invoice.policyNumber}</p>
-                  <p><span className="font-semibold">Insurance Type:</span> {invoice.insuranceType}</p>
-                  <p><span className="font-semibold">Period:</span> {invoice.premiumPeriod}</p>
-                </div>
-              )}
-            </>
+          <div>
+            <h3 className="font-bold text-gray-700 mb-2">Bill To:</h3>
+            <p className="font-medium">{invoice.clientName}</p>
+            <p>{invoice.clientAddress}</p>
+            <p>{invoice.clientEmail}</p>
+            <p>{invoice.clientPhone}</p>
+            {invoice.customFields?.["GST Number"] && (
+              <p>GST: {invoice.customFields["GST Number"]}</p>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="font-bold text-gray-700 mb-2">Invoice Details:</h3>
+            <p><span className="font-semibold">Issue Date:</span> {formatInvoiceDateForDisplay(invoice.issueDate)}</p>
+            <p><span className="font-semibold">Due Date:</span> {formatInvoiceDateForDisplay(invoice.dueDate)}</p>
+            <p><span className="font-semibold">Status:</span> <span className="capitalize">{invoice.status}</span></p>
+            {invoice.paymentMethod && (
+              <p><span className="font-semibold">Payment Method:</span> {invoice.paymentMethod}</p>
+            )}
+          </div>
+          
+          {invoice.policyNumber && (
+            <div>
+              <h3 className="font-bold text-gray-700 mb-2">Policy Details:</h3>
+              <p><span className="font-semibold">Policy Number:</span> {invoice.policyNumber}</p>
+              <p><span className="font-semibold">Insurance Type:</span> {invoice.insuranceType}</p>
+              <p><span className="font-semibold">Period:</span> {invoice.premiumPeriod}</p>
+            </div>
           )}
         </div>
         
