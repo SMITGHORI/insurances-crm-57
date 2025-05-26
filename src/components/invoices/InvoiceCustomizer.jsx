@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,7 @@ import {
   Image, 
   Palette, 
   Type, 
-  Spacing, 
+  Move, 
   FileImage, 
   Download,
   Upload,
@@ -122,7 +121,7 @@ const InvoiceCustomizer = ({
               Typography
             </TabsTrigger>
             <TabsTrigger value="spacing" className="flex items-center">
-              <Spacing className="mr-2 h-4 w-4" />
+              <Move className="mr-2 h-4 w-4" />
               Spacing
             </TabsTrigger>
             <TabsTrigger value="branding" className="flex items-center">
