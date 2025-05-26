@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Layout, 
   Image, 
@@ -20,7 +21,34 @@ import {
   Upload,
   RotateCcw,
   Paintbrush,
-  Settings2
+  Settings2,
+  Zap,
+  Eye,
+  Code,
+  Globe,
+  QrCode,
+  PenTool,
+  Filter,
+  Layers,
+  Grid,
+  Sparkles,
+  Wand2,
+  MonitorSpeaker,
+  Package,
+  Calculator,
+  Calendar,
+  MapPin,
+  Phone,
+  Mail,
+  Banknote,
+  CreditCard,
+  Shield,
+  Award,
+  Star,
+  Heart,
+  Lightbulb,
+  Target,
+  Zap as ZapIcon
 } from 'lucide-react';
 
 const InvoiceCustomizer = ({ 
@@ -30,75 +58,176 @@ const InvoiceCustomizer = ({
   onResetCustomizations 
 }) => {
   const [activeTab, setActiveTab] = useState('layout');
+  const [previewMode, setPreviewMode] = useState('desktop');
 
   const handleInputChange = (field, value) => {
     onCustomizationChange(field, value);
   };
 
-  const colorPresets = [
-    { name: 'Corporate Blue', primary: '#1a56db', secondary: '#3b82f6', accent: '#60a5fa' },
-    { name: 'Professional Green', primary: '#047857', secondary: '#059669', accent: '#10b981' },
-    { name: 'Executive Red', primary: '#b91c1c', secondary: '#dc2626', accent: '#ef4444' },
-    { name: 'Premium Purple', primary: '#7c3aed', secondary: '#8b5cf6', accent: '#a78bfa' },
-    { name: 'Ocean Blue', primary: '#0369a1', secondary: '#0284c7', accent: '#0ea5e9' },
-    { name: 'Forest Green', primary: '#0f766e', secondary: '#0d9488', accent: '#14b8a6' },
-    { name: 'Sunset Orange', primary: '#ea384c', secondary: '#f97316', accent: '#fb923c' },
-    { name: 'Royal Purple', primary: '#9b87f5', secondary: '#a855f7', accent: '#c084fc' }
-  ];
-
-  const fontFamilies = [
-    'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 
-    'Poppins', 'Source Sans Pro', 'Nunito', 'Ubuntu', 'Playfair Display'
-  ];
-
-  const templates = [
+  // Advanced Color Presets with Gradients and Themes
+  const advancedColorPresets = [
     { 
-      id: 'standard', 
-      name: 'Standard', 
-      description: 'Clean and professional layout',
-      preview: '📄'
+      name: 'Corporate Blue', 
+      primary: '#1a56db', 
+      secondary: '#3b82f6', 
+      accent: '#60a5fa',
+      gradient: 'linear-gradient(135deg, #1a56db 0%, #3b82f6 100%)',
+      theme: 'professional'
     },
     { 
-      id: 'corporate', 
-      name: 'Corporate', 
-      description: 'Bold header with company branding',
-      preview: '🏢'
+      name: 'Sunset Gradient', 
+      primary: '#ff6b6b', 
+      secondary: '#feca57', 
+      accent: '#ff9ff3',
+      gradient: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)',
+      theme: 'creative'
     },
     { 
-      id: 'minimal', 
-      name: 'Minimal', 
-      description: 'Simple and clean design',
-      preview: '✨'
+      name: 'Ocean Breeze', 
+      primary: '#0891b2', 
+      secondary: '#06b6d4', 
+      accent: '#67e8f9',
+      gradient: 'linear-gradient(135deg, #0891b2 0%, #67e8f9 100%)',
+      theme: 'modern'
     },
     { 
-      id: 'modern', 
-      name: 'Modern', 
-      description: 'Contemporary layout with rounded elements',
-      preview: '🎨'
+      name: 'Forest Premium', 
+      primary: '#059669', 
+      secondary: '#10b981', 
+      accent: '#6ee7b7',
+      gradient: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+      theme: 'eco'
     },
     { 
-      id: 'elegant', 
-      name: 'Elegant', 
-      description: 'Sophisticated centered design',
-      preview: '👑'
+      name: 'Royal Purple', 
+      primary: '#7c3aed', 
+      secondary: '#a855f7', 
+      accent: '#c084fc',
+      gradient: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+      theme: 'luxury'
     },
     { 
-      id: 'creative', 
-      name: 'Creative', 
-      description: 'Unique asymmetric layout',
-      preview: '🎭'
+      name: 'Midnight Dark', 
+      primary: '#1f2937', 
+      secondary: '#374151', 
+      accent: '#6b7280',
+      gradient: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)',
+      theme: 'dark'
+    },
+    { 
+      name: 'Golden Elegance', 
+      primary: '#d97706', 
+      secondary: '#f59e0b', 
+      accent: '#fbbf24',
+      gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
+      theme: 'premium'
+    },
+    { 
+      name: 'Rose Quartz', 
+      primary: '#e11d48', 
+      secondary: '#f43f5e', 
+      accent: '#fb7185',
+      gradient: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 100%)',
+      theme: 'feminine'
     }
+  ];
+
+  // Advanced Font Combinations
+  const fontCombinations = [
+    { name: 'Modern Professional', heading: 'Inter', body: 'Inter', style: 'sans-serif' },
+    { name: 'Classic Elegant', heading: 'Playfair Display', body: 'Lora', style: 'serif' },
+    { name: 'Tech Minimalist', heading: 'JetBrains Mono', body: 'Roboto', style: 'mono' },
+    { name: 'Creative Bold', heading: 'Montserrat', body: 'Open Sans', style: 'sans-serif' },
+    { name: 'Corporate Standard', heading: 'Arial', body: 'Helvetica', style: 'sans-serif' },
+    { name: 'Designer Choice', heading: 'Poppins', body: 'Nunito', style: 'sans-serif' },
+    { name: 'Editorial Style', heading: 'Crimson Text', body: 'Source Serif Pro', style: 'serif' },
+    { name: 'Startup Fresh', heading: 'Space Grotesk', body: 'DM Sans', style: 'sans-serif' }
+  ];
+
+  // Advanced Layout Templates
+  const advancedTemplates = [
+    { 
+      id: 'executive', 
+      name: 'Executive Suite', 
+      description: 'Premium layout with sophisticated styling',
+      preview: '👔',
+      features: ['Premium Header', 'Signature Area', 'QR Code'],
+      complexity: 'advanced'
+    },
+    { 
+      id: 'creative-agency', 
+      name: 'Creative Agency', 
+      description: 'Bold design with creative elements',
+      preview: '🎨',
+      features: ['Asymmetric Layout', 'Color Blocks', 'Custom Graphics'],
+      complexity: 'advanced'
+    },
+    { 
+      id: 'tech-startup', 
+      name: 'Tech Startup', 
+      description: 'Modern tech-focused design',
+      preview: '💻',
+      features: ['Code-Style Elements', 'Gradient Backgrounds', 'Icons'],
+      complexity: 'intermediate'
+    },
+    { 
+      id: 'legal-professional', 
+      name: 'Legal Professional', 
+      description: 'Conservative and trustworthy design',
+      preview: '⚖️',
+      features: ['Traditional Layout', 'Security Elements', 'Formal Styling'],
+      complexity: 'standard'
+    },
+    { 
+      id: 'medical-healthcare', 
+      name: 'Medical & Healthcare', 
+      description: 'Clean and professional medical styling',
+      preview: '🏥',
+      features: ['Medical Icons', 'Clean Typography', 'Trust Elements'],
+      complexity: 'standard'
+    },
+    { 
+      id: 'fashion-retail', 
+      name: 'Fashion & Retail', 
+      description: 'Stylish and trendy design',
+      preview: '👗',
+      features: ['Fashion Elements', 'Elegant Typography', 'Lifestyle Imagery'],
+      complexity: 'intermediate'
+    }
+  ];
+
+  // Animation Presets
+  const animationPresets = [
+    { name: 'None', value: 'none', description: 'No animations' },
+    { name: 'Subtle Fade', value: 'fade', description: 'Gentle fade-in effects' },
+    { name: 'Slide In', value: 'slide', description: 'Elements slide into view' },
+    { name: 'Scale Up', value: 'scale', description: 'Elements scale into view' },
+    { name: 'Bounce', value: 'bounce', description: 'Playful bounce effects' },
+    { name: 'Professional', value: 'professional', description: 'Smooth professional transitions' }
+  ];
+
+  // Conditional Formatting Rules
+  const conditionalRules = [
+    { condition: 'amount_over_10000', action: 'highlight_total', label: 'Highlight totals over ₹10,000' },
+    { condition: 'overdue_status', action: 'red_border', label: 'Red border for overdue invoices' },
+    { condition: 'vip_client', action: 'premium_styling', label: 'Premium styling for VIP clients' },
+    { condition: 'first_time_client', action: 'welcome_message', label: 'Welcome message for new clients' }
   ];
 
   return (
     <Card className="mb-6">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold flex items-center">
-            <Settings2 className="mr-2 h-5 w-5" />
+          <h3 className="text-xl font-bold flex items-center bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <Sparkles className="mr-2 h-6 w-6 text-blue-600" />
             Advanced Invoice Customization
+            <span className="ml-2 text-xs bg-gradient-to-r from-blue-500 to-purple-500 text-white px-2 py-1 rounded-full">PRO</span>
           </h3>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPreviewMode(previewMode === 'desktop' ? 'mobile' : 'desktop')}>
+              <MonitorSpeaker className="mr-2 h-4 w-4" />
+              {previewMode === 'desktop' ? 'Mobile' : 'Desktop'} Preview
+            </Button>
             <Button variant="outline" size="sm" onClick={onResetCustomizations}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset All
@@ -107,47 +236,73 @@ const InvoiceCustomizer = ({
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-5 w-full mb-6">
-            <TabsTrigger value="layout" className="flex items-center">
-              <Layout className="mr-2 h-4 w-4" />
+          <TabsList className="grid grid-cols-8 w-full mb-6">
+            <TabsTrigger value="layout" className="flex items-center text-xs">
+              <Layout className="mr-1 h-3 w-3" />
               Layout
             </TabsTrigger>
-            <TabsTrigger value="colors" className="flex items-center">
-              <Palette className="mr-2 h-4 w-4" />
+            <TabsTrigger value="colors" className="flex items-center text-xs">
+              <Palette className="mr-1 h-3 w-3" />
               Colors
             </TabsTrigger>
-            <TabsTrigger value="typography" className="flex items-center">
-              <Type className="mr-2 h-4 w-4" />
+            <TabsTrigger value="typography" className="flex items-center text-xs">
+              <Type className="mr-1 h-3 w-3" />
               Typography
             </TabsTrigger>
-            <TabsTrigger value="spacing" className="flex items-center">
-              <Move className="mr-2 h-4 w-4" />
+            <TabsTrigger value="spacing" className="flex items-center text-xs">
+              <Move className="mr-1 h-3 w-3" />
               Spacing
             </TabsTrigger>
-            <TabsTrigger value="branding" className="flex items-center">
-              <Image className="mr-2 h-4 w-4" />
+            <TabsTrigger value="branding" className="flex items-center text-xs">
+              <Image className="mr-1 h-3 w-3" />
               Branding
+            </TabsTrigger>
+            <TabsTrigger value="effects" className="flex items-center text-xs">
+              <Wand2 className="mr-1 h-3 w-3" />
+              Effects
+            </TabsTrigger>
+            <TabsTrigger value="conditional" className="flex items-center text-xs">
+              <Filter className="mr-1 h-3 w-3" />
+              Rules
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center text-xs">
+              <Code className="mr-1 h-3 w-3" />
+              Advanced
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="layout" className="space-y-6">
             <div>
-              <Label className="text-base font-medium mb-4 block">Template Selection</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {templates.map(template => (
+              <Label className="text-base font-medium mb-4 block">Advanced Template Selection</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {advancedTemplates.map(template => (
                   <div 
                     key={template.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                    className={`border rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${
                       customizations.template === template.id 
-                        ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                        ? 'border-primary bg-gradient-to-br from-primary/5 to-primary/10 ring-2 ring-primary/20 shadow-lg' 
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => handleInputChange('template', template.id)}
                   >
                     <div className="text-center">
-                      <div className="text-2xl mb-2">{template.preview}</div>
-                      <h4 className="font-medium text-sm">{template.name}</h4>
-                      <p className="text-xs text-gray-500 mt-1">{template.description}</p>
+                      <div className="text-3xl mb-3">{template.preview}</div>
+                      <h4 className="font-semibold text-sm mb-1">{template.name}</h4>
+                      <p className="text-xs text-gray-500 mb-2">{template.description}</p>
+                      <div className="flex flex-wrap gap-1 justify-center mb-2">
+                        {template.features.map(feature => (
+                          <span key={feature} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            {feature}
+                          </span>
+                        ))}
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        template.complexity === 'advanced' ? 'bg-red-100 text-red-800' :
+                        template.complexity === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {template.complexity}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -156,7 +311,7 @@ const InvoiceCustomizer = ({
 
             <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <Label className="text-sm font-medium mb-2 block">Page Layout</Label>
                 <Select 
@@ -169,8 +324,10 @@ const InvoiceCustomizer = ({
                   <SelectContent>
                     <SelectItem value="portrait">Portrait (A4)</SelectItem>
                     <SelectItem value="landscape">Landscape (A4)</SelectItem>
-                    <SelectItem value="letter">Letter Size</SelectItem>
-                    <SelectItem value="legal">Legal Size</SelectItem>
+                    <SelectItem value="letter">Letter Size (US)</SelectItem>
+                    <SelectItem value="legal">Legal Size (US)</SelectItem>
+                    <SelectItem value="a3">A3 Large Format</SelectItem>
+                    <SelectItem value="custom">Custom Size</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -190,25 +347,59 @@ const InvoiceCustomizer = ({
                     <SelectItem value="split">Split Layout</SelectItem>
                     <SelectItem value="banner">Full Banner</SelectItem>
                     <SelectItem value="minimal">Minimal</SelectItem>
+                    <SelectItem value="gradient">Gradient Background</SelectItem>
+                    <SelectItem value="image">Image Background</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Footer Style</Label>
+                <Select 
+                  value={customizations.footerStyle || 'standard'} 
+                  onValueChange={(value) => handleInputChange('footerStyle', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select footer style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard</SelectItem>
+                    <SelectItem value="minimal">Minimal</SelectItem>
+                    <SelectItem value="detailed">Detailed</SelectItem>
+                    <SelectItem value="contact-focused">Contact Focused</SelectItem>
+                    <SelectItem value="social-media">Social Media</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Show Watermark</Label>
+                <Label className="text-sm font-medium">Watermark</Label>
                 <Switch 
                   checked={customizations.showWatermark}
                   onCheckedChange={(checked) => handleInputChange('showWatermark', checked)}
                 />
               </div>
-
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Show Page Numbers</Label>
+                <Label className="text-sm font-medium">Page Numbers</Label>
                 <Switch 
                   checked={customizations.showPageNumbers}
                   onCheckedChange={(checked) => handleInputChange('showPageNumbers', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">QR Code</Label>
+                <Switch 
+                  checked={customizations.showQRCode || false}
+                  onCheckedChange={(checked) => handleInputChange('showQRCode', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Signature Area</Label>
+                <Switch 
+                  checked={customizations.showSignature || false}
+                  onCheckedChange={(checked) => handleInputChange('showSignature', checked)}
                 />
               </div>
             </div>
@@ -216,14 +407,14 @@ const InvoiceCustomizer = ({
 
           <TabsContent value="colors" className="space-y-6">
             <div>
-              <Label className="text-base font-medium mb-4 block">Color Presets</Label>
+              <Label className="text-base font-medium mb-4 block">Advanced Color Themes</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                {colorPresets.map(preset => (
+                {advancedColorPresets.map(preset => (
                   <div
                     key={preset.name}
-                    className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                    className={`border rounded-xl p-3 cursor-pointer transition-all hover:shadow-md hover:scale-105 ${
                       customizations.colorPreset === preset.name
-                        ? 'border-primary ring-2 ring-primary/20'
+                        ? 'border-primary ring-2 ring-primary/20 shadow-lg'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => {
@@ -231,14 +422,22 @@ const InvoiceCustomizer = ({
                       handleInputChange('primaryColor', preset.primary);
                       handleInputChange('secondaryColor', preset.secondary);
                       handleInputChange('accentColor', preset.accent);
+                      handleInputChange('gradientBackground', preset.gradient);
                     }}
                   >
+                    <div 
+                      className="w-full h-8 rounded-lg mb-2"
+                      style={{ background: preset.gradient }}
+                    ></div>
                     <div className="flex space-x-1 mb-2">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.primary }}></div>
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.secondary }}></div>
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: preset.accent }}></div>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.primary }}></div>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.secondary }}></div>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: preset.accent }}></div>
                     </div>
-                    <p className="text-xs font-medium">{preset.name}</p>
+                    <p className="text-xs font-medium mb-1">{preset.name}</p>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {preset.theme}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -246,127 +445,159 @@ const InvoiceCustomizer = ({
 
             <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <Label className="text-sm font-medium mb-2 block">Primary Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.primaryColor}
-                    onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    type="text"
-                    value={customizations.primaryColor}
-                    onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                    placeholder="#1a56db"
-                    className="flex-1"
-                  />
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="color"
+                      value={customizations.primaryColor}
+                      onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                      className="w-12 h-10 p-1 border rounded"
+                    />
+                    <Input
+                      type="text"
+                      value={customizations.primaryColor}
+                      onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                      placeholder="#1a56db"
+                      className="flex-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500 mb-1 block">Opacity</Label>
+                    <Slider
+                      value={[customizations.primaryOpacity || 100]}
+                      onValueChange={(value) => handleInputChange('primaryOpacity', value[0])}
+                      min={10}
+                      max={100}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
                 <Label className="text-sm font-medium mb-2 block">Secondary Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.secondaryColor}
-                    onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    type="text"
-                    value={customizations.secondaryColor}
-                    onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                    placeholder="#3b82f6"
-                    className="flex-1"
-                  />
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="color"
+                      value={customizations.secondaryColor}
+                      onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
+                      className="w-12 h-10 p-1 border rounded"
+                    />
+                    <Input
+                      type="text"
+                      value={customizations.secondaryColor}
+                      onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
+                      placeholder="#3b82f6"
+                      className="flex-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500 mb-1 block">Opacity</Label>
+                    <Slider
+                      value={[customizations.secondaryOpacity || 100]}
+                      onValueChange={(value) => handleInputChange('secondaryOpacity', value[0])}
+                      min={10}
+                      max={100}
+                      step={5}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
                 <Label className="text-sm font-medium mb-2 block">Accent Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.accentColor}
-                    onChange={(e) => handleInputChange('accentColor', e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    type="text"
-                    value={customizations.accentColor}
-                    onChange={(e) => handleInputChange('accentColor', e.target.value)}
-                    placeholder="#60a5fa"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Background Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.backgroundColor}
-                    onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    type="text"
-                    value={customizations.backgroundColor}
-                    onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
-                    placeholder="#ffffff"
-                    className="flex-1"
-                  />
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="color"
+                      value={customizations.accentColor}
+                      onChange={(e) => handleInputChange('accentColor', e.target.value)}
+                      className="w-12 h-10 p-1 border rounded"
+                    />
+                    <Input
+                      type="text"
+                      value={customizations.accentColor}
+                      onChange={(e) => handleInputChange('accentColor', e.target.value)}
+                      placeholder="#60a5fa"
+                      className="flex-1"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div>
-                <Label className="text-sm font-medium mb-2 block">Text Color</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    type="color"
-                    value={customizations.textColor}
-                    onChange={(e) => handleInputChange('textColor', e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    type="text"
-                    value={customizations.textColor}
-                    onChange={(e) => handleInputChange('textColor', e.target.value)}
-                    placeholder="#000000"
-                    className="flex-1"
-                  />
+                <Label className="text-sm font-medium mb-2 block">Background</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      type="color"
+                      value={customizations.backgroundColor}
+                      onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
+                      className="w-12 h-10 p-1 border rounded"
+                    />
+                    <Input
+                      type="text"
+                      value={customizations.backgroundColor}
+                      onChange={(e) => handleInputChange('backgroundColor', e.target.value)}
+                      placeholder="#ffffff"
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      checked={customizations.useGradientBackground || false}
+                      onCheckedChange={(checked) => handleInputChange('useGradientBackground', checked)}
+                    />
+                    <Label className="text-xs">Use Gradient</Label>
+                  </div>
                 </div>
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="typography" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Font Family</Label>
-                <Select 
-                  value={customizations.fontFamily} 
-                  onValueChange={(value) => handleInputChange('fontFamily', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select font family" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fontFamilies.map(font => (
-                      <SelectItem key={font} value={font} style={{ fontFamily: font }}>
-                        {font}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div>
+              <Label className="text-base font-medium mb-4 block">Font Combinations</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {fontCombinations.map(combo => (
+                  <div
+                    key={combo.name}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                      customizations.fontCombination === combo.name
+                        ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => {
+                      handleInputChange('fontCombination', combo.name);
+                      handleInputChange('headingFont', combo.heading);
+                      handleInputChange('bodyFont', combo.body);
+                    }}
+                  >
+                    <div className="text-center">
+                      <h4 className="font-semibold text-sm mb-2" style={{ fontFamily: combo.heading }}>
+                        {combo.name}
+                      </h4>
+                      <p className="text-xs text-gray-600 mb-2" style={{ fontFamily: combo.body }}>
+                        Sample text with this combination
+                      </p>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {combo.style}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <Label className="text-sm font-medium mb-2 block">Base Font Size</Label>
                 <div className="flex items-center space-x-4">
@@ -374,43 +605,26 @@ const InvoiceCustomizer = ({
                     value={[customizations.baseFontSize]}
                     onValueChange={(value) => handleInputChange('baseFontSize', value[0])}
                     min={8}
-                    max={16}
-                    step={1}
+                    max={20}
+                    step={0.5}
                     className="flex-1"
                   />
-                  <span className="text-sm font-medium w-8">{customizations.baseFontSize}px</span>
+                  <span className="text-sm font-medium w-12">{customizations.baseFontSize}px</span>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <Label className="text-sm font-medium mb-2 block">Header Font Size</Label>
+                <Label className="text-sm font-medium mb-2 block">Heading Size</Label>
                 <div className="flex items-center space-x-4">
                   <Slider
                     value={[customizations.headerFontSize]}
                     onValueChange={(value) => handleInputChange('headerFontSize', value[0])}
                     min={16}
-                    max={48}
+                    max={64}
                     step={2}
                     className="flex-1"
                   />
                   <span className="text-sm font-medium w-12">{customizations.headerFontSize}px</span>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Title Font Size</Label>
-                <div className="flex items-center space-x-4">
-                  <Slider
-                    value={[customizations.titleFontSize]}
-                    onValueChange={(value) => handleInputChange('titleFontSize', value[0])}
-                    min={12}
-                    max={24}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm font-medium w-12">{customizations.titleFontSize}px</span>
                 </div>
               </div>
 
@@ -421,16 +635,31 @@ const InvoiceCustomizer = ({
                     value={[customizations.lineHeight]}
                     onValueChange={(value) => handleInputChange('lineHeight', value[0])}
                     min={1.0}
-                    max={2.0}
+                    max={3.0}
                     step={0.1}
                     className="flex-1"
                   />
                   <span className="text-sm font-medium w-8">{customizations.lineHeight}</span>
                 </div>
               </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Letter Spacing</Label>
+                <div className="flex items-center space-x-4">
+                  <Slider
+                    value={[customizations.letterSpacing || 0]}
+                    onValueChange={(value) => handleInputChange('letterSpacing', value[0])}
+                    min={-2}
+                    max={5}
+                    step={0.1}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-medium w-12">{customizations.letterSpacing || 0}px</span>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Bold Headers</Label>
                 <Switch 
@@ -438,12 +667,25 @@ const InvoiceCustomizer = ({
                   onCheckedChange={(checked) => handleInputChange('boldHeaders', checked)}
                 />
               </div>
-
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Uppercase Titles</Label>
                 <Switch 
                   checked={customizations.uppercaseTitles}
                   onCheckedChange={(checked) => handleInputChange('uppercaseTitles', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Text Shadows</Label>
+                <Switch 
+                  checked={customizations.textShadows || false}
+                  onCheckedChange={(checked) => handleInputChange('textShadows', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Italic Accents</Label>
+                <Switch 
+                  checked={customizations.italicAccents || false}
+                  onCheckedChange={(checked) => handleInputChange('italicAccents', checked)}
                 />
               </div>
             </div>
@@ -676,6 +918,288 @@ const InvoiceCustomizer = ({
                 onChange={(e) => handleInputChange('watermarkText', e.target.value)}
                 placeholder="CONFIDENTIAL"
               />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="effects" className="space-y-6">
+            <div>
+              <Label className="text-base font-medium mb-4 block">Visual Effects & Animations</Label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Animation Style</Label>
+                  <Select 
+                    value={customizations.animationStyle || 'none'} 
+                    onValueChange={(value) => handleInputChange('animationStyle', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select animation style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {animationPresets.map(preset => (
+                        <SelectItem key={preset.value} value={preset.value}>
+                          <div>
+                            <div className="font-medium">{preset.name}</div>
+                            <div className="text-xs text-gray-500">{preset.description}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Shadow Intensity</Label>
+                  <div className="flex items-center space-x-4">
+                    <Slider
+                      value={[customizations.shadowIntensity || 0]}
+                      onValueChange={(value) => handleInputChange('shadowIntensity', value[0])}
+                      min={0}
+                      max={10}
+                      step={1}
+                      className="flex-1"
+                    />
+                    <span className="text-sm font-medium w-8">{customizations.shadowIntensity || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Hover Effects</Label>
+                  <Switch 
+                    checked={customizations.hoverEffects || false}
+                    onCheckedChange={(checked) => handleInputChange('hoverEffects', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Gradient Overlays</Label>
+                  <Switch 
+                    checked={customizations.gradientOverlays || false}
+                    onCheckedChange={(checked) => handleInputChange('gradientOverlays', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Pattern Background</Label>
+                  <Switch 
+                    checked={customizations.patternBackground || false}
+                    onCheckedChange={(checked) => handleInputChange('patternBackground', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Glowing Elements</Label>
+                  <Switch 
+                    checked={customizations.glowingElements || false}
+                    onCheckedChange={(checked) => handleInputChange('glowingElements', checked)}
+                  />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="conditional" className="space-y-6">
+            <div>
+              <Label className="text-base font-medium mb-4 block">Conditional Formatting Rules</Label>
+              <p className="text-sm text-gray-600 mb-4">
+                Set up rules that automatically apply different styling based on invoice data
+              </p>
+              
+              <div className="space-y-4">
+                {conditionalRules.map((rule, index) => (
+                  <div key={rule.condition} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="font-medium">{rule.label}</Label>
+                      <Switch 
+                        checked={customizations.conditionalRules?.[rule.condition] || false}
+                        onCheckedChange={(checked) => {
+                          const newRules = { ...customizations.conditionalRules, [rule.condition]: checked };
+                          handleInputChange('conditionalRules', newRules);
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      When {rule.condition.replace(/_/g, ' ')}, apply {rule.action.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6">
+            <div>
+              <Label className="text-base font-medium mb-4 block">Advanced Features</Label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center">
+                    <QrCode className="mr-2 h-4 w-4" />
+                    QR Code Settings
+                  </h4>
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">QR Code Content</Label>
+                    <Select 
+                      value={customizations.qrCodeContent || 'invoice_url'} 
+                      onValueChange={(value) => handleInputChange('qrCodeContent', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select QR content" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="invoice_url">Invoice URL</SelectItem>
+                        <SelectItem value="payment_link">Payment Link</SelectItem>
+                        <SelectItem value="company_website">Company Website</SelectItem>
+                        <SelectItem value="contact_info">Contact Information</SelectItem>
+                        <SelectItem value="custom">Custom Text</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {customizations.qrCodeContent === 'custom' && (
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Custom QR Content</Label>
+                      <Textarea
+                        value={customizations.customQRContent || ''}
+                        onChange={(e) => handleInputChange('customQRContent', e.target.value)}
+                        placeholder="Enter custom QR code content..."
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center">
+                    <PenTool className="mr-2 h-4 w-4" />
+                    Digital Signature
+                  </h4>
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Signature Position</Label>
+                    <Select 
+                      value={customizations.signaturePosition || 'bottom_right'} 
+                      onValueChange={(value) => handleInputChange('signaturePosition', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select signature position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bottom_left">Bottom Left</SelectItem>
+                        <SelectItem value="bottom_right">Bottom Right</SelectItem>
+                        <SelectItem value="bottom_center">Bottom Center</SelectItem>
+                        <SelectItem value="custom">Custom Position</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Signature Text</Label>
+                    <Input
+                      value={customizations.signatureText || 'Authorized Signature'}
+                      onChange={(e) => handleInputChange('signatureText', e.target.value)}
+                      placeholder="Signature line text"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <h4 className="font-medium flex items-center">
+                  <Globe className="mr-2 h-4 w-4" />
+                  Multi-Language Support
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Primary Language</Label>
+                    <Select 
+                      value={customizations.primaryLanguage || 'en'} 
+                      onValueChange={(value) => handleInputChange('primaryLanguage', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="hi">Hindi</SelectItem>
+                        <SelectItem value="mr">Marathi</SelectItem>
+                        <SelectItem value="gu">Gujarati</SelectItem>
+                        <SelectItem value="ta">Tamil</SelectItem>
+                        <SelectItem value="te">Telugu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Currency Format</Label>
+                    <Select 
+                      value={customizations.currencyFormat || 'INR'} 
+                      onValueChange={(value) => handleInputChange('currencyFormat', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INR">₹ Indian Rupee</SelectItem>
+                        <SelectItem value="USD">$ US Dollar</SelectItem>
+                        <SelectItem value="EUR">€ Euro</SelectItem>
+                        <SelectItem value="GBP">£ British Pound</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Date Format</Label>
+                    <Select 
+                      value={customizations.dateFormat || 'DD/MM/YYYY'} 
+                      onValueChange={(value) => handleInputChange('dateFormat', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                        <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                        <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                        <SelectItem value="DD-MM-YYYY">DD-MM-YYYY</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Print Optimization</Label>
+                  <Switch 
+                    checked={customizations.printOptimization || false}
+                    onCheckedChange={(checked) => handleInputChange('printOptimization', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Mobile Responsive</Label>
+                  <Switch 
+                    checked={customizations.mobileResponsive || true}
+                    onCheckedChange={(checked) => handleInputChange('mobileResponsive', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Dark Mode Support</Label>
+                  <Switch 
+                    checked={customizations.darkModeSupport || false}
+                    onCheckedChange={(checked) => handleInputChange('darkModeSupport', checked)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Accessibility Features</Label>
+                  <Switch 
+                    checked={customizations.accessibilityFeatures || false}
+                    onCheckedChange={(checked) => handleInputChange('accessibilityFeatures', checked)}
+                  />
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
