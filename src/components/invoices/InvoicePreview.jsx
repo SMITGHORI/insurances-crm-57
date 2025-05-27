@@ -215,12 +215,35 @@ ${invoiceData.clientEmail}`;
         </div>
 
         {showPreview && (
-          <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100 p-2 sm:p-4">
-            <div className="bg-white shadow-lg mx-auto overflow-hidden" style={{ maxWidth: '210mm', minHeight: '297mm' }}>
-              <div ref={invoiceRef} className="w-full">
-                <ProfessionalInvoiceTemplate 
-                  invoice={invoiceData}
-                />
+          <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
+            {/* A4 Container with proper scaling */}
+            <div className="w-full overflow-x-auto">
+              <div 
+                className="bg-white shadow-lg mx-auto"
+                style={{ 
+                  width: '210mm',
+                  minHeight: '297mm',
+                  transform: 'scale(0.8)',
+                  transformOrigin: 'top center',
+                  margin: '0 auto'
+                }}
+              >
+                <div ref={invoiceRef} className="w-full h-full">
+                  <ProfessionalInvoiceTemplate 
+                    invoice={invoiceData}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Mobile responsive view */}
+            <div className="block md:hidden">
+              <div className="bg-white mx-2 my-4 rounded-lg shadow-lg overflow-hidden">
+                <div ref={invoiceRef} className="w-full">
+                  <ProfessionalInvoiceTemplate 
+                    invoice={invoiceData}
+                  />
+                </div>
               </div>
             </div>
           </div>
