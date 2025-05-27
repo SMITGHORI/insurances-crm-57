@@ -6,41 +6,9 @@ import { Download, Printer, Share2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import InvoiceTemplateRenderer from './InvoiceTemplateRenderer';
+import ProfessionalInvoiceTemplate from './ProfessionalInvoiceTemplate';
 
-const InvoicePreview = ({ 
-  invoice, 
-  customizations = {
-    template: 'standard',
-    primaryColor: '#3b82f6',
-    secondaryColor: '#1e40af',
-    accentColor: '#60a5fa',
-    backgroundColor: '#ffffff',
-    baseFontSize: 14,
-    headerFontSize: 24,
-    lineHeight: 1.5,
-    pageMargins: 20,
-    sectionSpacing: 16,
-    tableRowHeight: 8,
-    headerHeight: 60,
-    footerHeight: 30,
-    logoSize: 60,
-    logoPosition: 'top-left',
-    logoUrl: '/placeholder.svg',
-    companyName: 'AMBA INSURANCE SERVICES',
-    companyAddress: 'Mumbai Corporate Office\n123 Business District, Bandra Kurla Complex\nMumbai, Maharashtra 400051, India',
-    companyPhone: '+91 22 6789 1234',
-    companyEmail: 'info@ambainsurance.com',
-    companyWebsite: 'www.ambainsurance.com',
-    watermarkText: 'CONFIDENTIAL',
-    showBorders: true,
-    roundedCorners: true,
-    boldHeaders: true,
-    uppercaseTitles: false,
-    showWatermark: false,
-    showPageNumbers: true
-  }
-}) => {
+const InvoicePreview = ({ invoice }) => {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const invoiceRef = useRef(null);
@@ -51,13 +19,20 @@ const InvoicePreview = ({
     id: '1',
     invoiceNumber: 'INV-2024-001',
     clientName: 'Sample Client',
-    date: new Date().toLocaleDateString(),
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+    clientEmail: 'client@example.com',
+    clientPhone: '+91 98765 43210',
+    clientAddress: '123 Sample Street, Mumbai, Maharashtra 400001',
+    issueDate: new Date().toISOString(),
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     items: [
-      { description: 'Consulting Services', amount: '5000' },
-      { description: 'Project Management', amount: '3000' }
+      { description: 'Health Insurance Premium', quantity: 1, unitPrice: 5000, tax: 900, total: 5900 },
+      { description: 'Processing Fee', quantity: 1, unitPrice: 500, tax: 90, total: 590 }
     ],
-    total: '8000'
+    subtotal: 5500,
+    discount: 0,
+    tax: 990,
+    total: 6490,
+    paymentTerms: 'Due on Receipt'
   };
 
   const invoiceData = invoice || defaultInvoice;
@@ -72,7 +47,7 @@ const InvoicePreview = ({
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: customizations.backgroundColor || '#ffffff'
+        backgroundColor: '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -113,24 +88,36 @@ const InvoicePreview = ({
     });
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Invoice ${invoiceData.invoiceNumber}`,
-          text: `Invoice for ${invoiceData.clientName}`,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({
-        title: "Link Copied",
-        description: "Invoice link has been copied to clipboard.",
-      });
-    }
+  const handleShare = () => {
+    const invoiceText = `Invoice ${invoiceData.invoiceNumber} for ${invoiceData.clientName}
+Amount: ₹${invoiceData.total}
+Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}
+
+Client Details:
+${invoiceData.clientName}
+${invoiceData.clientPhone}
+${invoiceData.clientEmail}`;
+
+    // Open email
+    const emailSubject = encodeURIComponent(`Invoice ${invoiceData.invoiceNumber} - ${invoiceData.clientName}`);
+    const emailBody = encodeURIComponent(invoiceText);
+    const emailUrl = `mailto:${invoiceData.clientEmail}?subject=${emailSubject}&body=${emailBody}`;
+    
+    // Open WhatsApp
+    const whatsappText = encodeURIComponent(invoiceText);
+    const whatsappPhone = invoiceData.clientPhone?.replace(/[^\d]/g, ''); // Remove non-digits
+    const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${whatsappText}`;
+    
+    // Open both
+    window.open(emailUrl, '_blank');
+    setTimeout(() => {
+      window.open(whatsappUrl, '_blank');
+    }, 1000);
+
+    toast({
+      title: "Share Options Opened",
+      description: "Email and WhatsApp have been opened with client details.",
+    });
   };
 
   return (
@@ -179,11 +166,8 @@ const InvoicePreview = ({
           <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100 p-4">
             <div className="bg-white shadow-lg mx-auto" style={{ maxWidth: '8.5in' }}>
               <div ref={invoiceRef}>
-                <InvoiceTemplateRenderer 
-                  template={customizations.template || 'standard'}
-                  customizations={customizations}
+                <ProfessionalInvoiceTemplate 
                   invoice={invoiceData}
-                  logo={customizations.logoUrl || '/placeholder.svg'}
                 />
               </div>
             </div>

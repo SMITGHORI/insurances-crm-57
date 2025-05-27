@@ -80,11 +80,21 @@ const InvoiceForm = () => {
       policyId: '',
       agentId: '',
       issueDate: new Date(),
-      dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+      dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
       status: 'draft',
       notes: '',
       paymentTerms: 'Due on receipt',
-      premiumType: 'Annual'
+      premiumType: 'Annual',
+      coverageStartDate: new Date(),
+      coverageEndDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      commissionRate: '',
+      commissionAmount: '',
+      brokerageDetails: '',
+      policyType: '',
+      sumInsured: '',
+      deductible: '',
+      gstNumber: '',
+      panNumber: ''
     }
   });
   
@@ -128,7 +138,17 @@ const InvoiceForm = () => {
             status: existingInvoice.status,
             notes: existingInvoice.notes || '',
             paymentTerms: existingInvoice.paymentTerms || 'Due on receipt',
-            premiumType: existingInvoice.premiumType || 'Annual'
+            premiumType: existingInvoice.premiumType || 'Annual',
+            coverageStartDate: existingInvoice.coverageStartDate ? new Date(existingInvoice.coverageStartDate) : new Date(),
+            coverageEndDate: existingInvoice.coverageEndDate ? new Date(existingInvoice.coverageEndDate) : new Date(),
+            commissionRate: existingInvoice.commissionRate || '',
+            commissionAmount: existingInvoice.commissionAmount || '',
+            brokerageDetails: existingInvoice.brokerageDetails || '',
+            policyType: existingInvoice.policyType || '',
+            sumInsured: existingInvoice.sumInsured || '',
+            deductible: existingInvoice.deductible || '',
+            gstNumber: existingInvoice.gstNumber || '',
+            panNumber: existingInvoice.panNumber || ''
           });
           
           setInvoiceItems(existingInvoice.items);
@@ -195,15 +215,9 @@ const InvoiceForm = () => {
         
         setInvoiceItems([newItem]);
         
-        // Set premium period based on policy
         if (selectedPolicy.startDate && selectedPolicy.endDate) {
-          const startDate = new Date(selectedPolicy.startDate);
-          const endDate = new Date(selectedPolicy.endDate);
-          
-          const startFormatted = format(startDate, 'MMM yyyy');
-          const endFormatted = format(endDate, 'MMM yyyy');
-          
-          form.setValue('premiumPeriod', `${startFormatted} - ${endFormatted}`);
+          form.setValue('coverageStartDate', new Date(selectedPolicy.startDate));
+          form.setValue('coverageEndDate', new Date(selectedPolicy.endDate));
         }
       }
     }
@@ -282,7 +296,7 @@ const InvoiceForm = () => {
       clientAddress: selectedClient?.location || '',
       policyId: data.policyId || undefined,
       policyNumber: selectedPolicy?.policyNumber || undefined,
-      insuranceType: selectedPolicy?.type || undefined,
+      insuranceType: selectedPolicy?.type || data.policyType || undefined,
       agentId: data.agentId || undefined,
       agentName: selectedAgent?.name || undefined,
       issueDate: format(data.issueDate, 'yyyy-MM-dd'),
@@ -296,11 +310,22 @@ const InvoiceForm = () => {
       notes: data.notes,
       paymentTerms: data.paymentTerms,
       premiumType: data.premiumType,
-      premiumPeriod: data.premiumPeriod || undefined,
+      coverageStartDate: format(data.coverageStartDate, 'yyyy-MM-dd'),
+      coverageEndDate: format(data.coverageEndDate, 'yyyy-MM-dd'),
+      commissionRate: data.commissionRate,
+      commissionAmount: data.commissionAmount,
+      brokerageDetails: data.brokerageDetails,
+      policyType: data.policyType,
+      sumInsured: data.sumInsured,
+      deductible: data.deductible,
+      gstNumber: data.gstNumber,
+      panNumber: data.panNumber,
+      premiumPeriod: `${format(data.coverageStartDate, 'MMM yyyy')} - ${format(data.coverageEndDate, 'MMM yyyy')}`,
       customFields: {
-        ...(selectedClient?.gstNumber ? { "GST Number": selectedClient.gstNumber } : {})
+        ...(selectedClient?.gstNumber ? { "GST Number": selectedClient.gstNumber } : {}),
+        ...(data.gstNumber ? { "GST Number": data.gstNumber } : {}),
+        ...(data.panNumber ? { "PAN Number": data.panNumber } : {})
       },
-      layoutTemplate: 'standard',
       history: [
         {
           action: isEditing ? "Updated" : "Created",
@@ -365,7 +390,7 @@ const InvoiceForm = () => {
             onClick={form.handleSubmit(onSubmit)}
           >
             <Save className="mr-2 h-4 w-4" />
-            {isEditing ? 'Update Invoice' : 'Save Invoice'}
+            {isEditing ? 'Update Invoice' : 'Save & Preview'}
           </Button>
         </div>
       </div>
@@ -374,6 +399,7 @@ const InvoiceForm = () => {
         <div className="lg:col-span-2">
           <Card className="mb-6">
             <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Basic Invoice Information</h3>
               <Form {...form}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <FormField
@@ -529,7 +555,201 @@ const InvoiceForm = () => {
               </Form>
             </CardContent>
           </Card>
+
+          {/* Insurance Specific Fields */}
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Insurance Details</h3>
+              <Form {...form}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="policyType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Policy Type</FormLabel>
+                        <Select 
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Policy Type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Health Insurance">Health Insurance</SelectItem>
+                            <SelectItem value="Life Insurance">Life Insurance</SelectItem>
+                            <SelectItem value="Motor Insurance">Motor Insurance</SelectItem>
+                            <SelectItem value="Travel Insurance">Travel Insurance</SelectItem>
+                            <SelectItem value="Home Insurance">Home Insurance</SelectItem>
+                            <SelectItem value="Business Insurance">Business Insurance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="sumInsured"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sum Insured (₹)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="Enter sum insured" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="coverageStartDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Coverage Start Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick start date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="coverageEndDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Coverage End Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick end date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <FormField
+                    control={form.control}
+                    name="commissionRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commission Rate (%)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="Enter commission rate" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="commissionAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commission Amount (₹)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="Enter commission amount" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="gstNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GST Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter GST number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="panNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PAN Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter PAN number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Form>
+            </CardContent>
+          </Card>
           
+          {/* Invoice Items - keep existing code */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4">Invoice Items</h3>
@@ -639,28 +859,27 @@ const InvoiceForm = () => {
             </CardContent>
           </Card>
           
+          {/* Notes Section */}
           <Card>
             <CardContent className="p-6">
               <Form {...form}>
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            placeholder="Additional notes for the client..." 
-                            className="h-24"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes & Terms</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          {...field} 
+                          placeholder="Additional notes, terms & conditions..." 
+                          className="h-24"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </Form>
             </CardContent>
           </Card>
@@ -733,49 +952,33 @@ const InvoiceForm = () => {
                     )}
                   />
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="premiumType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Premium Type</FormLabel>
-                          <Select 
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Annual">Annual</SelectItem>
-                              <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
-                              <SelectItem value="Quarterly">Quarterly</SelectItem>
-                              <SelectItem value="Monthly">Monthly</SelectItem>
-                              <SelectItem value="One-Time">One-Time</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="premiumPeriod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Premium Period</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="premiumType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Premium Type</FormLabel>
+                        <Select 
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
                           <FormControl>
-                            <Input {...field} placeholder="e.g., May 2025 - May 2026" />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Type" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          <SelectContent>
+                            <SelectItem value="Annual">Annual</SelectItem>
+                            <SelectItem value="Semi-Annual">Semi-Annual</SelectItem>
+                            <SelectItem value="Quarterly">Quarterly</SelectItem>
+                            <SelectItem value="Monthly">Monthly</SelectItem>
+                            <SelectItem value="One-Time">One-Time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </Form>
             </CardContent>

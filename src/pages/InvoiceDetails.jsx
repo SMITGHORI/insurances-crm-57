@@ -6,20 +6,12 @@ import {
   Printer,
   Share,
   Download,
-  Send,
   Edit,
   Trash2,
   Copy,
-  FileText,
   ChevronLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import InvoicePreview from '@/components/invoices/InvoicePreview';
 import InvoiceHistory from '@/components/invoices/InvoiceHistory';
@@ -30,25 +22,20 @@ const InvoiceDetails = () => {
   const navigate = useNavigate();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('preview');
-  const [showShareMenu, setShowShareMenu] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     
-    // Get invoice data from localStorage
     const storedInvoiceData = localStorage.getItem('invoicesData');
     let invoices = [];
     
     if (storedInvoiceData) {
       invoices = JSON.parse(storedInvoiceData);
     } else {
-      // Use sample data
       invoices = getSampleInvoices();
       localStorage.setItem('invoicesData', JSON.stringify(invoices));
     }
     
-    // Find the invoice by ID
     const foundInvoice = invoices.find(inv => inv.id.toString() === id);
     
     if (foundInvoice) {
@@ -66,7 +53,6 @@ const InvoiceDetails = () => {
   };
   
   const handleDeleteInvoice = () => {
-    // Confirm deletion
     if (window.confirm("Are you sure you want to delete this invoice?")) {
       const storedInvoiceData = localStorage.getItem('invoicesData');
       
@@ -88,7 +74,6 @@ const InvoiceDetails = () => {
     if (storedInvoiceData && invoice) {
       const invoices = JSON.parse(storedInvoiceData);
       
-      // Create a new invoice with same data but new ID and invoice number
       const newInvoice = {
         ...invoice,
         id: (Math.max(...invoices.map(inv => parseInt(inv.id))) + 1).toString(),
@@ -113,47 +98,43 @@ const InvoiceDetails = () => {
       navigate(`/invoices/${newInvoice.id}`);
     }
   };
-  
-  const handleSendInvoice = () => {
+
+  const handleShare = () => {
     if (invoice) {
-      // In a real app, this would send an email with the invoice
-      // For now, we'll just update the invoice status and history
+      const invoiceText = `Invoice ${invoice.invoiceNumber} for ${invoice.clientName}
+Amount: ₹${invoice.total}
+Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}
+
+Client Details:
+${invoice.clientName}
+${invoice.clientPhone}
+${invoice.clientEmail}`;
+
+      const emailSubject = encodeURIComponent(`Invoice ${invoice.invoiceNumber} - ${invoice.clientName}`);
+      const emailBody = encodeURIComponent(invoiceText);
+      const emailUrl = `mailto:${invoice.clientEmail}?subject=${emailSubject}&body=${emailBody}`;
       
-      const storedInvoiceData = localStorage.getItem('invoicesData');
+      const whatsappText = encodeURIComponent(invoiceText);
+      const whatsappPhone = invoice.clientPhone?.replace(/[^\d]/g, '');
+      const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${whatsappText}`;
       
-      if (storedInvoiceData) {
-        const invoices = JSON.parse(storedInvoiceData);
-        const updatedInvoices = invoices.map(inv => {
-          if (inv.id.toString() === id) {
-            const updatedInvoice = {
-              ...inv,
-              status: 'sent',
-              history: [
-                ...inv.history,
-                {
-                  action: "Sent",
-                  date: new Date().toISOString().split('T')[0],
-                  user: "Admin",
-                  details: "Invoice sent to client via email"
-                }
-              ]
-            };
-            
-            setInvoice(updatedInvoice);
-            return updatedInvoice;
-          }
-          return inv;
-        });
-        
-        localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
-        
-        toast.success("Invoice sent to client");
-      }
+      window.open(emailUrl, '_blank');
+      setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
+      }, 1000);
+
+      toast.success("Email and WhatsApp opened with client details");
     }
   };
 
-  const handleShareToggle = () => {
-    setShowShareMenu(!showShareMenu);
+  const handlePrint = () => {
+    window.print();
+    toast.success("Print dialog opened");
+  };
+
+  const handleDownload = () => {
+    // This will be handled by the InvoicePreview component
+    toast.success("Download initiated");
   };
 
   if (loading) {
@@ -188,71 +169,18 @@ const InvoiceDetails = () => {
         </div>
         
         <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-          <div className="relative">
-            <Button
-              variant="outline"
-              onClick={handleShareToggle}
-              className="flex items-center"
-            >
-              <Share className="mr-2 h-4 w-4" />
-              Share
-            </Button>
-            
-            {showShareMenu && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                <div className="py-1" role="menu" aria-orientation="vertical">
-                  <Button 
-                    variant="ghost" 
-                    className="flex items-center w-full justify-start px-4 py-2 text-sm text-gray-700"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`Invoice ${invoice.invoiceNumber} for ${invoice.clientName}`);
-                      toast.success("Link copied to clipboard");
-                      setShowShareMenu(false);
-                    }}
-                  >
-                    <Copy className="mr-2 h-4 w-4" /> Copy Link
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className="flex items-center w-full justify-start px-4 py-2 text-sm text-gray-700"
-                    onClick={() => {
-                      window.open(`mailto:?subject=Invoice ${invoice.invoiceNumber}&body=Please find your invoice attached.`);
-                      setShowShareMenu(false);
-                    }}
-                  >
-                    <Send className="mr-2 h-4 w-4" /> Email
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <Button
+            variant="outline"
+            onClick={handleShare}
+            className="flex items-center"
+          >
+            <Share className="mr-2 h-4 w-4" />
+            Share
+          </Button>
           
           <Button
             variant="outline"
-            onClick={() => {
-              const invoiceElement = document.getElementById('invoice-container');
-              if (invoiceElement) {
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                  <html>
-                    <head>
-                      <title>Invoice ${invoice.invoiceNumber}</title>
-                      <style>
-                        body { font-family: Arial, sans-serif; }
-                        .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="invoice-container">
-                        ${invoiceElement.innerHTML}
-                      </div>
-                    </body>
-                  </html>
-                `);
-                printWindow.document.close();
-                printWindow.print();
-              }
-            }}
+            onClick={handlePrint}
             className="flex items-center"
           >
             <Printer className="mr-2 h-4 w-4" />
@@ -261,77 +189,18 @@ const InvoiceDetails = () => {
           
           <Button
             variant="outline"
-            onClick={() => {
-              const invoiceElement = document.getElementById('invoice-container');
-              if (invoiceElement) {
-                const content = `
-                  <html>
-                    <head>
-                      <title>Invoice ${invoice.invoiceNumber}</title>
-                      <style>
-                        body { font-family: Arial, sans-serif; }
-                        .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="invoice-container">
-                        ${invoiceElement.innerHTML}
-                      </div>
-                    </body>
-                  </html>
-                `;
-                
-                const blob = new Blob([content], { type: 'text/html' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `Invoice_${invoice.invoiceNumber}.html`;
-                link.click();
-              }
-            }}
+            onClick={handleDownload}
             className="flex items-center"
           >
             <Download className="mr-2 h-4 w-4" />
             Download
           </Button>
-          
-          {invoice.status === 'draft' && (
-            <Button
-              onClick={handleSendInvoice}
-              className="flex items-center"
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Send Invoice
-            </Button>
-          )}
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="preview" className="w-full" onValueChange={setActiveTab}>
-            <TabsList className="mb-4 grid grid-cols-2 w-full md:w-auto">
-              <TabsTrigger value="preview" className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" />
-                Invoice Preview
-              </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" />
-                History
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="preview" className="mt-0">
-              <Card>
-                <CardContent className="py-6">
-                  <InvoicePreview invoice={invoice} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="history" className="mt-0">
-              <InvoiceHistory history={invoice.history} />
-            </TabsContent>
-          </Tabs>
+          <InvoicePreview invoice={invoice} />
         </div>
         
         <div className="space-y-6">
@@ -404,6 +273,15 @@ const InvoiceDetails = () => {
                     View Policy
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {invoice.history && (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Invoice History</h3>
+                <InvoiceHistory history={invoice.history} />
               </CardContent>
             </Card>
           )}
