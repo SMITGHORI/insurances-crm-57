@@ -1,149 +1,29 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ClientEditForm from '../components/clients/ClientEditForm';
-import { toast } from 'sonner';
+import { useClient } from '../hooks/useClients';
+import { Button } from '@/components/ui/button';
 
+/**
+ * Client Edit page with backend integration
+ * Uses React Query for data fetching
+ */
 const ClientEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [client, setClient] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [documentUploads, setDocumentUploads] = useState({
-    pan: null,
-    aadhaar: null,
-    idProof: null,
-    addressProof: null
-  });
 
-  // Get the clients data from localStorage or use the sample data
-  useEffect(() => {
-    setLoading(true);
-    
-    // Try to get clients from localStorage
-    const storedClientsData = localStorage.getItem('clientsData');
-    let clientsList = [];
-    
-    if (storedClientsData) {
-      clientsList = JSON.parse(storedClientsData);
-    } else {
-      // Sample clients data as fallback
-      clientsList = [
-        {
-          id: 1,
-          clientId: 'AMB-CLI-2025-0001',
-          name: 'Rahul Sharma',
-          type: 'Individual',
-          contact: '+91 9876543210',
-          email: 'rahul.sharma@example.com',
-          location: 'Mumbai, Maharashtra',
-          policies: 3,
-          status: 'Active',
-        },
-        {
-          id: 2,
-          clientId: 'AMB-CLI-2025-0002',
-          name: 'Tech Solutions Ltd',
-          type: 'Corporate',
-          contact: '+91 2234567890',
-          email: 'info@techsolutions.com',
-          location: 'Bangalore, Karnataka',
-          policies: 8,
-          status: 'Active',
-        },
-      ];
-    }
-    
-    // Find the client by id
-    const foundClient = clientsList.find(c => c.id === parseInt(id));
-    
-    if (foundClient) {
-      // Also load any existing document data if present
-      setClient(foundClient);
-      if (foundClient.documents) {
-        setDocumentUploads({
-          pan: foundClient.documents.pan || null,
-          aadhaar: foundClient.documents.aadhaar || null,
-          idProof: foundClient.documents.idProof || null,
-          addressProof: foundClient.documents.addressProof || null
-        });
-      }
-    } else {
-      toast.error(`Client with ID ${id} not found`);
-      // Create a placeholder client if not found
-      setClient({
-        id: parseInt(id),
-        name: `Client #${id}`,
-        type: 'Individual',
-        contact: '',
-        email: '',
-        location: '',
-        policies: 0,
-        status: 'Active',
-      });
-    }
-    
-    setLoading(false);
-  }, [id]);
+  // Fetch client data using React Query
+  const {
+    data: client,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useClient(id);
 
-  // Handle document uploads
-  const handleDocumentUpload = (documentType, file) => {
-    if (!file) return;
-
-    // In a real application, you would upload the file to a server
-    // For this example, we'll create a data URL to simulate file storage
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setDocumentUploads(prev => ({
-        ...prev,
-        [documentType]: {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: event.target.result,
-          uploadDate: new Date().toISOString()
-        }
-      }));
-      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
-    };
-    reader.onerror = () => {
-      toast.error(`Failed to process ${documentType} document`);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Handle save client (update)
-  const handleSaveClient = (updatedClient) => {
-    // Get current clients from localStorage
-    const storedClientsData = localStorage.getItem('clientsData');
-    let clientsList = [];
-    
-    if (storedClientsData) {
-      clientsList = JSON.parse(storedClientsData);
-    }
-    
-    // Add documents data to the updated client
-    updatedClient.documents = documentUploads;
-    
-    // Find the index of the client to update
-    const clientIndex = clientsList.findIndex(c => c.id === updatedClient.id);
-    
-    if (clientIndex !== -1) {
-      // Update the client in the array
-      clientsList[clientIndex] = { ...clientsList[clientIndex], ...updatedClient };
-    } else {
-      // If client doesn't exist, add it
-      clientsList.push(updatedClient);
-    }
-    
-    // Save updated clients list back to localStorage
-    localStorage.setItem('clientsData', JSON.stringify(clientsList));
-    
-    toast.success(`Client ${updatedClient.name} updated successfully`);
-    navigate('/clients');
-  };
-
-  if (loading) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
@@ -151,14 +31,42 @@ const ClientEdit = () => {
     );
   }
 
+  // Error state
+  if (isError) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-600 mb-4">
+          Failed to load client: {error?.message || 'Unknown error'}
+        </div>
+        <div className="space-x-2">
+          <Button onClick={() => refetch()} variant="outline">
+            Retry
+          </Button>
+          <Button onClick={() => navigate('/clients')}>
+            Back to Clients
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Client not found
+  if (!client) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-gray-600 mb-4">
+          Client not found
+        </div>
+        <Button onClick={() => navigate('/clients')}>
+          Back to Clients
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto">
-      <ClientEditForm 
-        client={client} 
-        onSave={handleSaveClient} 
-        documentUploads={documentUploads}
-        onDocumentUpload={handleDocumentUpload}
-      />
+      <ClientEditForm client={client} />
     </div>
   );
 };

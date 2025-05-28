@@ -1,141 +1,66 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Building, User, Group } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
 import ClientFilters from '../components/clients/ClientFilters';
-import { generateClientId, ensureClientIds } from '../utils/idGenerator';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ClientTable from '../components/clients/ClientTable';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useClients, useDeleteClient, useCreateClient } from '../hooks/useClients';
+import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * Clients page with backend integration
+ * Uses React Query for data fetching and state management
+ */
 const Clients = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  
+  // UI state
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [clientTypeFilter, setClientTypeFilter] = useState('all');
-  const [sortField, setSortField] = useState('name');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
 
-  // Initialize clients state with sample data
-  const [clients, setClients] = useState([
-    {
-      id: 1,
-      clientId: 'AMB-CLI-2025-0001',
-      name: 'Rahul Sharma',
-      type: 'Individual',
-      contact: '+91 9876543210',
-      email: 'rahul.sharma@example.com',
-      location: 'Mumbai, Maharashtra',
-      policies: 3,
-      status: 'Active',
-    },
-    {
-      id: 2,
-      clientId: 'AMB-CLI-2025-0002',
-      name: 'Tech Solutions Ltd',
-      type: 'Corporate',
-      contact: '+91 2234567890',
-      email: 'info@techsolutions.com',
-      location: 'Bangalore, Karnataka',
-      policies: 8,
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Sanjay Group',
-      type: 'Group',
-      contact: '+91 8765432109',
-      email: 'contact@sanjaygroup.com',
-      location: 'Delhi, Delhi',
-      policies: 12,
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'Priya Desai',
-      type: 'Individual',
-      contact: '+91 7654321098',
-      email: 'priya.desai@example.com',
-      location: 'Pune, Maharashtra',
-      policies: 2,
-      status: 'Inactive',
-    },
-    {
-      id: 5,
-      name: 'Global Services Inc',
-      type: 'Corporate',
-      contact: '+91 6543210987',
-      email: 'info@globalservices.com',
-      location: 'Chennai, Tamil Nadu',
-      policies: 5,
-      status: 'Active',
-    },
-    {
-      id: 6,
-      name: 'Family Health Group',
-      type: 'Group',
-      contact: '+91 5432109876',
-      email: 'contact@familyhealth.org',
-      location: 'Hyderabad, Telangana',
-      policies: 9,
-      status: 'Active',
-    },
-    {
-      id: 7,
-      name: 'Vikram Malhotra',
-      type: 'Individual',
-      contact: '+91 4321098765',
-      email: 'vikram.m@example.com',
-      location: 'Jaipur, Rajasthan',
-      policies: 1,
-      status: 'Active',
-    },
-    {
-      id: 8,
-      name: 'Innovative Tech Ltd',
-      type: 'Corporate',
-      contact: '+91 3210987654',
-      email: 'hr@innovativetech.in',
-      location: 'Ahmedabad, Gujarat',
-      policies: 4,
-      status: 'Inactive',
-    },
-  ]);
+  // API query parameters
+  const queryParams = {
+    page: currentPage,
+    limit: pageSize,
+    search: searchTerm,
+    type: clientTypeFilter,
+    status: selectedFilter,
+    sortField,
+    sortDirection,
+  };
 
-  // Load clients from localStorage on initial load
-  useEffect(() => {
-    const storedClientsData = localStorage.getItem('clientsData');
-    
-    if (storedClientsData) {
-      setClients(JSON.parse(storedClientsData));
-    } else {
-      // If no data in localStorage, ensure all clients have client IDs and save to localStorage
-      const updatedClients = ensureClientIds(clients);
-      setClients(updatedClients);
-      localStorage.setItem('clientsData', JSON.stringify(updatedClients));
-    }
-    
-    // Check if we have a client filter from another page
-    const params = new URLSearchParams(location.search);
-    const clientFilter = params.get('filter');
-    if (clientFilter) {
-      setSelectedFilter(clientFilter);
-    }
-  }, [location]);
+  // React Query hooks
+  const {
+    data: clientsResponse,
+    isLoading,
+    isError,
+    error,
+    refetch
+  } = useClients(queryParams);
 
-  // Update localStorage whenever clients change
-  useEffect(() => {
-    localStorage.setItem('clientsData', JSON.stringify(clients));
-  }, [clients]);
+  const createClientMutation = useCreateClient();
+  const deleteClientMutation = useDeleteClient();
+
+  // Extract data from API response
+  const clients = clientsResponse?.data || [];
+  const totalClients = clientsResponse?.total || 0;
+  const totalPages = clientsResponse?.totalPages || 1;
 
   // Filter options
-  const filterOptions = ['All', 'Individual', 'Corporate', 'Group', 'Active', 'Inactive'];
+  const filterOptions = ['All', 'Active', 'Inactive', 'Pending'];
 
   // Handle sorting
   const handleSort = (field) => {
@@ -145,34 +70,8 @@ const Clients = () => {
       setSortField(field);
       setSortDirection('asc');
     }
+    setCurrentPage(1); // Reset to first page when sorting
   };
-
-  // Filtered and sorted clients
-  const filteredClients = clients.filter(client => {
-    const matchesSearch = client.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.contact?.includes(searchTerm) ||
-      (client.clientId && client.clientId.includes(searchTerm));
-    
-    const matchesStatusFilter = selectedFilter === 'All' || 
-      client.status === selectedFilter;
-    
-    const matchesTypeFilter = clientTypeFilter === 'all' || 
-      client.type?.toLowerCase() === clientTypeFilter;
-    
-    return matchesSearch && matchesStatusFilter && matchesTypeFilter;
-  }).sort((a, b) => {
-    if (!a[sortField] && !b[sortField]) return 0;
-    if (!a[sortField]) return 1;
-    if (!b[sortField]) return -1;
-
-    const compareA = typeof a[sortField] === 'string' ? a[sortField].toLowerCase() : a[sortField];
-    const compareB = typeof b[sortField] === 'string' ? b[sortField].toLowerCase() : b[sortField];
-
-    if (compareA < compareB) return sortDirection === 'asc' ? -1 : 1;
-    if (compareA > compareB) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
 
   // Handle adding a new client
   const handleAddClient = () => {
@@ -180,29 +79,14 @@ const Clients = () => {
   };
 
   // Handle client form submission
-  const handleClientFormSuccess = (clientData) => {
-    // Generate a unique client ID
-    const existingIds = clients.map(client => client.clientId).filter(Boolean);
-    const newClientId = generateClientId(existingIds);
-    
-    // Create new client with ID
-    const newClient = {
-      id: clients.length > 0 ? Math.max(...clients.map(c => c.id)) + 1 : 1,
-      clientId: newClientId,
-      ...clientData,
-      policies: 0,
-      status: 'Active'
-    };
-    
-    // Add to clients list
-    const updatedClients = [...clients, newClient];
-    setClients(updatedClients);
-    
-    // Update localStorage
-    localStorage.setItem('clientsData', JSON.stringify(updatedClients));
-    
-    toast.success(`Client ${clientData.name} added successfully with ID: ${newClientId}`);
-    setShowAddModal(false);
+  const handleClientFormSuccess = async (clientData) => {
+    try {
+      await createClientMutation.mutateAsync(clientData);
+      setShowAddModal(false);
+    } catch (error) {
+      // Error is already handled in the mutation
+      console.error('Failed to create client:', error);
+    }
   };
 
   // Handle edit client
@@ -216,56 +100,65 @@ const Clients = () => {
   };
 
   // Handle delete client
-  const handleDeleteClient = (id) => {
-    // Confirm deletion
-    if (window.confirm('Are you sure you want to delete this client?')) {
-      const clientToDelete = clients.find(client => client.id === id);
-      const updatedClients = clients.filter(client => client.id !== id);
-      setClients(updatedClients);
-      
-      // Update localStorage
-      localStorage.setItem('clientsData', JSON.stringify(updatedClients));
-      
-      toast.success(`Client ${clientToDelete?.name || `ID: ${id}`} has been deleted`);
+  const handleDeleteClient = async (id) => {
+    const client = clients.find(c => c._id === id);
+    const clientName = client?.name || `Client ID: ${id}`;
+    
+    if (window.confirm(`Are you sure you want to delete "${clientName}"? This action cannot be undone.`)) {
+      try {
+        await deleteClientMutation.mutateAsync(id);
+      } catch (error) {
+        // Error is already handled in the mutation
+        console.error('Failed to delete client:', error);
+      }
     }
   };
 
-  // Handle export
-  const handleExport = () => {
-    // Create a CSV string
-    const headers = ['ID', 'Client ID', 'Name', 'Type', 'Contact', 'Email', 'Location', 'Policies', 'Status'];
-    const rows = filteredClients.map(client => [
-      client.id,
-      client.clientId || '',
-      client.name || '',
-      client.type || '',
-      client.contact || '',
-      client.email || '',
-      client.location || '',
-      client.policies || 0,
-      client.status || ''
-    ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `clients_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success('Clients exported successfully');
+  // Handle export (will be implemented with backend)
+  const handleExport = async () => {
+    try {
+      toast.info('Export feature will be available after backend integration');
+      // TODO: Implement export functionality with backend
+    } catch (error) {
+      toast.error('Failed to export clients');
+    }
   };
+
+  // Handle pagination
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Filter clients by type for tabs (client-side filtering for performance)
+  const getFilteredClients = (type) => {
+    if (type === 'all') return clients;
+    return clients.filter(client => 
+      client.type?.toLowerCase() === type.toLowerCase()
+    );
+  };
+
+  // Loading state
+  if (isLoading && currentPage === 1) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-600 mb-4">
+          Failed to load clients: {error?.message || 'Unknown error'}
+        </div>
+        <Button onClick={() => refetch()} variant="outline">
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -274,9 +167,10 @@ const Clients = () => {
         <Button
           onClick={handleAddClient}
           className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
+          disabled={createClientMutation.isLoading}
         >
           <Plus className="h-5 w-5 mr-2" />
-          Add Client
+          {createClientMutation.isLoading ? 'Adding...' : 'Add Client'}
         </Button>
       </div>
 
@@ -288,13 +182,24 @@ const Clients = () => {
         setSelectedFilter={setSelectedFilter}
         filterOptions={filterOptions}
         handleExport={handleExport}
+        onSearchChange={(term) => {
+          setSearchTerm(term);
+          setCurrentPage(1); // Reset to first page when searching
+        }}
+        onFilterChange={(filter) => {
+          setSelectedFilter(filter);
+          setCurrentPage(1); // Reset to first page when filtering
+        }}
       />
 
       {/* Enhanced Client Tabs */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <Tabs 
           value={clientTypeFilter} 
-          onValueChange={setClientTypeFilter} 
+          onValueChange={(value) => {
+            setClientTypeFilter(value);
+            setCurrentPage(1); // Reset to first page when changing tabs
+          }}
           className="w-full"
         >
           <div className="border-b border-gray-200">
@@ -304,7 +209,7 @@ const Clients = () => {
                 className="data-[state=active]:bg-white data-[state=active]:text-amba-blue data-[state=active]:border-b-2 data-[state=active]:border-amba-blue rounded-none py-4 px-6 flex-1 text-gray-600 font-medium text-sm transition-all duration-200 hover:bg-gray-50"
               >
                 <Users className="h-5 w-5 mr-2" />
-                <span>All Clients</span>
+                <span>All Clients ({totalClients})</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="individual"
@@ -330,57 +235,29 @@ const Clients = () => {
             </TabsList>
           </div>
 
-          <TabsContent value="all" className="p-0 mt-0 animate-fade-in">
-            <ClientTable 
-              clients={filteredClients}
-              onViewClient={handleViewClient}
-              onEditClient={handleEditClient}
-              onDeleteClient={handleDeleteClient}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              isMobile={isMobile}
-            />
-          </TabsContent>
-          
-          <TabsContent value="individual" className="p-0 mt-0 animate-fade-in">
-            <ClientTable 
-              clients={filteredClients.filter(client => client.type === 'Individual')}
-              onViewClient={handleViewClient}
-              onEditClient={handleEditClient}
-              onDeleteClient={handleDeleteClient}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              isMobile={isMobile}
-            />
-          </TabsContent>
-          
-          <TabsContent value="corporate" className="p-0 mt-0 animate-fade-in">
-            <ClientTable 
-              clients={filteredClients.filter(client => client.type === 'Corporate')}
-              onViewClient={handleViewClient}
-              onEditClient={handleEditClient}
-              onDeleteClient={handleDeleteClient}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              isMobile={isMobile}
-            />
-          </TabsContent>
-          
-          <TabsContent value="group" className="p-0 mt-0 animate-fade-in">
-            <ClientTable 
-              clients={filteredClients.filter(client => client.type === 'Group')}
-              onViewClient={handleViewClient}
-              onEditClient={handleEditClient}
-              onDeleteClient={handleDeleteClient}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              isMobile={isMobile}
-            />
-          </TabsContent>
+          {/* All client types tabs show the same data with server-side filtering */}
+          {['all', 'individual', 'corporate', 'group'].map((tabValue) => (
+            <TabsContent key={tabValue} value={tabValue} className="p-0 mt-0 animate-fade-in">
+              <ClientTable 
+                clients={getFilteredClients(tabValue)}
+                onViewClient={handleViewClient}
+                onEditClient={handleEditClient}
+                onDeleteClient={handleDeleteClient}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                isMobile={isMobile}
+                isLoading={isLoading}
+                isEmpty={clients.length === 0}
+                // Pagination props
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalClients}
+                onPageChange={handlePageChange}
+                isDeleting={deleteClientMutation.isLoading}
+              />
+            </TabsContent>
+          ))}
         </Tabs>
       </div>
 
@@ -410,7 +287,7 @@ const Clients = () => {
                 <ClientForm 
                   onClose={() => setShowAddModal(false)}
                   onSuccess={handleClientFormSuccess}
-                  existingClients={clients}
+                  isLoading={createClientMutation.isLoading}
                 />
               </div>
             </div>

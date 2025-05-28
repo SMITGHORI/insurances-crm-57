@@ -1,58 +1,157 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUpload from './DocumentUpload';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useUpdateClient, useUploadDocument } from '../../hooks/useClients';
+import { validateClientData, getClientName } from '../../schemas/clientSchemas';
 
-const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) => {
+/**
+ * Client Edit Form component with backend integration
+ * Handles client data updates and document uploads
+ */
+const ClientEditForm = ({ client, onSave }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("basic");
+  
+  // React Query mutations
+  const updateClientMutation = useUpdateClient();
+  const uploadDocumentMutation = useUploadDocument();
+
   const [formData, setFormData] = useState({
-    id: client?.id || 0,
+    _id: client?._id || '',
     clientId: client?.clientId || '',
-    name: client?.name || '',
-    type: client?.type || 'Individual',
-    contact: client?.contact || '',
-    email: client?.email || '',
-    location: client?.location || '',
-    policies: client?.policies || 0,
+    clientType: client?.clientType || client?.type?.toLowerCase() || 'individual',
     status: client?.status || 'Active',
     // Individual specific fields
+    firstName: client?.firstName || '',
+    lastName: client?.lastName || '',
     dob: client?.dob || '',
     gender: client?.gender || '',
     occupation: client?.occupation || '',
     panNumber: client?.panNumber || '',
+    aadharNumber: client?.aadharNumber || '',
+    annualIncome: client?.annualIncome || '',
+    maritalStatus: client?.maritalStatus || '',
+    nomineeName: client?.nomineeName || '',
+    nomineeRelation: client?.nomineeRelation || '',
+    nomineeContact: client?.nomineeContact || '',
     // Corporate specific fields
+    companyName: client?.companyName || client?.name || '',
     registrationNo: client?.registrationNo || '',
     gstNumber: client?.gstNumber || '',
     industry: client?.industry || '',
     employeeCount: client?.employeeCount || '',
-    contactPerson: client?.contactPerson || '',
+    turnover: client?.turnover || '',
+    yearEstablished: client?.yearEstablished || '',
+    website: client?.website || '',
+    contactPersonName: client?.contactPersonName || '',
     contactPersonDesignation: client?.contactPersonDesignation || '',
+    contactPersonEmail: client?.contactPersonEmail || '',
+    contactPersonPhone: client?.contactPersonPhone || '',
+    // Group specific fields
+    groupName: client?.groupName || client?.name || '',
+    groupType: client?.groupType || '',
+    memberCount: client?.memberCount || '',
+    primaryContactName: client?.primaryContactName || '',
+    relationshipWithGroup: client?.relationshipWithGroup || '',
+    registrationID: client?.registrationID || '',
+    groupFormationDate: client?.groupFormationDate || '',
+    groupCategory: client?.groupCategory || '',
+    groupPurpose: client?.groupPurpose || '',
     // Common fields
+    email: client?.email || '',
+    phone: client?.phone || client?.contact || '',
+    altPhone: client?.altPhone || '',
+    address: client?.address || client?.location || '',
+    city: client?.city || '',
+    state: client?.state || '',
+    pincode: client?.pincode || '',
+    country: client?.country || 'India',
+    source: client?.source || '',
     notes: client?.notes || '',
-    assignedAgent: client?.assignedAgent || '',
-    createdAt: client?.createdAt || new Date().toISOString().split('T')[0]
+    assignedAgentId: client?.assignedAgentId || '',
   });
 
+  // Update form data when client prop changes
+  useEffect(() => {
+    if (client) {
+      setFormData(prevData => ({
+        ...prevData,
+        _id: client._id || '',
+        clientId: client.clientId || '',
+        clientType: client.clientType || client.type?.toLowerCase() || 'individual',
+        status: client.status || 'Active',
+        // Update other fields as needed
+        email: client.email || '',
+        phone: client.phone || client.contact || '',
+        address: client.address || client.location || '',
+        companyName: client.companyName || client.name || '',
+        groupName: client.groupName || client.name || '',
+      }));
+    }
+  }, [client]);
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    const { name, value, type } = e.target;
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: type === 'number' ? (value ? Number(value) : '') : value
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    
+    try {
+      // Validate form data
+      const validation = validateClientData(formData);
+      if (!validation.success) {
+        const errorMessages = validation.errors.map(err => err.message).join(', ');
+        toast.error(`Validation failed: ${errorMessages}`);
+        return;
+      }
+
+      // Update client via API
+      await updateClientMutation.mutateAsync({
+        id: formData._id || formData.clientId,
+        clientData: formData
+      });
+
+      // Navigate back to clients page
+      navigate('/clients');
+    } catch (error) {
+      console.error('Failed to update client:', error);
+      // Error is already handled in the mutation
+    }
+  };
+
+  const handleDocumentUpload = async (documentType, file) => {
+    if (!file || !client?._id) {
+      toast.error('Invalid file or client ID');
+      return;
+    }
+
+    try {
+      await uploadDocumentMutation.mutateAsync({
+        clientId: client._id,
+        documentType,
+        file
+      });
+    } catch (error) {
+      console.error('Failed to upload document:', error);
+      // Error is already handled in the mutation
+    }
   };
 
   const handleCancel = () => {
     navigate('/clients');
   };
+
+  const isLoading = updateClientMutation.isLoading;
+  const isUploadingDocument = uploadDocumentMutation.isLoading;
 
   return (
     <div className="bg-white shadow-sm rounded-lg p-6">
@@ -82,70 +181,6 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                 />
               </div>
 
-              {/* Client Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client Type</label>
-                <select
-                  name="type"
-                  value={formData.type}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="Individual">Individual</option>
-                  <option value="Corporate">Corporate</option>
-                  <option value="Group">Group</option>
-                </select>
-              </div>
-
-              {/* Client Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
-
-              {/* Contact */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
-                <input
-                  type="text"
-                  name="contact"
-                  value={formData.contact}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
-
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
-
               {/* Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -161,9 +196,33 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                 </select>
               </div>
 
-              {/* Individual-specific fields */}
-              {formData.type === 'Individual' && (
+              {/* Dynamic fields based on client type */}
+              {formData.clientType === 'individual' && (
                 <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
                     <input
@@ -184,21 +243,10 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                       className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
                     >
                       <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
                     </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
-                    <input
-                      type="text"
-                      name="occupation"
-                      value={formData.occupation}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
                   </div>
 
                   <div>
@@ -211,12 +259,34 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                       className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
+                    <input
+                      type="text"
+                      name="occupation"
+                      value={formData.occupation}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
                 </>
               )}
 
-              {/* Corporate-specific fields */}
-              {formData.type === 'Corporate' && (
+              {formData.clientType === 'corporate' && (
                 <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Registration No</label>
                     <input
@@ -241,51 +311,115 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                    <input
-                      type="text"
+                    <select
                       name="industry"
                       value={formData.industry}
                       onChange={handleChange}
                       className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee Count</label>
-                    <input
-                      type="number"
-                      name="employeeCount"
-                      value={formData.employeeCount}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                    <input
-                      type="text"
-                      name="contactPerson"
-                      value={formData.contactPerson}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
-                    <input
-                      type="text"
-                      name="contactPersonDesignation"
-                      value={formData.contactPersonDesignation}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
+                    >
+                      <option value="">Select Industry</option>
+                      <option value="IT">Information Technology</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Education">Education</option>
+                      <option value="Other">Other</option>
+                    </select>
                   </div>
                 </>
               )}
 
-              {/* Notes - for all client types */}
+              {formData.clientType === 'group' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+                    <input
+                      type="text"
+                      name="groupName"
+                      value={formData.groupName}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Group Type</label>
+                    <select
+                      name="groupType"
+                      value={formData.groupType}
+                      onChange={handleChange}
+                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select Group Type</option>
+                      <option value="family">Family</option>
+                      <option value="association">Association</option>
+                      <option value="trust">Trust</option>
+                      <option value="society">Housing Society</option>
+                      <option value="community">Community</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* Common fields for all client types */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
@@ -296,18 +430,6 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                   className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
                 ></textarea>
               </div>
-
-              {/* Assigned Agent */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
-                <input
-                  type="text"
-                  name="assignedAgent"
-                  value={formData.assignedAgent}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
             </div>
 
             <div className="mt-8 flex justify-end space-x-3">
@@ -315,6 +437,7 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
+                disabled={isLoading}
               >
                 Cancel
               </Button>
@@ -322,18 +445,25 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
                 type="button" 
                 variant="outline"
                 onClick={() => setActiveTab('documents')}
+                disabled={isLoading}
               >
                 Next: Documents
               </Button>
-              <Button type="submit">Save Client</Button>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+              >
+                {isLoading ? 'Saving...' : 'Save Client'}
+              </Button>
             </div>
           </form>
         </TabsContent>
 
         <TabsContent value="documents">
           <DocumentUpload 
-            documentUploads={documentUploads || {}}
-            onDocumentUpload={onDocumentUpload}
+            documentUploads={client?.documents || {}}
+            onDocumentUpload={handleDocumentUpload}
+            isUploading={isUploadingDocument}
           />
 
           <div className="mt-8 flex justify-end space-x-3">
@@ -341,14 +471,16 @@ const ClientEditForm = ({ client, onSave, documentUploads, onDocumentUpload }) =
               type="button"
               variant="outline"
               onClick={() => setActiveTab('basic')}
+              disabled={isLoading}
             >
               Back to Basic Info
             </Button>
             <Button
               type="button"
               onClick={handleSubmit}
+              disabled={isLoading}
             >
-              Save Client
+              {isLoading ? 'Saving...' : 'Save Client'}
             </Button>
           </div>
         </TabsContent>
