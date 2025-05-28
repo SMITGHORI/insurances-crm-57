@@ -1,3 +1,4 @@
+
 /**
  * API configuration for backend integration
  * Centralizes API URLs and settings
@@ -41,6 +42,14 @@ export const API_ENDPOINTS = {
   POLICY_RENEWALS: (id) => `/policies/${id}/renewals`,
   POLICY_PAYMENTS: (id) => `/policies/${id}/payments`,
   
+  // Agent endpoints
+  AGENTS: '/agents',
+  AGENT_BY_ID: (id) => `/agents/${id}`,
+  AGENT_CLIENTS: (id) => `/agents/${id}/clients`,
+  AGENT_POLICIES: (id) => `/agents/${id}/policies`,
+  AGENT_COMMISSIONS: (id) => `/agents/${id}/commissions`,
+  AGENT_PERFORMANCE: (id) => `/agents/${id}/performance`,
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
@@ -49,7 +58,6 @@ export const API_ENDPOINTS = {
   
   // Other module endpoints (to be added later)
   CLAIMS: '/claims',
-  AGENTS: '/agents',
   INVOICES: '/invoices',
   QUOTATIONS: '/quotations',
 };
