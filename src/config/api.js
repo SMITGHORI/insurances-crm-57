@@ -34,6 +34,13 @@ export const API_ENDPOINTS = {
   CLIENT_DOCUMENTS: (id) => `/clients/${id}/documents`,
   CLIENT_DOCUMENT: (clientId, documentId) => `/clients/${clientId}/documents/${documentId}`,
   
+  // Policy endpoints
+  POLICIES: '/policies',
+  POLICY_BY_ID: (id) => `/policies/${id}`,
+  POLICY_DOCUMENTS: (id) => `/policies/${id}/documents`,
+  POLICY_RENEWALS: (id) => `/policies/${id}/renewals`,
+  POLICY_PAYMENTS: (id) => `/policies/${id}/payments`,
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
@@ -41,7 +48,6 @@ export const API_ENDPOINTS = {
   AUTH_PROFILE: '/auth/profile',
   
   // Other module endpoints (to be added later)
-  POLICIES: '/policies',
   CLAIMS: '/claims',
   AGENTS: '/agents',
   INVOICES: '/invoices',
