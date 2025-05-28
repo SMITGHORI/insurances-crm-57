@@ -78,9 +78,9 @@ export const clientSchema = z.discriminatedUnion('clientType', [
 
 // Client update schema (for existing clients) - Fix the .partial() issue
 export const clientUpdateSchema = z.discriminatedUnion('clientType', [
-  individualClientSchema.merge(commonFieldsSchema).partial(),
-  corporateClientSchema.merge(commonFieldsSchema).partial(),
-  groupClientSchema.merge(commonFieldsSchema).partial(),
+  individualClientSchema.partial().required({ clientType: true }).merge(commonFieldsSchema.partial()),
+  corporateClientSchema.partial().required({ clientType: true }).merge(commonFieldsSchema.partial()),
+  groupClientSchema.partial().required({ clientType: true }).merge(commonFieldsSchema.partial()),
 ]).extend({
   _id: z.string().optional(), // MongoDB ObjectId
   clientId: z.string().optional(), // Custom client ID
