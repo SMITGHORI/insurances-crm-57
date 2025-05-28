@@ -1,4 +1,3 @@
-
 /**
  * API configuration for backend integration
  * Centralizes API URLs and settings
@@ -50,16 +49,25 @@ export const API_ENDPOINTS = {
   AGENT_COMMISSIONS: (id) => `/agents/${id}/commissions`,
   AGENT_PERFORMANCE: (id) => `/agents/${id}/performance`,
   
+  // Claims endpoints
+  CLAIMS: '/claims',
+  CLAIM_BY_ID: (id) => `/claims/${id}`,
+  CLAIM_DOCUMENTS: (id) => `/claims/${id}/documents`,
+  CLAIM_DOCUMENT: (claimId, documentId) => `/claims/${claimId}/documents/${documentId}`,
+  CLAIM_NOTES: (id) => `/claims/${id}/notes`,
+  CLAIM_STATUS: (id) => `/claims/${id}/status`,
+  CLAIMS_STATS: '/claims/stats',
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
   AUTH_REFRESH: '/auth/refresh',
   AUTH_PROFILE: '/auth/profile',
   
-  // Other module endpoints (to be added later)
-  CLAIMS: '/claims',
+  // Other module endpoints
   INVOICES: '/invoices',
   QUOTATIONS: '/quotations',
+  LEADS: '/leads',
 };
 
 // HTTP status codes
