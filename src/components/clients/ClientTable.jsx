@@ -14,14 +14,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 const ClientTable = ({ 
-  clients, 
+  clients = [], 
   onViewClient, 
   onEditClient, 
   onDeleteClient, 
   sortField, 
   sortDirection, 
   onSort,
-  isMobile 
+  isMobile,
+  isLoading,
+  isEmpty,
+  currentPage,
+  totalPages,
+  totalItems,
+  onPageChange,
+  isDeleting
 }) => {
   const navigate = useNavigate();
   
@@ -68,7 +75,18 @@ const ClientTable = ({
     ) : '';
   };
 
-  if (!clients || clients.length === 0) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading clients...</p>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (isEmpty || !clients || clients.length === 0) {
     return (
       <div className="p-8 text-center">
         <p className="text-gray-500">No clients found. Try adjusting your filters or create a new client.</p>
@@ -82,7 +100,7 @@ const ClientTable = ({
       <div className="space-y-4 p-4">
         {clients.map((client) => (
           <div 
-            key={client.id} 
+            key={client._id || client.id} 
             className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3"
           >
             <div className="flex items-center justify-between">
@@ -96,7 +114,9 @@ const ClientTable = ({
                 </div>
               </div>
               <Badge className={`${
-                client.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                client.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                client.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
               }`}>
                 {client.status}
               </Badge>
@@ -105,19 +125,19 @@ const ClientTable = ({
             <div className="grid grid-cols-1 divide-y divide-gray-100 text-sm">
               <div className="py-2">
                 <div className="text-xs text-gray-500">Contact</div>
-                <div>{client.contact}</div>
+                <div>{client.contact || client.phone}</div>
                 <div className="text-xs text-blue-500">{client.email}</div>
               </div>
               <div className="py-2">
                 <div className="text-xs text-gray-500">Location</div>
-                <div>{client.location}</div>
+                <div>{client.location || `${client.city || ''}, ${client.state || ''}`.trim()}</div>
               </div>
               <div className="py-2 flex items-center justify-between">
                 <div>
                   <div className="text-xs text-gray-500">Policies</div>
-                  {client.policies > 0 ? (
+                  {(client.policies || 0) > 0 ? (
                     <button 
-                      onClick={(e) => viewClientPolicies(e, client.id)}
+                      onClick={(e) => viewClientPolicies(e, client._id || client.id)}
                       className="inline-flex items-center px-2 py-1 text-xs leading-5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100"
                     >
                       <Link className="h-3 w-3 mr-1" />
@@ -129,7 +149,7 @@ const ClientTable = ({
                 </div>
                 <div className="flex space-x-1">
                   <Button
-                    onClick={() => onViewClient(client.id)}
+                    onClick={() => onViewClient(client._id || client.id)}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
@@ -137,7 +157,7 @@ const ClientTable = ({
                     <Eye className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => onEditClient(client.id)}
+                    onClick={() => onEditClient(client._id || client.id)}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 text-yellow-600"
@@ -145,10 +165,11 @@ const ClientTable = ({
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => onDeleteClient(client.id)}
+                    onClick={() => onDeleteClient(client._id || client.id)}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 text-red-600"
+                    disabled={isDeleting}
                   >
                     <Trash className="h-4 w-4" />
                   </Button>
@@ -160,9 +181,25 @@ const ClientTable = ({
         
         {/* Simple Mobile Pagination */}
         <div className="flex justify-between items-center py-4 bg-white px-4">
-          <Button variant="outline" size="sm" disabled>Previous</Button>
-          <span className="text-sm text-gray-500">Page 1</span>
-          <Button variant="outline" size="sm" disabled>Next</Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            Next
+          </Button>
         </div>
       </div>
     );
@@ -240,9 +277,9 @@ const ClientTable = ({
         <TableBody>
           {clients.map((client) => (
             <TableRow 
-              key={client.id} 
+              key={client._id || client.id} 
               className="hover:bg-gray-50 cursor-pointer"
-              onClick={() => onViewClient(client.id)}
+              onClick={() => onViewClient(client._id || client.id)}
             >
               <TableCell className="font-mono text-sm text-gray-500">
                 {client.clientId || "-"}
@@ -267,13 +304,13 @@ const ClientTable = ({
                 </span>
               </TableCell>
               <TableCell className="text-sm text-gray-500">
-                {client.contact}
-                <div className="text-xs text-gray-400">{client.location}</div>
+                {client.contact || client.phone}
+                <div className="text-xs text-gray-400">{client.location || `${client.city || ''}, ${client.state || ''}`.trim()}</div>
               </TableCell>
               <TableCell className="text-center">
-                {client.policies > 0 ? (
+                {(client.policies || 0) > 0 ? (
                   <button 
-                    onClick={(e) => viewClientPolicies(e, client.id)}
+                    onClick={(e) => viewClientPolicies(e, client._id || client.id)}
                     className="inline-flex items-center px-2 py-1 text-xs leading-5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100"
                   >
                     <Link className="h-3 w-3 mr-1" />
@@ -287,30 +324,33 @@ const ClientTable = ({
               </TableCell>
               <TableCell>
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                  ${client.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  ${client.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                    client.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'}`}>
                   {client.status}
                 </span>
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => onViewClient(client.id)}
+                    onClick={() => onViewClient(client._id || client.id)}
                     className="text-blue-600 hover:text-blue-900"
                     title="View client details"
                   >
                     <Eye className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={() => onEditClient(client.id)}
+                    onClick={() => onEditClient(client._id || client.id)}
                     className="text-yellow-600 hover:text-yellow-900"
                     title="Edit client"
                   >
                     <Edit className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={() => onDeleteClient(client.id)}
+                    onClick={() => onDeleteClient(client._id || client.id)}
                     className="text-red-600 hover:text-red-900"
                     title="Delete client"
+                    disabled={isDeleting}
                   >
                     <Trash className="h-5 w-5" />
                   </button>
@@ -326,19 +366,36 @@ const ClientTable = ({
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">{clients.length}</span> of{' '}
-              <span className="font-medium">{clients.length}</span> results
+              Showing <span className="font-medium">{((currentPage - 1) * 10) + 1}</span> to{' '}
+              <span className="font-medium">{Math.min(currentPage * 10, totalItems)}</span> of{' '}
+              <span className="font-medium">{totalItems}</span> results
             </p>
           </div>
           <div>
             <nav className="relative z-0 inline-flex shadow-sm -space-x-px" aria-label="Pagination">
-              <Button variant="outline" size="sm" disabled className="rounded-l-md">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage <= 1}
+                onClick={() => onPageChange(currentPage - 1)}
+                className="rounded-l-md"
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" className="bg-amba-blue text-white">
-                1
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-amba-blue text-white"
+              >
+                {currentPage}
               </Button>
-              <Button variant="outline" size="sm" disabled className="rounded-r-md">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                disabled={currentPage >= totalPages}
+                onClick={() => onPageChange(currentPage + 1)}
+                className="rounded-r-md"
+              >
                 Next
               </Button>
             </nav>

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { clientsApi } from '../services/api/clientsApi';
@@ -7,6 +6,7 @@ import { validateClientData, getClientName } from '../schemas/clientSchemas';
 /**
  * React Query hooks for client management
  * Provides optimistic updates and proper error handling
+ * Works with both backend API and offline mock data
  */
 
 // Query keys for cache management
@@ -27,11 +27,17 @@ export const useClients = (params = {}) => {
     queryKey: clientsQueryKeys.list(params),
     queryFn: () => clientsApi.getClients(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    keepPreviousData: true, // Keep previous data while fetching new data
+    retry: (failureCount, error) => {
+      // Don't retry if we're in offline mode
+      if (clientsApi.isOfflineMode) return false;
+      return failureCount < 2;
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     onError: (error) => {
       console.error('Error fetching clients:', error);
-      toast.error('Failed to load clients');
+      if (!clientsApi.isOfflineMode) {
+        toast.error('Failed to load clients - working offline with sample data');
+      }
     },
   });
 };
@@ -45,9 +51,15 @@ export const useClient = (clientId) => {
     queryFn: () => clientsApi.getClientById(clientId),
     enabled: !!clientId, // Only run if clientId exists
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (clientsApi.isOfflineMode) return false;
+      return failureCount < 2;
+    },
     onError: (error) => {
       console.error('Error fetching client:', error);
-      toast.error('Failed to load client details');
+      if (!clientsApi.isOfflineMode) {
+        toast.error('Failed to load client details');
+      }
     },
   });
 };
@@ -77,7 +89,8 @@ export const useCreateClient = () => {
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
       
       const clientName = getClientName(variables);
-      toast.success(`Client "${clientName}" created successfully`);
+      const mode = clientsApi.isOfflineMode ? ' (offline mode)' : '';
+      toast.success(`Client "${clientName}" created successfully${mode}`);
     },
     onError: (error, variables) => {
       console.error('Error creating client:', error);
@@ -122,7 +135,8 @@ export const useUpdateClient = () => {
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
       
       const clientName = getClientName(variables.clientData);
-      toast.success(`Client "${clientName}" updated successfully`);
+      const mode = clientsApi.isOfflineMode ? ' (offline mode)' : '';
+      toast.success(`Client "${clientName}" updated successfully${mode}`);
     },
     onError: (error, variables) => {
       console.error('Error updating client:', error);
@@ -147,7 +161,8 @@ export const useDeleteClient = () => {
       // Invalidate lists to refresh them
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
       
-      toast.success('Client deleted successfully');
+      const mode = clientsApi.isOfflineMode ? ' (offline mode)' : '';
+      toast.success(`Client deleted successfully${mode}`);
     },
     onError: (error) => {
       console.error('Error deleting client:', error);
