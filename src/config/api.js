@@ -1,3 +1,4 @@
+
 /**
  * API configuration for backend integration
  * Centralizes API URLs and settings
@@ -74,14 +75,18 @@ export const API_ENDPOINTS = {
   QUOTATION_STATUS: (id) => `/quotations/${id}/status`,
   QUOTATIONS_STATS: '/quotations/stats',
   
+  // Invoices endpoints
+  INVOICES: '/invoices',
+  INVOICE_BY_ID: (id) => `/invoices/${id}`,
+  INVOICE_SEND: (id) => `/invoices/${id}/send`,
+  INVOICE_STATUS: (id) => `/invoices/${id}/status`,
+  INVOICES_STATS: '/invoices/stats',
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
   AUTH_REFRESH: '/auth/refresh',
   AUTH_PROFILE: '/auth/profile',
-  
-  // Other module endpoints
-  INVOICES: '/invoices',
 };
 
 // HTTP status codes

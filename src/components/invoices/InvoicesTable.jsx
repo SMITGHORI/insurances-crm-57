@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
@@ -28,93 +28,116 @@ import {
   Building
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getSampleInvoices, formatInvoiceDateForDisplay, getStatusBadgeClass } from '@/utils/invoiceUtils';
+import { formatInvoiceDateForDisplay, getStatusBadgeClass } from '@/utils/invoiceUtils';
 import { formatCurrency } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInvoices, useDeleteInvoice } from '@/hooks/useInvoices';
 
 const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filteredInvoices, setFilteredInvoices] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, invoiceId: null });
 
-  useEffect(() => {
-    const fetchInvoices = () => {
-      setLoading(true);
+  // Prepare query parameters for API call
+  const queryParams = {
+    status: filterParams?.status,
+    clientId: filterParams?.clientId,
+    agentId: filterParams?.agentId,
+    policyType: filterParams?.policyType,
+    startDate: filterParams?.dateRange?.start,
+    endDate: filterParams?.dateRange?.end,
+    sortBy: sortConfig?.key,
+    sortOrder: sortConfig?.direction,
+    page: 1,
+    limit: 50
+  };
+
+  // Use React Query to fetch invoices
+  const { data: invoicesData, isLoading, error } = useInvoices(queryParams);
+  const deleteInvoiceMutation = useDeleteInvoice();
+
+  // Extract invoices from API response
+  const invoices = invoicesData?.invoices || [];
+
+  // Apply client-side filtering for additional compatibility
+  const filteredInvoices = invoices.filter(invoice => {
+    // Apply status filter
+    if (filterParams?.status !== 'all' && invoice.status !== filterParams.status) {
+      return false;
+    }
+    
+    // Apply client filter
+    if (filterParams?.clientId !== 'all' && invoice.clientId !== filterParams.clientId) {
+      return false;
+    }
+
+    // Apply agent filter
+    if (filterParams?.agentId !== 'all' && invoice.agentId !== filterParams.agentId) {
+      return false;
+    }
+
+    // Apply policy type filter
+    if (filterParams?.policyType !== 'all' && invoice.insuranceType !== filterParams.policyType) {
+      return false;
+    }
+
+    // Apply date range filter
+    if (filterParams?.dateRange !== 'all' && typeof filterParams.dateRange === 'object') {
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(filterParams.dateRange.start);
+      const endDate = new Date(filterParams.dateRange.end);
       
-      const storedInvoiceData = localStorage.getItem('invoicesData');
-      let invoicesList = [];
-      
-      if (storedInvoiceData) {
-        invoicesList = JSON.parse(storedInvoiceData);
-      } else {
-        // Use sample data as fallback
-        invoicesList = getSampleInvoices();
-        
-        // Save sample data to localStorage
-        localStorage.setItem('invoicesData', JSON.stringify(invoicesList));
+      if (invoiceDate < startDate || invoiceDate > endDate) {
+        return false;
       }
-      
-      setInvoices(invoicesList);
-      setLoading(false);
-    };
-    
-    fetchInvoices();
-  }, []);
-  
-  useEffect(() => {
-    // Filter invoices based on filter parameters
-    let result = [...invoices];
-    
-    // Filter by status
-    if (filterParams.status !== 'all') {
-      result = result.filter(invoice => invoice.status === filterParams.status);
     }
+
+    return true;
+  });
+
+  // Sort the filtered invoices if needed (mainly for offline mode)
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    if (!sortConfig?.key) return 0;
     
-    // Filter by client
-    if (filterParams.clientId !== 'all') {
-      result = result.filter(invoice => invoice.clientId === filterParams.clientId);
-    }
+    const { key, direction } = sortConfig;
+    let aValue, bValue;
     
-    // Filter by agent
-    if (filterParams.agentId !== 'all') {
-      result = result.filter(invoice => invoice.agentId === filterParams.agentId);
-    }
-    
-    // Filter by policy type
-    if (filterParams.policyType !== 'all') {
-      result = result.filter(invoice => invoice.insuranceType === filterParams.policyType);
-    }
-    
-    // Filter by date range
-    if (filterParams.dateRange !== 'all' && typeof filterParams.dateRange === 'object') {
-      result = result.filter(invoice => {
-        const invoiceDate = new Date(invoice.issueDate);
-        const startDate = new Date(filterParams.dateRange.start);
-        const endDate = new Date(filterParams.dateRange.end);
-        
-        return invoiceDate >= startDate && invoiceDate <= endDate;
-      });
-    }
-    
-    // Sort invoices
-    if (sortConfig.key) {
-      result.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
+    switch (key) {
+      case 'total':
+        aValue = a.total;
+        bValue = b.total;
+        break;
+      case 'issueDate':
+        aValue = new Date(a.issueDate);
+        bValue = new Date(b.issueDate);
+        break;
+      case 'dueDate':
+        aValue = new Date(a.dueDate);
+        bValue = new Date(b.dueDate);
+        break;
+      case 'clientName':
+        aValue = a.clientName.toLowerCase();
+        bValue = b.clientName.toLowerCase();
+        break;
+      case 'invoiceNumber':
+        aValue = a.invoiceNumber.toLowerCase();
+        bValue = b.invoiceNumber.toLowerCase();
+        break;
+      case 'status':
+        aValue = a.status;
+        bValue = b.status;
+        break;
+      default:
         return 0;
-      });
     }
     
-    setFilteredInvoices(result);
-  }, [invoices, filterParams, sortConfig]);
+    if (direction === 'asc') {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
   
   const handleExportCSV = () => {
     const headers = [
@@ -130,7 +153,7 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
     
     const csvRows = [
       headers.join(','),
-      ...filteredInvoices.map(invoice => {
+      ...sortedInvoices.map(invoice => {
         return [
           invoice.invoiceNumber,
           `"${invoice.clientName}"`,
@@ -156,7 +179,7 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
     link.click();
     document.body.removeChild(link);
     
-    toast.success(`Exported ${filteredInvoices.length} invoices to CSV`);
+    toast.success(`Exported ${sortedInvoices.length} invoices to CSV`);
   };
 
   const handleViewInvoice = (id) => {
@@ -172,17 +195,18 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
     navigate(`/invoices/edit/${id}`);
   };
 
-  const handleDeleteInvoice = (id) => {
+  const handleDeleteInvoice = async (id) => {
     if (!isSuperAdmin()) {
       toast.error("You don't have permission to delete invoices");
       return;
     }
     
-    const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
-    localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
-    setInvoices(updatedInvoices);
-    toast.success("Invoice deleted successfully");
-    setDeleteConfirm({ isOpen: false, invoiceId: null });
+    try {
+      await deleteInvoiceMutation.mutateAsync(id);
+      setDeleteConfirm({ isOpen: false, invoiceId: null });
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+    }
   };
 
   const handleViewClient = (e, clientId) => {
@@ -195,10 +219,22 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
     navigate(`/policies/${policyId}`);
   };
 
-  if (loading) {
+  // Show loading state
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="p-8 text-center">
+          <p className="text-red-600">Error loading invoices: {error.message}</p>
+        </div>
       </div>
     );
   }
@@ -210,7 +246,7 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
           variant="outline"
           onClick={handleExportCSV}
           className="flex items-center"
-          disabled={filteredInvoices.length === 0}
+          disabled={sortedInvoices.length === 0}
         >
           <ArrowDownToLine className="mr-2 h-4 w-4" /> Export to CSV
         </Button>
@@ -252,8 +288,8 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredInvoices.length > 0 ? (
-              filteredInvoices.map((invoice) => (
+            {sortedInvoices.length > 0 ? (
+              sortedInvoices.map((invoice) => (
                 <TableRow 
                   key={invoice.id} 
                   className="hover:bg-gray-50 cursor-pointer"
@@ -376,6 +412,7 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
             <AlertDialogAction 
               onClick={() => handleDeleteInvoice(deleteConfirm.invoiceId)}
               className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteInvoiceMutation.isLoading}
             >
               Delete
             </AlertDialogAction>

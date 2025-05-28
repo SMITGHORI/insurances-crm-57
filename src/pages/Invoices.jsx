@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,14 +15,12 @@ import {
 import InvoiceFilters from '@/components/invoices/InvoiceFilters';
 import InvoicesMobileView from '@/components/invoices/InvoicesMobileView';
 import InvoicesTable from '@/components/invoices/InvoicesTable';
-import { getSampleInvoices } from '@/utils/invoiceUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useInvoices } from '@/hooks/useInvoices';
 
 const Invoices = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -38,26 +36,19 @@ const Invoices = () => {
     direction: 'desc'
   });
 
-  // Get invoice data from localStorage or sample data
-  useEffect(() => {
-    setLoading(true);
-    
-    const storedInvoiceData = localStorage.getItem('invoicesData');
-    let invoicesList = [];
-    
-    if (storedInvoiceData) {
-      invoicesList = JSON.parse(storedInvoiceData);
-    } else {
-      // Use sample data as fallback
-      invoicesList = getSampleInvoices();
-      
-      // Save sample data to localStorage
-      localStorage.setItem('invoicesData', JSON.stringify(invoicesList));
-    }
-    
-    setInvoices(invoicesList);
-    setLoading(false);
-  }, []);
+  // Prepare query parameters for API call
+  const queryParams = {
+    ...filterParams,
+    search: searchQuery,
+    sortBy: sortConfig.key,
+    sortOrder: sortConfig.direction,
+    page: 1,
+    limit: 50
+  };
+
+  // Use React Query to fetch invoices
+  const { data: invoicesData, isLoading, error } = useInvoices(queryParams);
+  const invoices = invoicesData?.invoices || [];
 
   // Filter invoices based on search query and active tab
   const filteredInvoices = invoices.filter(invoice => {
@@ -196,9 +187,15 @@ const Invoices = () => {
           )}
           
           <TabsContent value="all">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-8 text-center">
+                  <p className="text-red-600">Error loading invoices: {error.message}</p>
+                </div>
               </div>
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices} />
@@ -213,9 +210,15 @@ const Invoices = () => {
           
           {/* Status-specific tabs will display filtered content */}
           <TabsContent value="drafts">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-8 text-center">
+                  <p className="text-red-600">Error loading invoices: {error.message}</p>
+                </div>
               </div>
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'draft')} />
@@ -229,9 +232,15 @@ const Invoices = () => {
           </TabsContent>
           
           <TabsContent value="pending">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-8 text-center">
+                  <p className="text-red-600">Error loading invoices: {error.message}</p>
+                </div>
               </div>
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'sent')} />
@@ -245,9 +254,15 @@ const Invoices = () => {
           </TabsContent>
           
           <TabsContent value="paid">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-8 text-center">
+                  <p className="text-red-600">Error loading invoices: {error.message}</p>
+                </div>
               </div>
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'paid')} />
@@ -261,9 +276,15 @@ const Invoices = () => {
           </TabsContent>
           
           <TabsContent value="overdue">
-            {loading ? (
+            {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="p-8 text-center">
+                  <p className="text-red-600">Error loading invoices: {error.message}</p>
+                </div>
               </div>
             ) : isMobile ? (
               <InvoicesMobileView invoices={filteredInvoices.filter(invoice => invoice.status === 'overdue')} />
