@@ -7,85 +7,7 @@ import LeadMobileView from './LeadMobileView';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-
-// Dummy lead data
-const dummyLeads = [
-  {
-    id: 'LD001',
-    name: 'Arun Sharma',
-    phone: '9876543210',
-    email: 'arun.sharma@example.com',
-    source: 'Website',
-    product: 'Health Insurance',
-    status: 'New',
-    createdAt: '2025-04-10',
-    assignedTo: 'Raj Malhotra',
-    nextFollowUp: '2025-05-22',
-    lastInteraction: '2025-05-15',
-    priority: 'High',
-    additionalInfo: 'Looking for family health insurance plan for 4 members'
-  },
-  {
-    id: 'LD002',
-    name: 'Priya Patel',
-    phone: '8765432109',
-    email: 'priya.patel@example.com',
-    source: 'Referral',
-    product: 'Term Life Insurance',
-    status: 'In Progress',
-    createdAt: '2025-04-12',
-    assignedTo: 'Anita Kumar',
-    nextFollowUp: '2025-05-25',
-    lastInteraction: '2025-05-16',
-    priority: 'Medium',
-    additionalInfo: 'Needs a long-term investment plan with life coverage'
-  },
-  {
-    id: 'LD003',
-    name: 'Vikram Singh',
-    phone: '7654321098',
-    email: 'vikram.singh@example.com',
-    source: 'Cold Call',
-    product: 'Motor Insurance',
-    status: 'Qualified',
-    createdAt: '2025-04-15',
-    assignedTo: 'Raj Malhotra',
-    nextFollowUp: '2025-05-24',
-    lastInteraction: '2025-05-14',
-    priority: 'Low',
-    additionalInfo: 'Has multiple vehicles and looking for fleet insurance'
-  },
-  {
-    id: 'LD004',
-    name: 'Sunita Gupta',
-    phone: '9988776655',
-    email: 'sunita.gupta@example.com',
-    source: 'Event',
-    product: 'Home Insurance',
-    status: 'Not Interested',
-    createdAt: '2025-04-18',
-    assignedTo: 'Vikram Mehta',
-    nextFollowUp: '2025-06-15',
-    lastInteraction: '2025-05-10',
-    priority: 'Medium',
-    additionalInfo: 'Recently purchased new property'
-  },
-  {
-    id: 'LD005',
-    name: 'Rahul Verma',
-    phone: '9876123450',
-    email: 'rahul.verma@example.com',
-    source: 'Social Media',
-    product: 'Travel Insurance',
-    status: 'In Progress',
-    createdAt: '2025-04-20',
-    assignedTo: 'Anita Kumar',
-    nextFollowUp: '2025-05-28',
-    lastInteraction: '2025-05-18',
-    priority: 'High',
-    additionalInfo: 'Planning international trip in June'
-  }
-];
+import { useLeads, useDeleteLead } from '@/hooks/useLeads';
 
 const LeadsTable = ({ 
   filterParams, 
@@ -94,17 +16,36 @@ const LeadsTable = ({
   handleExport: parentHandleExport
 }) => {
   const navigate = useNavigate();
-  const [leads, setLeads] = useState(dummyLeads);
-  const [filteredLeads, setFilteredLeads] = useState(dummyLeads);
   const isMobile = useIsMobile();
   const [leadToDelete, setLeadToDelete] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Filter and sort leads when filterParams, sortField, or sortDirection change
+  // Prepare query parameters for API call
+  const queryParams = {
+    status: filterParams?.status,
+    source: filterParams?.source,
+    assignedTo: filterParams?.assignedTo,
+    priority: filterParams?.priority,
+    search: filterParams?.searchTerm,
+    sortBy: sortField,
+    sortOrder: sortDirection,
+    page: 1,
+    limit: 50
+  };
+
+  // Use React Query to fetch leads
+  const { data: leadsData, isLoading, error } = useLeads(queryParams);
+  const deleteLeadMutation = useDeleteLead();
+
+  // Extract leads from API response
+  const leads = leadsData?.leads || [];
+  const [filteredLeads, setFilteredLeads] = useState([]);
+
+  // Apply client-side filtering and sorting for sample data compatibility
   useEffect(() => {
     let result = [...leads];
     
-    // Apply filters
+    // Apply filters if needed (mainly for offline mode)
     if (filterParams) {
       // Filter by status
       if (filterParams.status !== 'all') {
@@ -138,7 +79,7 @@ const LeadsTable = ({
       }
     }
     
-    // Apply sorting
+    // Apply sorting if needed (mainly for offline mode)
     if (sortField) {
       result.sort((a, b) => {
         let comparison = 0;
@@ -169,12 +110,14 @@ const LeadsTable = ({
     setShowDeleteDialog(true);
   };
 
-  const confirmDelete = () => {
-    // In a real app, this would make an API call
-    const updatedLeads = leads.filter(lead => lead.id !== leadToDelete);
-    setLeads(updatedLeads);
-    setShowDeleteDialog(false);
-    toast.success("Lead deleted successfully");
+  const confirmDelete = async () => {
+    try {
+      await deleteLeadMutation.mutateAsync(leadToDelete);
+      setShowDeleteDialog(false);
+      setLeadToDelete(null);
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+    }
   };
 
   const handleExport = () => {
@@ -213,6 +156,29 @@ const LeadsTable = ({
     }
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
+        <div className="p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading leads...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
+        <div className="p-8 text-center">
+          <p className="text-red-600">Error loading leads: {error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="bg-white rounded-lg shadow overflow-hidden w-full">
@@ -245,8 +211,12 @@ const LeadsTable = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteLeadMutation.isLoading}
+            >
+              {deleteLeadMutation.isLoading ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

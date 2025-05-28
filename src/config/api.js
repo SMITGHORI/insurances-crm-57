@@ -1,3 +1,4 @@
+
 /**
  * API configuration for backend integration
  * Centralizes API URLs and settings
@@ -58,6 +59,15 @@ export const API_ENDPOINTS = {
   CLAIM_STATUS: (id) => `/claims/${id}/status`,
   CLAIMS_STATS: '/claims/stats',
   
+  // Leads endpoints
+  LEADS: '/leads',
+  LEAD_BY_ID: (id) => `/leads/${id}`,
+  LEAD_FOLLOWUPS: (id) => `/leads/${id}/followups`,
+  LEAD_NOTES: (id) => `/leads/${id}/notes`,
+  LEAD_ASSIGN: (id) => `/leads/${id}/assign`,
+  LEAD_CONVERT: (id) => `/leads/${id}/convert`,
+  LEADS_STATS: '/leads/stats',
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
@@ -67,7 +77,6 @@ export const API_ENDPOINTS = {
   // Other module endpoints
   INVOICES: '/invoices',
   QUOTATIONS: '/quotations',
-  LEADS: '/leads',
 };
 
 // HTTP status codes
