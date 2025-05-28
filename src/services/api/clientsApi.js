@@ -2,7 +2,7 @@
 import { toast } from 'sonner';
 
 // Base API configuration for Express backend
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
  * API service for client operations
