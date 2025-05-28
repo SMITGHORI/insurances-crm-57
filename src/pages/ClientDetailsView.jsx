@@ -14,7 +14,11 @@ import {
   FileText,
   IdCard,
   FileLock,
-  FileUp
+  FileUp,
+  Building,
+  Users,
+  Activity,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -58,6 +62,7 @@ const ClientDetailsView = () => {
           occupation: 'Software Engineer',
           notes: 'Prefers communication via email',
           assignedAgent: 'Amit Kumar',
+          documents: {}
         },
         {
           id: 2,
@@ -78,7 +83,27 @@ const ClientDetailsView = () => {
           contactPersonDesignation: 'HR Manager',
           notes: 'Handles group health insurance for employees',
           assignedAgent: 'Priya Sharma',
+          documents: {}
         },
+        {
+          id: 3,
+          clientId: 'AMB-CLI-2025-0003',
+          name: 'Family Group Insurance',
+          type: 'Group',
+          contact: '+91 9988776655',
+          email: 'family@groupinsurance.com',
+          location: 'Chennai, Tamil Nadu',
+          policies: 2,
+          status: 'Active',
+          createdAt: '2025-02-01',
+          groupType: 'Family',
+          memberCount: 8,
+          primaryContact: 'Ravi Kumar',
+          primaryContactDesignation: 'Head of Family',
+          notes: 'Family group policy for extended family members',
+          assignedAgent: 'Lakshmi Devi',
+          documents: {}
+        }
       ];
     }
     
@@ -86,6 +111,10 @@ const ClientDetailsView = () => {
     const foundClient = clientsList.find(c => c.id === parseInt(id));
     
     if (foundClient) {
+      // Ensure documents property exists
+      if (!foundClient.documents) {
+        foundClient.documents = {};
+      }
       setClient(foundClient);
     } else {
       // Create placeholder client if not found
@@ -99,7 +128,8 @@ const ClientDetailsView = () => {
         location: 'New Delhi, Delhi',
         status: 'Active',
         policies: 0,
-        createdAt: new Date().toISOString().split('T')[0]
+        createdAt: new Date().toISOString().split('T')[0],
+        documents: {}
       });
     }
     
@@ -235,6 +265,9 @@ const ClientDetailsView = () => {
     { id: 202, policyNumber: 'POL-2025-01002', type: 'Group Term Life', startDate: '2025-01-15', endDate: '2026-01-14', premium: '₹75,000', status: 'Active' },
     { id: 203, policyNumber: 'POL-2025-01003', type: 'Fire Insurance', startDate: '2025-02-01', endDate: '2026-01-31', premium: '₹50,000', status: 'Active' },
     { id: 204, policyNumber: 'POL-2025-01004', type: 'Professional Indemnity', startDate: '2025-02-10', endDate: '2026-02-09', premium: '₹35,000', status: 'Active' }
+  ] : client?.type === 'Group' ? [
+    { id: 301, policyNumber: 'POL-2025-02001', type: 'Group Health Insurance', startDate: '2025-02-01', endDate: '2026-01-31', premium: '₹80,000', status: 'Active' },
+    { id: 302, policyNumber: 'POL-2025-02002', type: 'Group Life Insurance', startDate: '2025-02-01', endDate: '2026-01-31', premium: '₹45,000', status: 'Active' }
   ] : [];
 
   // Dummy data for claims
@@ -244,17 +277,12 @@ const ClientDetailsView = () => {
     { id: 401, claimNumber: 'CLM-2025-00567', policyNumber: 'POL-2025-01001', date: '2025-02-22', amount: '₹45,000', status: 'Approved', type: 'Hospitalization' },
     { id: 402, claimNumber: 'CLM-2025-00568', policyNumber: 'POL-2025-01001', date: '2025-03-10', amount: '₹28,000', status: 'Pending', type: 'Hospitalization' },
     { id: 403, claimNumber: 'CLM-2025-00575', policyNumber: 'POL-2025-01003', date: '2025-03-18', amount: '₹120,000', status: 'Under Review', type: 'Property Damage' },
+  ] : client?.type === 'Group' ? [
+    { id: 501, claimNumber: 'CLM-2025-00789', policyNumber: 'POL-2025-02001', date: '2025-03-20', amount: '₹22,000', status: 'Approved', type: 'Hospitalization' },
   ] : [];
 
-  // Dummy data for documents
-  const documents = [
-    { id: 501, name: 'ID Proof', type: 'PDF', uploadDate: '2025-01-15', size: '1.2 MB' },
-    { id: 502, name: 'Address Proof', type: 'PDF', uploadDate: '2025-01-15', size: '0.8 MB' },
-    { id: 503, name: 'Income Proof', type: 'PDF', uploadDate: '2025-01-16', size: '1.5 MB' },
-  ];
-
-  // Get client documents if they exist
-  const clientDocuments = client.documents || {};
+  // Get client documents if they exist - safely access with fallback
+  const clientDocuments = (client && client.documents) ? client.documents : {};
   
   // Create a formatted document list for display
   const documentList = [
@@ -471,6 +499,35 @@ const ClientDetailsView = () => {
                         <div className="text-sm">
                           <span className="text-gray-500">Designation:</span><br />
                           <span>{client.contactPersonDesignation}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {client.type === 'Group' && (
+                    <>
+                      {client.groupType && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Group Type:</span><br />
+                          <span>{client.groupType}</span>
+                        </div>
+                      )}
+                      {client.memberCount && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Members:</span><br />
+                          <span>{client.memberCount}</span>
+                        </div>
+                      )}
+                      {client.primaryContact && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Primary Contact:</span><br />
+                          <span>{client.primaryContact}</span>
+                        </div>
+                      )}
+                      {client.primaryContactDesignation && (
+                        <div className="text-sm">
+                          <span className="text-gray-500">Designation:</span><br />
+                          <span>{client.primaryContactDesignation}</span>
                         </div>
                       )}
                     </>
@@ -740,9 +797,9 @@ const ClientDetailsView = () => {
                 </div>
                 <div>
                   <p className="text-sm">
-                    <span className="font-medium">Client updated</span> by Amit Kumar
+                    <span className="font-medium">Client updated</span> by {client.assignedAgent || 'System'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">2025-05-15 14:23</p>
+                  <p className="text-xs text-gray-500 mt-1">{client.createdAt} 14:23</p>
                 </div>
               </div>
               
@@ -752,9 +809,9 @@ const ClientDetailsView = () => {
                 </div>
                 <div>
                   <p className="text-sm">
-                    <span className="font-medium">New policy added</span>: Health Insurance (POL-2025-00123)
+                    <span className="font-medium">New policy added</span>: {policies.length > 0 ? policies[0].type : 'Insurance Policy'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">2025-04-28 10:15</p>
+                  <p className="text-xs text-gray-500 mt-1">{client.createdAt} 10:15</p>
                 </div>
               </div>
               
@@ -764,9 +821,9 @@ const ClientDetailsView = () => {
                 </div>
                 <div>
                   <p className="text-sm">
-                    <span className="font-medium">Client onboarded</span> by Priya Sharma
+                    <span className="font-medium">Client onboarded</span> by {client.assignedAgent || 'System'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">2025-01-15 09:42</p>
+                  <p className="text-xs text-gray-500 mt-1">{client.createdAt} 09:42</p>
                 </div>
               </div>
             </div>
