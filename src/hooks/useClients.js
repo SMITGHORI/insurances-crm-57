@@ -60,10 +60,14 @@ export const useCreateClient = () => {
 
   return useMutation({
     mutationFn: async (clientData) => {
+      console.log('Creating client with data:', clientData);
+      
       // Validate data before sending to API
       const validation = validateClientData(clientData);
       if (!validation.success) {
-        throw new Error('Validation failed: ' + validation.errors.map(e => e.message).join(', '));
+        const errorMessages = validation.errors.map(err => err.message || err.path?.join('.') || 'Validation error').join(', ');
+        console.error('Validation failed:', validation.errors);
+        throw new Error(`Validation failed: ${errorMessages}`);
       }
 
       return clientsApi.createClient(validation.data);
@@ -91,10 +95,19 @@ export const useUpdateClient = () => {
 
   return useMutation({
     mutationFn: async ({ id, clientData }) => {
+      console.log('Updating client with data:', clientData);
+      
+      // Ensure clientType is set for validation
+      if (!clientData.clientType && clientData.type) {
+        clientData.clientType = clientData.type.toLowerCase();
+      }
+      
       // Validate data before sending to API
       const validation = validateClientData(clientData);
       if (!validation.success) {
-        throw new Error('Validation failed: ' + validation.errors.map(e => e.message).join(', '));
+        const errorMessages = validation.errors.map(err => err.message || err.path?.join('.') || 'Validation error').join(', ');
+        console.error('Validation failed:', validation.errors);
+        throw new Error(`Validation failed: ${errorMessages}`);
       }
 
       return clientsApi.updateClient(id, validation.data);
