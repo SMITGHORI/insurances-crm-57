@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock, ArrowUpDown, Download } from 'lucide-react';
@@ -16,168 +16,51 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { useQuotations, useSendQuotation } from '@/hooks/useQuotations';
 
 const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [loading, setLoading] = useState(true);
-  
-  // Sample data - in a real app, this would be fetched from an API based on filterParams
-  const quotations = [
-    {
-      id: 1,
-      quoteId: 'QT-2025-0001',
-      clientName: 'Vivek Patel',
-      clientId: 'CLI-2025-0001',
-      insuranceType: 'Health Insurance',
-      insuranceCompany: 'Star Health',
-      products: ['Family Floater Plan', 'Critical Illness Add-on'],
-      sumInsured: 500000,
-      premium: 25000,
-      agentName: 'Rajiv Kumar',
-      agentId: 'agent1',
-      createdDate: '18 May 2025',
-      validUntil: '18 Jun 2025',
-      status: 'draft',
-      emailSent: false,
-      viewedAt: null,
-      notes: 'Client requested quotes for family of 4 with pre-existing conditions'
-    },
-    {
-      id: 2,
-      quoteId: 'QT-2025-0002',
-      clientName: 'Priya Desai',
-      clientId: 'CLI-2025-0012',
-      insuranceType: 'Term Insurance',
-      insuranceCompany: 'HDFC Life',
-      products: ['Click 2 Protect Life', 'Critical Illness Rider'],
-      sumInsured: 10000000,
-      premium: 15000,
-      agentName: 'Neha Sharma',
-      agentId: 'agent4',
-      createdDate: '15 May 2025',
-      validUntil: '15 Jun 2025',
-      status: 'sent',
-      emailSent: true,
-      sentDate: '15 May 2025',
-      viewedAt: null,
-      notes: 'Client is a non-smoker with no medical history'
-    },
-    {
-      id: 3,
-      quoteId: 'QT-2025-0003',
-      clientName: 'Tech Solutions Ltd',
-      clientId: 'CLI-2025-0024',
-      insuranceType: 'Group Health Insurance',
-      insuranceCompany: 'ICICI Lombard',
-      products: ['Group Mediclaim Policy'],
-      sumInsured: 2000000,
-      premium: 450000,
-      agentName: 'Rajiv Kumar',
-      agentId: 'agent1',
-      createdDate: '12 May 2025',
-      validUntil: '12 Jun 2025',
-      status: 'viewed',
-      emailSent: true,
-      sentDate: '12 May 2025',
-      viewedAt: '14 May 2025',
-      notes: 'Company has 50 employees, looking for comprehensive coverage'
-    },
-    {
-      id: 4,
-      quoteId: 'QT-2025-0004',
-      clientName: 'Arjun Singh',
-      clientId: 'CLI-2025-0035',
-      insuranceType: 'Motor Insurance',
-      insuranceCompany: 'Bajaj Allianz',
-      products: ['Comprehensive Car Insurance'],
-      sumInsured: 800000,
-      premium: 12000,
-      agentName: 'Amir Khan',
-      agentId: 'agent3',
-      createdDate: '10 May 2025',
-      validUntil: '10 Jun 2025',
-      status: 'accepted',
-      emailSent: true,
-      sentDate: '10 May 2025',
-      viewedAt: '11 May 2025',
-      acceptedAt: '12 May 2025',
-      convertedToPolicy: 'POL-2025-0412',
-      notes: 'New car purchase, comprehensive coverage with zero-dep add-on'
-    },
-    {
-      id: 5,
-      quoteId: 'QT-2025-0005',
-      clientName: 'Ramesh Joshi',
-      clientId: 'CLI-2025-0042',
-      insuranceType: 'Health Insurance',
-      insuranceCompany: 'Max Bupa',
-      products: ['Health Companion'],
-      sumInsured: 700000,
-      premium: 32000,
-      agentName: 'Priya Singh',
-      agentId: 'agent2',
-      createdDate: '8 May 2025',
-      validUntil: '8 Jun 2025',
-      status: 'rejected',
-      emailSent: true,
-      sentDate: '8 May 2025',
-      viewedAt: '9 May 2025',
-      rejectedAt: '10 May 2025',
-      rejectionReason: 'Premium too high',
-      notes: 'Client has pre-existing conditions, diabetes and hypertension'
-    },
-    {
-      id: 6,
-      quoteId: 'QT-2025-0006',
-      clientName: 'Sanjay Mehta',
-      clientId: 'CLI-2025-0050',
-      insuranceType: 'Travel Insurance',
-      insuranceCompany: 'Tata AIG',
-      products: ['Travel Guard'],
-      sumInsured: 500000,
-      premium: 5000,
-      agentName: 'Neha Sharma',
-      agentId: 'agent4',
-      createdDate: '1 May 2025',
-      validUntil: '1 Jun 2025',
-      status: 'expired',
-      emailSent: true,
-      sentDate: '1 May 2025',
-      viewedAt: '2 May 2025',
-      notes: 'Client traveling to USA for 2 weeks'
-    }
-  ];
 
-  useEffect(() => {
-    // Simulate API loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  // Prepare query parameters for API call
+  const queryParams = {
+    status: filterParams?.status,
+    insuranceType: filterParams?.insuranceType,
+    agentId: filterParams?.agentId,
+    search: filterParams?.searchTerm,
+    sortBy: sortConfig?.key,
+    sortOrder: sortConfig?.direction,
+    page: 1,
+    limit: 50
+  };
 
-  // Apply filters to quotations
+  // Use React Query to fetch quotations
+  const { data: quotationsData, isLoading, error } = useQuotations(queryParams);
+  const sendQuotationMutation = useSendQuotation();
+
+  // Extract quotations from API response
+  const quotations = quotationsData?.quotations || [];
+
+  // Apply client-side filtering for additional compatibility
   const filteredQuotations = quotations.filter(quote => {
     // Apply status filter
-    if (filterParams.status !== 'all' && quote.status !== filterParams.status) {
+    if (filterParams?.status !== 'all' && quote.status !== filterParams.status) {
       return false;
     }
     
     // Apply insurance type filter
-    if (filterParams.insuranceType !== 'all' && 
+    if (filterParams?.insuranceType !== 'all' && 
         !quote.insuranceType.toLowerCase().includes(filterParams.insuranceType.toLowerCase())) {
       return false;
     }
 
     // Apply agent filter
-    if (filterParams.agentId !== 'all' && quote.agentId !== filterParams.agentId) {
+    if (filterParams?.agentId !== 'all' && quote.agentId !== filterParams.agentId) {
       return false;
     }
 
     // Apply search term filter
-    if (filterParams.searchTerm && 
+    if (filterParams?.searchTerm && 
         !quote.quoteId.toLowerCase().includes(filterParams.searchTerm.toLowerCase()) &&
         !quote.clientName.toLowerCase().includes(filterParams.searchTerm.toLowerCase()) &&
         !quote.clientId.toLowerCase().includes(filterParams.searchTerm.toLowerCase())) {
@@ -187,8 +70,10 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
     return true;
   });
 
-  // Sort the filtered quotations
+  // Sort the filtered quotations if needed (mainly for offline mode)
   const sortedQuotations = [...filteredQuotations].sort((a, b) => {
+    if (!sortConfig?.key) return 0;
+    
     const { key, direction } = sortConfig;
     let aValue, bValue;
     
@@ -206,7 +91,6 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
         bValue = b.insuranceType.toLowerCase();
         break;
       case 'createdDate':
-        // This is just for example - in real app we'd parse actual dates
         aValue = a.createdDate;
         bValue = b.createdDate;
         break;
@@ -248,9 +132,13 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
     navigate(`/quotations/${id}`);
   };
 
-  const handleSendQuote = (e, id) => {
+  const handleSendQuote = async (e, quoteId) => {
     e.stopPropagation();
-    toast.success(`Quotation ${id} sent to client successfully`);
+    try {
+      await sendQuotationMutation.mutateAsync({ quotationId: quoteId });
+    } catch (error) {
+      console.error('Error sending quotation:', error);
+    }
   };
 
   const handleCopyQuoteId = (e, quoteId) => {
@@ -260,7 +148,7 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
   };
   
   const renderSortIcon = (fieldName) => {
-    if (sortConfig.key === fieldName) {
+    if (sortConfig?.key === fieldName) {
       return (
         <span className={`ml-1 text-gray-400`}>
           {sortConfig.direction === 'asc' ? '↑' : '↓'}
@@ -286,10 +174,22 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
     };
   };
 
-  if (loading) {
+  // Show loading state
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
+        <div className="p-8 text-center">
+          <p className="text-red-600">Error loading quotations: {error.message}</p>
+        </div>
       </div>
     );
   }
@@ -379,7 +279,8 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={(e) => handleSendQuote(e, quote.quoteId)}
+                          onClick={(e) => handleSendQuote(e, quote.id)}
+                          disabled={sendQuotationMutation.isLoading}
                           title="Send Quote"
                         >
                           <Send size={14} />
