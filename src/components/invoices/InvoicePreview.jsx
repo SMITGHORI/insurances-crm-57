@@ -2,18 +2,14 @@
 import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Share2, Eye, EyeOff, Mail, MessageSquare, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Eye, EyeOff } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import ProfessionalInvoiceTemplate from './ProfessionalInvoiceTemplate';
 
-const InvoicePreview = ({ invoice }) => {
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
   const [showPreview, setShowPreview] = useState(true);
-  const [showSharePopup, setShowSharePopup] = useState(false);
   const invoiceRef = useRef(null);
-  const { toast } = useToast();
 
   // Fallback invoice data
   const defaultInvoice = {
@@ -70,34 +66,20 @@ const InvoicePreview = ({ invoice }) => {
     }
   };
 
-  const generatePDF = async () => {
-    setIsGeneratingPDF(true);
-    
-    try {
+  // Expose PDF generation to parent component
+  React.useImperativeHandle(onDownload, () => ({
+    generatePDF: async () => {
       const pdf = await generatePDFBlob();
       if (pdf) {
         pdf.save(`Invoice-${invoiceData.invoiceNumber}.pdf`);
-        toast({
-          title: "PDF Generated",
-          description: "Invoice PDF has been downloaded successfully.",
-        });
-      } else {
-        throw new Error('Failed to generate PDF');
+        return true;
       }
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingPDF(false);
+      return false;
     }
-  };
+  }));
 
-  const handlePrint = async () => {
-    try {
+  React.useImperativeHandle(onPrint, () => ({
+    printInvoice: async () => {
       const pdf = await generatePDFBlob();
       if (pdf) {
         const pdfBlob = pdf.output('blob');
@@ -109,109 +91,34 @@ const InvoicePreview = ({ invoice }) => {
             URL.revokeObjectURL(url);
           };
         }
-        toast({
-          title: "Print Ready",
-          description: "Invoice is ready for printing.",
-        });
+        return true;
       }
-    } catch (error) {
-      console.error('Print error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to prepare invoice for printing.",
-        variant: "destructive",
-      });
+      return false;
     }
-  };
-
-  const handleShare = () => {
-    setShowSharePopup(true);
-  };
-
-  const handleEmailShare = () => {
-    const invoiceText = `Invoice ${invoiceData.invoiceNumber} for ${invoiceData.clientName}
-Amount: ₹${invoiceData.total}
-Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}
-
-Client Details:
-${invoiceData.clientName}
-${invoiceData.clientPhone}
-${invoiceData.clientEmail}`;
-
-    const emailSubject = encodeURIComponent(`Invoice ${invoiceData.invoiceNumber} - ${invoiceData.clientName}`);
-    const emailBody = encodeURIComponent(invoiceText);
-    const emailUrl = `mailto:${invoiceData.clientEmail}?subject=${emailSubject}&body=${emailBody}`;
-    
-    window.open(emailUrl, '_blank');
-    setShowSharePopup(false);
-    toast({
-      title: "Email Opened",
-      description: "Email client opened with invoice details.",
-    });
-  };
-
-  const handleWhatsAppShare = () => {
-    const invoiceText = `Invoice ${invoiceData.invoiceNumber} for ${invoiceData.clientName}
-Amount: ₹${invoiceData.total}
-Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}
-
-Client Details:
-${invoiceData.clientName}
-${invoiceData.clientPhone}
-${invoiceData.clientEmail}`;
-
-    const whatsappText = encodeURIComponent(invoiceText);
-    const whatsappPhone = invoiceData.clientPhone?.replace(/[^\d]/g, '');
-    const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${whatsappText}`;
-    
-    window.open(whatsappUrl, '_blank');
-    setShowSharePopup(false);
-    toast({
-      title: "WhatsApp Opened",
-      description: "WhatsApp opened with invoice details.",
-    });
-  };
+  }));
 
   return (
     <Card className="w-full">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">Invoice Preview</h3>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-            >
-              {showPreview ? (
-                <>
-                  <EyeOff className="mr-2 h-4 w-4" />
-                  Hide Preview
-                </>
-              ) : (
-                <>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Show Preview
-                </>
-              )}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print
-            </Button>
-            <Button 
-              onClick={generatePDF} 
-              disabled={isGeneratingPDF}
-              size="sm"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreview(!showPreview)}
+          >
+            {showPreview ? (
+              <>
+                <EyeOff className="mr-2 h-4 w-4" />
+                Hide Preview
+              </>
+            ) : (
+              <>
+                <Eye className="mr-2 h-4 w-4" />
+                Show Preview
+              </>
+            )}
+          </Button>
         </div>
 
         {showPreview && (
@@ -253,44 +160,6 @@ ${invoiceData.clientEmail}`;
           <div className="text-center py-12 text-gray-500">
             <Eye className="mx-auto h-12 w-12 mb-4 opacity-50" />
             <p>Preview is hidden. Click "Show Preview" to view the invoice.</p>
-          </div>
-        )}
-
-        {/* Share Popup */}
-        {showSharePopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Share Invoice</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSharePopup(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-gray-600 mb-6">
-                Share invoice {invoiceData.invoiceNumber} with {invoiceData.clientName}
-              </p>
-              <div className="space-y-3">
-                <Button
-                  className="w-full justify-start"
-                  onClick={handleEmailShare}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Send via Email
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleWhatsAppShare}
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Send via WhatsApp
-                </Button>
-              </div>
-            </div>
           </div>
         )}
       </CardContent>

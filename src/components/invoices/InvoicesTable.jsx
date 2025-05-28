@@ -19,7 +19,6 @@ import {
 import {
   ArrowDownToLine,
   ArrowUpDown,
-  ChevronDown,
   FileText,
   MoreHorizontal,
   Pencil,
@@ -32,9 +31,11 @@ import { toast } from 'sonner';
 import { getSampleInvoices, formatInvoiceDateForDisplay, getStatusBadgeClass } from '@/utils/invoiceUtils';
 import { formatCurrency } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
   const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredInvoices, setFilteredInvoices] = useState([]);
@@ -164,10 +165,19 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
 
   const handleEditInvoice = (e, id) => {
     e.stopPropagation();
+    if (!isSuperAdmin()) {
+      toast.error("You don't have permission to edit invoices");
+      return;
+    }
     navigate(`/invoices/edit/${id}`);
   };
 
   const handleDeleteInvoice = (id) => {
+    if (!isSuperAdmin()) {
+      toast.error("You don't have permission to delete invoices");
+      return;
+    }
+    
     const updatedInvoices = invoices.filter(invoice => invoice.id !== id);
     localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
     setInvoices(updatedInvoices);
@@ -316,23 +326,27 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
                           <FileText className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => handleEditInvoice(e, invoice.id)}
-                          className="cursor-pointer"
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit Invoice
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({ isOpen: true, invoiceId: invoice.id });
-                          }}
-                          className="cursor-pointer text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {isSuperAdmin() && (
+                          <>
+                            <DropdownMenuItem 
+                              onClick={(e) => handleEditInvoice(e, invoice.id)}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ isOpen: true, invoiceId: invoice.id });
+                              }}
+                              className="cursor-pointer text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
