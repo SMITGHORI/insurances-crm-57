@@ -19,6 +19,7 @@ import InvoicePreview from '@/components/invoices/InvoicePreview';
 import InvoiceHistory from '@/components/invoices/InvoiceHistory';
 import { getSampleInvoices } from '@/utils/invoiceUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const InvoiceDetails = () => {
   const { id } = useParams();
@@ -188,12 +189,9 @@ ${invoice.clientEmail}`;
     toast.success("WhatsApp opened with invoice details");
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   if (!invoice) {

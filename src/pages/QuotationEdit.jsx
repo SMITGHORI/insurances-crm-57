@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, X, Plus, Trash } from 'lucide-react';
@@ -30,6 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const QuotationEdit = () => {
   const { id } = useParams();
@@ -177,12 +177,9 @@ const QuotationEdit = () => {
     }
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (

@@ -1,425 +1,309 @@
-
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableHead, 
-  TableRow, 
-  TableCell 
-} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  ArrowDownToLine,
-  ArrowUpDown,
-  FileText,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  User,
-  Link,
-  Building
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { formatInvoiceDateForDisplay, getStatusBadgeClass } from '@/utils/invoiceUtils';
+import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useAuth } from '@/contexts/AuthContext';
+import { Eye, Edit, Trash2, FileText, Download } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import InvoicesMobileView from './InvoicesMobileView';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useInvoices, useDeleteInvoice } from '@/hooks/useInvoices';
+import { toast } from 'sonner';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
 
-const InvoicesTable = ({ filterParams, sortConfig, handleSort }) => {
+const InvoicesTable = ({ filterParams, sortConfig, handleSort, handleExport }) => {
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAuth();
-  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, invoiceId: null });
+  const isMobile = useIsMobile();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
-  // Prepare query parameters for API call
-  const queryParams = {
-    status: filterParams?.status,
-    clientId: filterParams?.clientId,
-    agentId: filterParams?.agentId,
-    policyType: filterParams?.policyType,
-    startDate: filterParams?.dateRange?.start,
-    endDate: filterParams?.dateRange?.end,
+  // Use the new React Query hook
+  const { 
+    data: invoicesResponse, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useInvoices({
+    ...filterParams,
     sortBy: sortConfig?.key,
     sortOrder: sortConfig?.direction,
-    page: 1,
-    limit: 50
-  };
+    page: currentPage,
+    limit: itemsPerPage
+  });
 
-  // Use React Query to fetch invoices
-  const { data: invoicesData, isLoading, error } = useInvoices(queryParams);
   const deleteInvoiceMutation = useDeleteInvoice();
 
-  // Extract invoices from API response
-  const invoices = invoicesData?.invoices || [];
-
-  // Apply client-side filtering for additional compatibility
-  const filteredInvoices = invoices.filter(invoice => {
-    // Apply status filter
-    if (filterParams?.status !== 'all' && invoice.status !== filterParams.status) {
-      return false;
-    }
-    
-    // Apply client filter
-    if (filterParams?.clientId !== 'all' && invoice.clientId !== filterParams.clientId) {
-      return false;
-    }
-
-    // Apply agent filter
-    if (filterParams?.agentId !== 'all' && invoice.agentId !== filterParams.agentId) {
-      return false;
-    }
-
-    // Apply policy type filter
-    if (filterParams?.policyType !== 'all' && invoice.insuranceType !== filterParams.policyType) {
-      return false;
-    }
-
-    // Apply date range filter
-    if (filterParams?.dateRange !== 'all' && typeof filterParams.dateRange === 'object') {
-      const invoiceDate = new Date(invoice.issueDate);
-      const startDate = new Date(filterParams.dateRange.start);
-      const endDate = new Date(filterParams.dateRange.end);
-      
-      if (invoiceDate < startDate || invoiceDate > endDate) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // Sort the filtered invoices if needed (mainly for offline mode)
-  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
-    if (!sortConfig?.key) return 0;
-    
-    const { key, direction } = sortConfig;
-    let aValue, bValue;
-    
-    switch (key) {
-      case 'total':
-        aValue = a.total;
-        bValue = b.total;
-        break;
-      case 'issueDate':
-        aValue = new Date(a.issueDate);
-        bValue = new Date(b.issueDate);
-        break;
-      case 'dueDate':
-        aValue = new Date(a.dueDate);
-        bValue = new Date(b.dueDate);
-        break;
-      case 'clientName':
-        aValue = a.clientName.toLowerCase();
-        bValue = b.clientName.toLowerCase();
-        break;
-      case 'invoiceNumber':
-        aValue = a.invoiceNumber.toLowerCase();
-        bValue = b.invoiceNumber.toLowerCase();
-        break;
-      case 'status':
-        aValue = a.status;
-        bValue = b.status;
-        break;
-      default:
-        return 0;
-    }
-    
-    if (direction === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
-  });
-  
-  const handleExportCSV = () => {
-    const headers = [
-      'Invoice Number',
-      'Client Name',
-      'Policy Number',
-      'Issue Date',
-      'Due Date',
-      'Amount',
-      'Status',
-      'Agent'
-    ];
-    
-    const csvRows = [
-      headers.join(','),
-      ...sortedInvoices.map(invoice => {
-        return [
-          invoice.invoiceNumber,
-          `"${invoice.clientName}"`,
-          invoice.policyNumber || '',
-          formatInvoiceDateForDisplay(invoice.issueDate),
-          formatInvoiceDateForDisplay(invoice.dueDate),
-          invoice.total,
-          invoice.status,
-          invoice.agentName || ''
-        ].join(',');
-      })
-    ];
-    
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `invoices_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success(`Exported ${sortedInvoices.length} invoices to CSV`);
-  };
-
-  const handleViewInvoice = (id) => {
-    navigate(`/invoices/${id}`);
-  };
-
-  const handleEditInvoice = (e, id) => {
-    e.stopPropagation();
-    if (!isSuperAdmin()) {
-      toast.error("You don't have permission to edit invoices");
-      return;
-    }
-    navigate(`/invoices/edit/${id}`);
-  };
-
-  const handleDeleteInvoice = async (id) => {
-    if (!isSuperAdmin()) {
-      toast.error("You don't have permission to delete invoices");
-      return;
-    }
-    
-    try {
-      await deleteInvoiceMutation.mutateAsync(id);
-      setDeleteConfirm({ isOpen: false, invoiceId: null });
-    } catch (error) {
-      console.error('Error deleting invoice:', error);
-    }
-  };
-
-  const handleViewClient = (e, clientId) => {
-    e.stopPropagation();
-    navigate(`/clients/${clientId}`);
-  };
-
-  const handleViewPolicy = (e, policyId) => {
-    e.stopPropagation();
-    navigate(`/policies/${policyId}`);
-  };
-
-  // Show loading state
+  // Handle loading state with professional skeleton
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return isMobile ? <CardSkeleton /> : <TableSkeleton />;
   }
 
-  // Show error state
+  // Handle error state
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-8 text-center">
-          <p className="text-red-600">Error loading invoices: {error.message}</p>
-        </div>
-      </div>
+      <Card className="w-full">
+        <CardContent className="p-6">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">Failed to load invoices: {error.message}</p>
+            <Button onClick={() => refetch()} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  const invoices = invoicesResponse?.data || [];
+  const totalItems = invoicesResponse?.total || 0;
+  const totalPages = invoicesResponse?.totalPages || 1;
+
+  // Get appropriate status badge
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'draft':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Draft</Badge>;
+      case 'sent':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Sent</Badge>;
+      case 'paid':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Paid</Badge>;
+      case 'overdue':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Overdue</Badge>;
+      case 'cancelled':
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Cancelled</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">{status}</Badge>;
+    }
+  };
+
+  const handleView = (invoiceId) => {
+    navigate(`/invoices/${invoiceId}`);
+  };
+
+  const handleEdit = (invoiceId) => {
+    navigate(`/invoices/${invoiceId}/edit`);
+  };
+
+  const handleDelete = async (invoiceId) => {
+    try {
+      await deleteInvoiceMutation.mutateAsync(invoiceId);
+    } catch (error) {
+      console.error('Delete failed:', error);
+    }
+  };
+
+  const handleSortTable = (key) => {
+    handleSort(key);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Render mobile view
+  if (isMobile) {
+    return (
+      <InvoicesMobileView 
+        invoices={invoices} 
+        filterParams={filterParams}
+        handleExport={() => handleExport(invoices)}
+      />
+    );
+  }
+
+  // Desktop view
   return (
-    <>
-      <div className="flex justify-end mb-4">
+    <div className="space-y-4">
+      <Card className="w-full">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Button variant="ghost" onClick={() => handleSortTable('invoiceNumber')}>
+                      Invoice Number
+                    </Button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Button variant="ghost" onClick={() => handleSortTable('clientName')}>
+                      Client
+                    </Button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Button variant="ghost" onClick={() => handleSortTable('createdDate')}>
+                      Date
+                    </Button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Button variant="ghost" onClick={() => handleSortTable('dueDate')}>
+                      Due Date
+                    </Button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Button variant="ghost" onClick={() => handleSortTable('amount')}>
+                      Amount
+                    </Button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {invoices.map((invoice) => (
+                  <tr key={invoice._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-blue-700">
+                        {invoice.invoiceNumber}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {invoice.clientName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{invoice.createdDate}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{invoice.dueDate}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatCurrency(invoice.amount)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(invoice.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleView(invoice._id)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(invoice._id)}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete invoice {invoice.invoiceNumber}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(invoice._id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {invoices.length === 0 && (
+            <div className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                No invoices match your current search criteria.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} results
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+            >
+              Previous
+            </Button>
+            {[...Array(totalPages)].map((_, i) => (
+              <Button
+                key={i + 1}
+                variant={currentPage === i + 1 ? "default" : "outline"}
+                size="sm"
+                onClick={() => handlePageChange(i + 1)}
+              >
+                {i + 1}
+              </Button>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Export button for desktop */}
+      <div className="flex justify-end">
         <Button
+          onClick={() => handleExport(invoices)}
           variant="outline"
-          onClick={handleExportCSV}
-          className="flex items-center"
-          disabled={sortedInvoices.length === 0}
+          className="inline-flex items-center"
         >
-          <ArrowDownToLine className="mr-2 h-4 w-4" /> Export to CSV
+          <Download className="h-4 w-4 mr-1" />
+          Export Invoices
         </Button>
       </div>
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('invoiceNumber')}>
-                <div className="flex items-center">
-                  Invoice Number <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Policy</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('issueDate')}>
-                <div className="flex items-center">
-                  Issue Date <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('dueDate')}>
-                <div className="flex items-center">
-                  Due Date <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('total')}>
-                <div className="flex items-center">
-                  Amount <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
-                <div className="flex items-center">
-                  Status <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedInvoices.length > 0 ? (
-              sortedInvoices.map((invoice) => (
-                <TableRow 
-                  key={invoice.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleViewInvoice(invoice.id)}
-                >
-                  <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                  <TableCell>
-                    <div 
-                      className="flex items-center text-primary hover:underline cursor-pointer"
-                      onClick={(e) => handleViewClient(e, invoice.clientId)}
-                    >
-                      <User className="h-4 w-4 mr-1" />
-                      {invoice.clientName}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {invoice.policyNumber ? (
-                      <div className="flex items-center">
-                        <Link 
-                          className="h-4 w-4 mr-1 cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewPolicy(e, invoice.policyId);
-                          }}
-                        />
-                        {invoice.policyNumber}
-                      </div>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatInvoiceDateForDisplay(invoice.issueDate)}</TableCell>
-                  <TableCell>{formatInvoiceDateForDisplay(invoice.dueDate)}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(invoice.total)}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(invoice.status)}`}>
-                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {invoice.agentName ? (
-                      <div className="flex items-center">
-                        <Building className="h-4 w-4 mr-1" />
-                        {invoice.agentName}
-                      </div>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewInvoice(invoice.id);
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {isSuperAdmin() && (
-                          <>
-                            <DropdownMenuItem 
-                              onClick={(e) => handleEditInvoice(e, invoice.id)}
-                              className="cursor-pointer"
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit Invoice
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteConfirm({ isOpen: true, invoiceId: invoice.id });
-                              }}
-                              className="cursor-pointer text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
-                  No invoices found matching your criteria
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <AlertDialog open={deleteConfirm.isOpen} onOpenChange={isOpen => setDeleteConfirm({...deleteConfirm, isOpen})}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this invoice?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the invoice and remove its data from the system.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => handleDeleteInvoice(deleteConfirm.invoiceId)}
-              className="bg-red-600 text-white hover:bg-red-700"
-              disabled={deleteInvoiceMutation.isLoading}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    </div>
   );
 };
 

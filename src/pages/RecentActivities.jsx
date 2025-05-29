@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -16,6 +15,7 @@ import ActivityTabs from '@/components/activities/ActivityTabs';
 import ActivitiesMobileView from '@/components/activities/ActivitiesMobileView';
 import ActivitiesDesktopView from '@/components/activities/ActivitiesDesktopView';
 import { useActivities } from '@/hooks/useRecentActivities';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const RecentActivities = () => {
   const navigate = useNavigate();
@@ -113,6 +113,11 @@ const RecentActivities = () => {
       return dateString;
     }
   };
+
+  // Show professional loading skeleton
+  if (isLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">

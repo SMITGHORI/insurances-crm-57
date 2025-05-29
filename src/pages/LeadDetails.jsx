@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import LeadNotes from '@/components/leads/LeadNotes';
 import LeadAssignDialog from '@/components/leads/LeadAssignDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 // Dummy lead data
 const dummyLeadData = {
@@ -91,7 +91,9 @@ const LeadDetails = () => {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('followups');
-  
+  const [loading, setLoading] = useState(true);
+  const isMobile = window.innerWidth <= 768;
+
   if (!lead) {
     return (
       <div className="container mx-auto p-4">
@@ -117,6 +119,11 @@ const LeadDetails = () => {
     // Navigate to quotation creation page with lead info
     navigate('/quotations/create', { state: { leadId: lead.id, leadName: lead.name } });
   };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

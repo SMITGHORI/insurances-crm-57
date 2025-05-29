@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -8,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { useLeads, useDeleteLead } from '@/hooks/useLeads';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
 
 const LeadsTable = ({ 
   filterParams, 
@@ -156,16 +156,9 @@ const LeadsTable = ({
     }
   };
 
-  // Show loading state
+  // Handle loading state with professional skeleton
   if (isLoading) {
-    return (
-      <div className="bg-white rounded-lg shadow overflow-hidden w-full">
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading leads...</p>
-        </div>
-      </div>
-    );
+    return isMobile ? <CardSkeleton /> : <TableSkeleton />;
   }
 
   // Show error state

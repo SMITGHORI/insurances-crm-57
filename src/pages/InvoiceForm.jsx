@@ -50,6 +50,7 @@ import {
   generateInvoiceNumber, 
   calculateInvoiceTotals 
 } from '@/utils/invoiceUtils';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const InvoiceForm = () => {
   const { id } = useParams();
@@ -72,6 +73,7 @@ const InvoiceForm = () => {
   const [itemTaxTotal, setItemTaxTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   const [discount, setDiscount] = useState(0);
+  const [loading, setLoading] = useState(true);
   
   const form = useForm({
     defaultValues: {
@@ -168,6 +170,8 @@ const InvoiceForm = () => {
       const newInvoiceNumber = generateInvoiceNumber('INV', existingInvoiceNumbers);
       form.setValue('invoiceNumber', newInvoiceNumber);
     }
+    
+    setLoading(false);
   }, [id, form, navigate]);
   
   // Update totals when items or discount changes
@@ -363,6 +367,11 @@ const InvoiceForm = () => {
     toast.success(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
     navigate(`/invoices/${invoiceData.id}`);
   };
+  
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
   
   return (
     <div className="container mx-auto px-4 py-6">

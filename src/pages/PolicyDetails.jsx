@@ -45,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const PolicyDetails = () => {
   const { id } = useParams();
@@ -308,12 +309,9 @@ const PolicyDetails = () => {
     return null;
   };
 
-  if (loading || !policy) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (

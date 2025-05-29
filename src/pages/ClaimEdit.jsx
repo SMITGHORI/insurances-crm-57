@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import {
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClaimEdit = () => {
   const { id } = useParams();
@@ -402,12 +402,9 @@ const ClaimEdit = () => {
     );
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (

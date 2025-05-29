@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
@@ -16,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const PolicyEdit = () => {
   const { id } = useParams();
@@ -156,12 +156,9 @@ const PolicyEdit = () => {
     }
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (

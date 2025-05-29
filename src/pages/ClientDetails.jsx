@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClientDetails = () => {
   const { id } = useParams();
@@ -32,6 +33,7 @@ const ClientDetails = () => {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const isMobile = window.innerWidth <= 768;
 
   // Fetch client data
   useEffect(() => {
@@ -196,13 +198,9 @@ const ClientDetails = () => {
     // navigate(`/policies/${policyId}`);
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amba-blue"></div>
-        <span className="ml-3 text-lg font-medium">Loading client details...</span>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   if (!client) {

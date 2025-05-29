@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateClientId } from '../utils/idGenerator';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClientDetailsView = () => {
   const { id } = useParams();
@@ -31,6 +32,7 @@ const ClientDetailsView = () => {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const isMobile = window.innerWidth <= 768;
 
   // Load client data
   useEffect(() => {
@@ -292,13 +294,9 @@ const ClientDetailsView = () => {
     { id: 4, type: 'Address Proof', docKey: 'addressProof', icon: <FileUp className="h-5 w-5 text-purple-500" />, data: clientDocuments.addressProof }
   ];
 
-  // Loading state
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   // If client not found

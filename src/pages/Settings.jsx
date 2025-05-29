@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
@@ -82,6 +82,11 @@ const Settings = () => {
       toast.success("Appearance settings updated");
     }, 600);
   };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto py-6">

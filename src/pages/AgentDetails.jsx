@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
@@ -32,6 +31,7 @@ import AgentClients from '@/components/agents/AgentClients';
 import AgentPolicies from '@/components/agents/AgentPolicies';
 import AgentPerformance from '@/components/agents/AgentPerformance';
 import AgentCommissions from '@/components/agents/AgentCommissions';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const AgentDetails = () => {
   const { id } = useParams();
@@ -130,12 +130,9 @@ const AgentDetails = () => {
     }
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   if (!agent) {

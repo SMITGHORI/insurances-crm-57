@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -22,10 +21,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const AgentCreate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [loading, setLoading] = React.useState(false);
+  const isMobile = window.innerWidth <= 768;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,6 +40,11 @@ const AgentCreate = () => {
     
     navigate('/agents');
   };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="space-y-6">

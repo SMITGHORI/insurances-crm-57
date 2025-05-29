@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
@@ -7,6 +6,7 @@ import { generateId } from '@/utils/idGenerator';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const PolicyCreate = () => {
   const navigate = useNavigate();
@@ -112,12 +112,9 @@ const PolicyCreate = () => {
     }
   };
 
+  // Show professional loading skeleton
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   const emptyPolicy = {

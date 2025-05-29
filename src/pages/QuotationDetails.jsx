@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -23,12 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const QuotationDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true); // Add loading state
 
   // Sample data - in a real app, this would be fetched from an API based on id
   const quotation = {
@@ -180,6 +181,11 @@ const QuotationDetails = () => {
     toast.success('Converting quotation to policy...');
     navigate('/policies/create', { state: { fromQuotation: quotation.id } });
   };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

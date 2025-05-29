@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -26,6 +25,7 @@ import {
 import { toast } from 'sonner';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const QuotationForm = () => {
   const { id } = useParams();
@@ -270,6 +270,11 @@ const QuotationForm = () => {
     toast.success("Quotation saved as draft");
     navigate('/quotations');
   };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

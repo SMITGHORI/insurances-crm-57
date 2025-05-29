@@ -1,72 +1,79 @@
-
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import ClientEditForm from '../components/clients/ClientEditForm';
-import { useClient } from '../hooks/useClients';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import ClientForm from '../components/clients/ClientForm';
 import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { useClients, useUpdateClient } from '../hooks/useClients';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
-/**
- * Client Edit page with backend integration
- * Uses React Query for data fetching
- */
 const ClientEdit = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [clientData, setClientData] = useState(null);
 
-  // Fetch client data using React Query
-  const {
-    data: client,
-    isLoading,
-    isError,
-    error,
-    refetch
-  } = useClient(id);
+  // React Query hooks
+  const { data: client, isLoading: isClientLoading, error: clientError } = useClients({ id });
+  const updateClientMutation = useUpdateClient();
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>
-    );
+  useEffect(() => {
+    if (client?.data) {
+      setClientData(client.data);
+    }
+    setLoading(false);
+  }, [client]);
+
+  const handleUpdateClient = async (updatedClientData) => {
+    try {
+      await updateClientMutation.mutateAsync({ id, ...updatedClientData });
+      toast.success('Client updated successfully');
+      navigate('/clients');
+    } catch (error) {
+      toast.error('Failed to update client');
+    }
+  };
+
+  const handleGoBack = () => {
+    navigate('/clients');
+  };
+
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={false} />;
   }
 
-  // Error state
-  if (isError) {
+  if (!clientData) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-600 mb-4">
-          Failed to load client: {error?.message || 'Unknown error'}
-        </div>
-        <div className="space-x-2">
-          <Button onClick={() => refetch()} variant="outline">
-            Retry
-          </Button>
-          <Button onClick={() => navigate('/clients')}>
-            Back to Clients
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center py-12">
+          <div className="text-red-600 mb-4">
+            Failed to load client details.
+          </div>
+          <Button onClick={handleGoBack} variant="outline">
+            Go Back
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  // Client not found
-  if (!client) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-gray-600 mb-4">
-          Client not found
-        </div>
-        <Button onClick={() => navigate('/clients')}>
-          Back to Clients
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto">
-      <ClientEditForm client={client} />
+    <div className="container mx-auto px-4 py-6">
+      <Button onClick={handleGoBack} variant="ghost" className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Clients
+      </Button>
+      <div className="rounded-lg shadow overflow-hidden">
+        <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Client</h3>
+          <ClientForm
+            initialValues={clientData}
+            onSubmit={handleUpdateClient}
+            isLoading={updateClientMutation.isLoading}
+          />
+        </div>
+      </div>
     </div>
   );
 };

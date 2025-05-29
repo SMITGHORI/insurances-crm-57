@@ -29,6 +29,7 @@ import ClaimDocuments from '@/components/claims/ClaimDocuments';
 import ClaimTimeline from '@/components/claims/ClaimTimeline';
 import ClaimNotes from '@/components/claims/ClaimNotes';
 import { formatCurrency } from '@/lib/utils';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClaimDetails = () => {
   const { id } = useParams();
@@ -273,12 +274,9 @@ const ClaimDetails = () => {
     navigate(`/policies/${claim.policyId}`);
   };
 
-  if (loading || !claim) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>
-    );
+  // Show professional loading skeleton
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (
