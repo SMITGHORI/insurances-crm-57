@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ const InvoiceEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
+  const isMobile = window.innerWidth <= 768;
 
   const { data: invoiceData, isLoading: isInvoiceLoading, error: invoiceError } = useInvoice(id);
   const updateInvoiceMutation = useUpdateInvoice();
@@ -50,8 +52,8 @@ const InvoiceEdit = () => {
     }
   };
 
-  if (loading) {
-    return <PageSkeleton />;
+  if (loading || isInvoiceLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (

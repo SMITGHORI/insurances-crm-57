@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ const ClientEdit = () => {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState(null);
+  const isMobile = window.innerWidth <= 768;
 
   // React Query hooks
   const { data: client, isLoading: isClientLoading, error: clientError } = useClients({ id });
@@ -39,8 +41,8 @@ const ClientEdit = () => {
   };
 
   // Show professional loading skeleton
-  if (loading) {
-    return <PageSkeleton isMobile={false} />;
+  if (loading || isClientLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   if (!clientData) {
