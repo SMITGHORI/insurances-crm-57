@@ -82,6 +82,11 @@ export const API_ENDPOINTS = {
   INVOICE_STATUS: (id) => `/invoices/${id}/status`,
   INVOICES_STATS: '/invoices/stats',
   
+  // Activities endpoints
+  ACTIVITIES: '/activities',
+  ACTIVITY_BY_ID: (id) => `/activities/${id}`,
+  ACTIVITIES_STATS: '/activities/stats',
+  
   // Auth endpoints
   AUTH_LOGIN: '/auth/login',
   AUTH_LOGOUT: '/auth/logout',
