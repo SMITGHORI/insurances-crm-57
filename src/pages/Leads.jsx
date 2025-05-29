@@ -8,6 +8,7 @@ import LeadFilters from '@/components/leads/LeadFilters';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const Leads = () => {
   const navigate = useNavigate();
@@ -22,6 +23,13 @@ const Leads = () => {
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   const [activeFilters, setActiveFilters] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading for demonstration
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCreateLead = () => {
     navigate('/leads/create');
@@ -64,6 +72,11 @@ const Leads = () => {
   const clearActiveFilters = () => {
     setActiveFilters([]);
   };
+
+  // Show professional loading skeleton
+  if (isLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">

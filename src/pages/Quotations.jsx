@@ -8,6 +8,7 @@ import QuotationFilters from '@/components/quotations/QuotationFilters';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const Quotations = () => {
   const navigate = useNavigate();
@@ -24,6 +25,13 @@ const Quotations = () => {
     direction: 'desc'
   });
   const [activeFilters, setActiveFilters] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading for demonstration
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCreateQuotation = () => {
     navigate('/quotations/create');
@@ -63,6 +71,11 @@ const Quotations = () => {
     // In a real app, this would generate a CSV/Excel file
     toast.success(`Exported ${quotations.length} quotations to CSV`);
   };
+
+  // Show professional loading skeleton
+  if (isLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">

@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ClaimFilters from '@/components/claims/ClaimFilters';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const Claims = () => {
   const navigate = useNavigate();
@@ -20,6 +21,13 @@ const Claims = () => {
   const [sortField, setSortField] = useState('');
   const [sortDirection, setSortDirection] = useState('asc');
   const [activeFilters, setActiveFilters] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Simulate loading for demonstration
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCreateClaim = () => {
     navigate('/claims/create');
@@ -90,6 +98,11 @@ const Claims = () => {
     }
     setActiveFilters(activeFilters.filter(filter => filter.name !== filterName));
   };
+
+  // Show professional loading skeleton
+  if (isLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

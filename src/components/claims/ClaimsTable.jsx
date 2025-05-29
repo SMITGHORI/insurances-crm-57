@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useClaims, useDeleteClaim } from '@/hooks/useClaims';
 import { toast } from 'sonner';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClaimsTable = ({ 
   filterParams, 
@@ -51,20 +51,9 @@ const ClaimsTable = ({
 
   const deleteClaimMutation = useDeleteClaim();
 
-  // Handle loading state
+  // Handle loading state with professional skeleton
   if (isLoading) {
-    return (
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading claims...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return isMobile ? <CardSkeleton /> : <TableSkeleton />;
   }
 
   // Handle error state
