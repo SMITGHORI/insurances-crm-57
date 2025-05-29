@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Building, User, Group } from 'lucide-react';
@@ -11,6 +10,7 @@ import ClientTable from '../components/clients/ClientTable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useClients, useDeleteClient, useCreateClient } from '../hooks/useClients';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 /**
  * Clients page with backend integration
@@ -137,13 +137,9 @@ const Clients = () => {
     );
   };
 
-  // Loading state
+  // Loading state with professional skeleton
   if (isLoading && currentPage === 1) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue"></div>
-      </div>
-    );
+    return <PageSkeleton isMobile={isMobile} />;
   }
 
   // Error state

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Eye, Edit, Trash, ArrowUpDown, User, Building, Group, Link } from 'lucide-react';
 import {
@@ -12,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
 
 const ClientTable = ({ 
   clients = [], 
@@ -75,13 +75,16 @@ const ClientTable = ({
     ) : '';
   };
 
-  // Loading state
+  // Loading state with professional skeleton
   if (isLoading) {
-    return (
-      <div className="p-8 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amba-blue mx-auto mb-4"></div>
-        <p className="text-gray-500">Loading clients...</p>
+    return isMobile ? (
+      <div className="space-y-4 p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
       </div>
+    ) : (
+      <TableSkeleton />
     );
   }
 

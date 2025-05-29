@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -37,6 +36,7 @@ import {
   SheetClose
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageSkeleton, StatsSkeleton, FiltersSkeleton, TabsSkeleton, TableSkeleton } from '@/components/ui/professional-skeleton';
 
 const Policies = () => {
   const navigate = useNavigate();
@@ -369,6 +369,11 @@ const Policies = () => {
     return daysUntilRenewal <= 30 && daysUntilRenewal >= 0;
   }).length;
 
+  // Professional loading state
+  if (loading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
+
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
@@ -535,96 +540,88 @@ const Policies = () => {
         </Tabs>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+      {isMobile ? (
+        <PoliciesMobileView 
+          policies={filteredPolicies} 
+          isPolicyDueForRenewal={isPolicyDueForRenewal}
+          getStatusBadgeClass={getStatusBadgeClass}
+        />
       ) : (
-        <>
-          {isMobile ? (
-            <PoliciesMobileView 
-              policies={filteredPolicies} 
-              isPolicyDueForRenewal={isPolicyDueForRenewal}
-              getStatusBadgeClass={getStatusBadgeClass}
-            />
-          ) : (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Policy Number</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Insurance Company</TableHead>
-                    <TableHead>Plan</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Premium</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPolicies.length > 0 ? (
-                    filteredPolicies.map((policy) => (
-                      <TableRow 
-                        key={policy.id} 
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleViewPolicy(policy.id)}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Policy Number</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Insurance Company</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Premium</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPolicies.length > 0 ? (
+                filteredPolicies.map((policy) => (
+                  <TableRow 
+                    key={policy.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleViewPolicy(policy.id)}
+                  >
+                    <TableCell>{policy.policyNumber}</TableCell>
+                    <TableCell>
+                      <div 
+                        className="flex items-center text-primary hover:underline cursor-pointer"
+                        onClick={(e) => handleViewClient(e, policy.client.id)}
                       >
-                        <TableCell>{policy.policyNumber}</TableCell>
-                        <TableCell>
-                          <div 
-                            className="flex items-center text-primary hover:underline cursor-pointer"
-                            onClick={(e) => handleViewClient(e, policy.client.id)}
-                          >
-                            <Link className="h-4 w-4 mr-1" />
-                            {policy.client.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="flex items-center">
-                          <Building className="h-4 w-4 mr-1 text-blue-600" />
-                          {policy.insuranceCompany || 'Not specified'}
-                        </TableCell>
-                        <TableCell>{policy.planName || 'Not specified'}</TableCell>
-                        <TableCell>{policy.type}</TableCell>
-                        <TableCell>
-                          <span className={`amba-badge ${getStatusBadgeClass(policy.status)}`}>
-                            {policy.status}
-                          </span>
-                          {isPolicyDueForRenewal(policy.endDate) && (
-                            <span className="amba-badge amba-badge-orange ml-1">
-                              Renewal due
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
-                        <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/policies/edit/${policy.id}`);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
-                        No policies found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
+                        <Link className="h-4 w-4 mr-1" />
+                        {policy.client.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="flex items-center">
+                      <Building className="h-4 w-4 mr-1 text-blue-600" />
+                      {policy.insuranceCompany || 'Not specified'}
+                    </TableCell>
+                    <TableCell>{policy.planName || 'Not specified'}</TableCell>
+                    <TableCell>{policy.type}</TableCell>
+                    <TableCell>
+                      <span className={`amba-badge ${getStatusBadgeClass(policy.status)}`}>
+                        {policy.status}
+                      </span>
+                      {isPolicyDueForRenewal(policy.endDate) && (
+                        <span className="amba-badge amba-badge-orange ml-1">
+                          Renewal due
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
+                    <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/policies/edit/${policy.id}`);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    No policies found
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
