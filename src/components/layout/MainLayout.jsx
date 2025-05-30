@@ -8,8 +8,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const MainLayout = () => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [previousComponent, setPreviousComponent] = useState(null);
   const isMobile = useIsMobile();
   const location = useLocation();
 
@@ -22,19 +20,6 @@ const MainLayout = () => {
       setShowMobileSidebar(false);
     }
   };
-
-  // Handle smooth transitions between routes
-  useEffect(() => {
-    setIsTransitioning(true);
-    
-    // Very quick transition to prevent any flash
-    const timer = setTimeout(() => {
-      setIsTransitioning(false);
-      setPreviousComponent(null);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -84,10 +69,7 @@ const MainLayout = () => {
         <Header onMenuClick={toggleMobileSidebar} />
         <main className="flex-1 overflow-y-auto p-1 md:p-4 max-w-full relative bg-gray-50">
           <div className="container mx-auto max-w-full overflow-x-hidden px-0">
-            {/* Smooth transition container - no opacity change to prevent white flash */}
-            <div className="min-h-full">
-              <Outlet />
-            </div>
+            <Outlet />
           </div>
         </main>
       </div>
