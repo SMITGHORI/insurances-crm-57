@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { Toaster } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const MainLayout = () => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -44,10 +45,10 @@ const MainLayout = () => {
     closeSidebar();
   }, [location.pathname]);
 
-  // Inline loading component that matches background exactly
+  // Skeleton loading component for better UX
   const InlineLoader = () => (
-    <div className="flex items-center justify-center py-8 bg-gray-50">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+    <div className="bg-gray-50 min-h-screen">
+      <PageSkeleton isMobile={isMobile} />
     </div>
   );
 

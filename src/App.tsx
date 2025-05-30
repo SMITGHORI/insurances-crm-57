@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 // Lazy load components for better performance
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -51,10 +52,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Loading component that matches the background
+// Loading component using skeleton instead of spinner
 const LoadingComponent = () => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  <div className="min-h-screen bg-gray-50">
+    <PageSkeleton />
   </div>
 );
 
