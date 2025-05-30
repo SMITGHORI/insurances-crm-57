@@ -57,7 +57,7 @@ function App() {
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gray-50">
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
               <Routes>
                 {/* Auth Routes */}
                 <Route path="/auth" element={<Auth />} />

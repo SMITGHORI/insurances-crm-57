@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { Toaster } from 'sonner';
@@ -8,7 +8,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 const MainLayout = () => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const isMobile = useIsMobile();
+  const location = useLocation();
 
   const toggleMobileSidebar = () => {
     setShowMobileSidebar(!showMobileSidebar);
@@ -19,6 +21,16 @@ const MainLayout = () => {
       setShowMobileSidebar(false);
     }
   };
+
+  // Handle smooth transitions between routes
+  useEffect(() => {
+    setIsTransitioning(true);
+    const timer = setTimeout(() => {
+      setIsTransitioning(false);
+    }, 50); // Very short delay to prevent flash
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -41,7 +53,7 @@ const MainLayout = () => {
   // Close sidebar when route changes
   useEffect(() => {
     closeSidebar();
-  }, [window.location.pathname]);
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -66,9 +78,16 @@ const MainLayout = () => {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden w-full">
         <Header onMenuClick={toggleMobileSidebar} />
-        <main className="flex-1 overflow-y-auto p-1 md:p-4 max-w-full">
+        <main className="flex-1 overflow-y-auto p-1 md:p-4 max-w-full relative">
           <div className="container mx-auto max-w-full overflow-x-hidden px-0">
-            <Outlet />
+            {/* Add smooth transition overlay */}
+            <div 
+              className={`transition-opacity duration-200 ease-in-out ${
+                isTransitioning ? 'opacity-0' : 'opacity-100'
+              }`}
+            >
+              <Outlet />
+            </div>
           </div>
         </main>
       </div>
