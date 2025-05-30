@@ -6,9 +6,11 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/auth");
+    // Immediate redirect without any UI
+    navigate("/auth", { replace: true });
   }, [navigate]);
 
+  // Return null to prevent any rendering
   return null;
 };
 
