@@ -52,7 +52,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Loading component using skeleton instead of spinner
+// Full skeleton loading component - no blue spinner
 const LoadingComponent = () => (
   <div className="min-h-screen bg-gray-50">
     <PageSkeleton />

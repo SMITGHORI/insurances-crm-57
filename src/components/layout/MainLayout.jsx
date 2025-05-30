@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
@@ -45,7 +44,7 @@ const MainLayout = () => {
     closeSidebar();
   }, [location.pathname]);
 
-  // Skeleton loading component for better UX
+  // Professional skeleton loading component - no blue spinner
   const InlineLoader = () => (
     <div className="bg-gray-50 min-h-screen">
       <PageSkeleton isMobile={isMobile} />
