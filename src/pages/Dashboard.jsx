@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -45,15 +46,13 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState('month');
   const isMobile = useIsMobile();
-  const loading = true; // Add this line to simulate loading state
 
-  // Sample data for charts
+  // Sample data for charts - pre-loaded for better performance
   const policyTypeData = [
     { name: 'Health', value: 35, fill: '#1b365d' },
     { name: 'Term', value: 25, fill: '#5086c1' },
@@ -284,11 +283,6 @@ const Dashboard = () => {
     if (isMobile) return { inner: 30, outer: 50 };
     return { inner: 60, outer: 90 };
   };
-
-  // Show professional loading skeleton
-  if (loading) {
-    return <PageSkeleton isMobile={isMobile} />;
-  }
 
   return (
     <div className="space-y-4 md:space-y-6 px-2 py-2 md:px-4 md:py-4 overflow-x-hidden">
