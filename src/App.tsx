@@ -51,13 +51,20 @@ const queryClient = new QueryClient({
   },
 });
 
+// Loading component that matches the background
+const LoadingComponent = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  </div>
+);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gray-50">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingComponent />}>
               <Routes>
                 {/* Auth Routes */}
                 <Route path="/auth" element={<Auth />} />

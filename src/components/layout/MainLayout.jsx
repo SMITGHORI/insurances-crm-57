@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -44,6 +44,13 @@ const MainLayout = () => {
     closeSidebar();
   }, [location.pathname]);
 
+  // Inline loading component that matches background exactly
+  const InlineLoader = () => (
+    <div className="flex items-center justify-center py-8 bg-gray-50">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Mobile sidebar backdrop */}
@@ -65,11 +72,13 @@ const MainLayout = () => {
       </div>
       
       {/* Main content */}
-      <div className="flex flex-col flex-1 overflow-hidden w-full">
+      <div className="flex flex-col flex-1 overflow-hidden w-full bg-gray-50">
         <Header onMenuClick={toggleMobileSidebar} />
         <main className="flex-1 overflow-y-auto p-1 md:p-4 max-w-full relative bg-gray-50">
-          <div className="container mx-auto max-w-full overflow-x-hidden px-0">
-            <Outlet />
+          <div className="container mx-auto max-w-full overflow-x-hidden px-0 bg-gray-50">
+            <Suspense fallback={<InlineLoader />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>
