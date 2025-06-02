@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,6 @@ import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const AgentCreate = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const isMobile = window.innerWidth <= 768;
 
@@ -33,8 +32,7 @@ const AgentCreate = () => {
     e.preventDefault();
     // In a real app, this would send the form data to an API
     
-    toast({
-      title: "Agent Created",
+    toast.success("Agent Created", {
       description: "The agent profile has been created successfully.",
     });
     
