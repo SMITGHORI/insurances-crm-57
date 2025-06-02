@@ -25,6 +25,8 @@ import {
 import { toast } from 'sonner';
 import PoliciesMobileView from '@/components/policies/PoliciesMobileView';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePermissions } from '@/contexts/PermissionsContext';
+import withRoleBasedData from '@/components/hoc/withRoleBasedData';
 import {
   Sheet,
   SheetContent,
@@ -44,6 +46,7 @@ const Policies = () => {
   const queryParams = new URLSearchParams(location.search);
   const tabFromQuery = queryParams.get('tab');
   const isMobile = useIsMobile();
+  const { hasPermission, getFilteredData, isAgent, isSuperAdmin, userId } = usePermissions();
   
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,11 @@ const Policies = () => {
   const [activeTab, setActiveTab] = useState(tabFromQuery || 'all');
   const [filterType, setFilterType] = useState('all');
   const [filterCompany, setFilterCompany] = useState('all');
+
+  // Check if user can create policies
+  const canCreatePolicy = hasPermission('createPolicy');
+  const canEditAnyPolicy = hasPermission('editAnyPolicy');
+  const canViewAllPolicies = hasPermission('viewAllPolicies');
 
   // Get the policies data from localStorage or use the sample data
   useEffect(() => {
@@ -63,7 +71,7 @@ const Policies = () => {
     if (storedPoliciesData) {
       policiesList = JSON.parse(storedPoliciesData);
     } else {
-      // Sample policies data as fallback with added insurance fields
+      // Sample policies data as fallback with added insurance fields and agent assignments
       policiesList = [
         {
           id: 1,
@@ -74,6 +82,8 @@ const Policies = () => {
             id: 1,
             name: 'Rahul Sharma',
           },
+          agentId: '2', // Assigned to agent
+          assignedAgent: '2',
           startDate: '2025-01-01',
           endDate: '2026-01-01',
           sumAssured: '500000',
@@ -86,6 +96,7 @@ const Policies = () => {
           discountPercentage: 5,
           gstNumber: 'GST123456789',
           nextYearPremium: '13125',
+          // ... keep existing code (renewals, documents, payments, commission, history, notes)
           renewals: [
             {
               date: '2025-01-01',
@@ -148,6 +159,8 @@ const Policies = () => {
             id: 2,
             name: 'Tech Solutions Ltd',
           },
+          agentId: '1', // Assigned to super admin
+          assignedAgent: '1',
           startDate: '2025-01-15',
           endDate: '2026-01-15',
           sumAssured: '300000',
@@ -160,6 +173,7 @@ const Policies = () => {
           discountPercentage: 10,
           gstNumber: 'GST987654321',
           nextYearPremium: '8400',
+          // ... keep existing code (renewals, documents, payments, commission, history, notes)
           renewals: [
             {
               date: '2025-01-15',
@@ -216,6 +230,8 @@ const Policies = () => {
             id: 1,
             name: 'Rahul Sharma',
           },
+          agentId: '2', // Assigned to agent
+          assignedAgent: '2',
           startDate: '2025-02-01',
           endDate: '2055-02-01',
           sumAssured: '2000000',
@@ -228,6 +244,7 @@ const Policies = () => {
           discountPercentage: 0,
           gstNumber: '',
           nextYearPremium: '25000',
+          // ... keep existing code (renewals, documents, payments, commission, history, notes)
           renewals: [],
           documents: {
             proposalForm: null,
@@ -265,9 +282,11 @@ const Policies = () => {
       localStorage.setItem('policiesData', JSON.stringify(policiesList));
     }
     
-    setPolicies(policiesList);
+    // Apply role-based filtering
+    const filteredPoliciesList = getFilteredData(policiesList, 'policies');
+    setPolicies(filteredPoliciesList);
     setLoading(false);
-  }, []);
+  }, [getFilteredData]);
 
   // Update the tab when location.search changes
   useEffect(() => {
@@ -308,7 +327,11 @@ const Policies = () => {
   const policyTypes = [...new Set(policies.map(p => p.type).filter(Boolean))];
 
   const handleCreatePolicy = () => {
-    navigate('/policies/create');
+    if (canCreatePolicy) {
+      navigate('/policies/create');
+    } else {
+      toast.error('You do not have permission to create policies');
+    }
   };
 
   const handleViewPolicy = (id) => {
@@ -360,6 +383,7 @@ const Policies = () => {
     setSearchQuery('');
   };
 
+  // Calculate statistics based on filtered data
   const totalActive = policies.filter(p => p.status === 'In Force').length;
   const totalPending = policies.filter(p => p.status === 'Proposal').length;
   const totalRenewal = policies.filter(p => {
@@ -377,13 +401,22 @@ const Policies = () => {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Policies</h1>
-        <Button 
-          onClick={handleCreatePolicy}
-          className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white"
-        >
-          <Plus className="mr-1 h-4 w-4" /> New Policy
-        </Button>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+            {isAgent() ? 'My Policies' : 'All Policies'}
+          </h1>
+          {isAgent() && (
+            <p className="text-sm text-gray-500 mt-1">Showing only policies assigned to you</p>
+          )}
+        </div>
+        {canCreatePolicy && (
+          <Button 
+            onClick={handleCreatePolicy}
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white"
+          >
+            <Plus className="mr-1 h-4 w-4" /> New Policy
+          </Button>
+        )}
       </div>
 
       <div className="mb-4 sm:mb-6">
@@ -599,23 +632,25 @@ const Policies = () => {
                     <TableCell>{new Date(policy.endDate).toLocaleDateString()}</TableCell>
                     <TableCell>₹{parseInt(policy.premium).toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/policies/edit/${policy.id}`);
-                        }}
-                      >
-                        Edit
-                      </Button>
+                      {(canEditAnyPolicy || (isAgent() && policy.agentId === userId)) && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/policies/${policy.id}/edit`);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={9} className="h-24 text-center">
-                    No policies found
+                    {isAgent() ? 'No policies assigned to you' : 'No policies found'}
                   </TableCell>
                 </TableRow>
               )}
@@ -627,4 +662,4 @@ const Policies = () => {
   );
 };
 
-export default Policies;
+export default withRoleBasedData(Policies, 'policies');

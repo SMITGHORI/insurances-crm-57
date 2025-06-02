@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
@@ -5,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Trash } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +28,11 @@ const PolicyEdit = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
+  const { hasPermission, isAgent, userId } = usePermissions();
+
+  // Check permissions
+  const canEditAnyPolicy = hasPermission('editAnyPolicy');
+  const canDeletePolicy = hasPermission('deletePolicy');
 
   useEffect(() => {
     setLoading(true);
@@ -48,6 +55,13 @@ const PolicyEdit = () => {
     const foundPolicy = policiesList.find(p => p.id === parseInt(id));
     
     if (foundPolicy) {
+      // Check if agent can edit this specific policy
+      if (isAgent() && !canEditAnyPolicy && foundPolicy.agentId !== userId) {
+        toast.error('You do not have permission to edit this policy');
+        navigate('/policies');
+        return;
+      }
+      
       // If typeSpecificDetails doesn't exist yet, initialize it
       if (!foundPolicy.typeSpecificDetails) {
         foundPolicy.typeSpecificDetails = {};
@@ -60,12 +74,19 @@ const PolicyEdit = () => {
     }
     
     setLoading(false);
-  }, [id, navigate]);
+  }, [id, navigate, isAgent, canEditAnyPolicy, userId]);
 
   const handleSavePolicy = async (updatedPolicy) => {
     setSubmitting(true);
     
     try {
+      // Additional permission check
+      if (isAgent() && !canEditAnyPolicy && policy.agentId !== userId) {
+        toast.error('You do not have permission to edit this policy');
+        setSubmitting(false);
+        return;
+      }
+      
       // Validate required fields
       if (!updatedPolicy.client?.id || !updatedPolicy.type || !updatedPolicy.premium || !updatedPolicy.sumAssured) {
         toast.error('Please fill in all required fields');
@@ -87,7 +108,7 @@ const PolicyEdit = () => {
       if (policyIndex !== -1) {
         // Preserve existing fields that aren't in the form
         const existingPolicy = policiesList[policyIndex];
-        const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes'];
+        const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes', 'agentId', 'assignedAgent'];
         
         fieldsToPreserve.forEach(field => {
           if (existingPolicy[field] && !updatedPolicy[field]) {
@@ -102,7 +123,7 @@ const PolicyEdit = () => {
         
         updatedPolicy.history.push({
           action: 'Updated',
-          by: 'Admin',
+          by: isAgent() ? 'Agent' : 'Admin',
           timestamp: new Date().toISOString(),
           details: 'Policy details updated'
         });
@@ -133,6 +154,18 @@ const PolicyEdit = () => {
   
   const handleDeletePolicy = () => {
     try {
+      // Check permission
+      if (!canDeletePolicy) {
+        toast.error('You do not have permission to delete policies');
+        return;
+      }
+      
+      // Additional check for agents
+      if (isAgent() && policy.agentId !== userId) {
+        toast.error('You can only delete policies assigned to you');
+        return;
+      }
+      
       // Get current policies from localStorage
       const storedPoliciesData = localStorage.getItem('policiesData');
       
@@ -161,6 +194,26 @@ const PolicyEdit = () => {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
+  // Check if user has permission to edit this policy
+  const canEdit = canEditAnyPolicy || (isAgent() && policy?.agentId === userId);
+  const canDelete = canDeletePolicy && (canEditAnyPolicy || (isAgent() && policy?.agentId === userId));
+
+  if (!canEdit) {
+    return (
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Access Denied</h2>
+            <p className="text-gray-600 mb-4">You do not have permission to edit this policy.</p>
+            <Button onClick={() => navigate('/policies')} variant="outline">
+              Back to Policies
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4 sm:mb-6">
@@ -180,15 +233,17 @@ const PolicyEdit = () => {
           </h1>
         </div>
         
-        <Button 
-          variant="destructive" 
-          size="sm"
-          onClick={() => setShowDeleteDialog(true)}
-          className="flex items-center"
-        >
-          <Trash className="mr-1 h-4 w-4" />
-          Delete Policy
-        </Button>
+        {canDelete && (
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="flex items-center"
+          >
+            <Trash className="mr-1 h-4 w-4" />
+            Delete Policy
+          </Button>
+        )}
       </div>
       
       <PolicyForm 
