@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -32,11 +32,12 @@ import AgentPolicies from '@/components/agents/AgentPolicies';
 import AgentPerformance from '@/components/agents/AgentPerformance';
 import AgentCommissions from '@/components/agents/AgentCommissions';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AgentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("overview");
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,16 +52,14 @@ const AgentDetails = () => {
       if (foundAgent) {
         setAgent(foundAgent);
       } else {
-        toast({
-          title: "Agent Not Found",
-          description: "The requested agent could not be found.",
-          variant: "destructive"
+        toast.error("Agent Not Found", {
+          description: "The requested agent could not be found."
         });
         navigate('/agents');
       }
     }
     setLoading(false);
-  }, [id, navigate, toast]);
+  }, [id, navigate]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -94,8 +93,7 @@ const AgentDetails = () => {
       // Update local state
       setAgent({ ...agent, status: newStatus });
       
-      toast({
-        title: `Agent ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`,
+      toast.success(`Agent ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`, {
         description: `${agent.name} has been ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`
       });
     }
@@ -119,8 +117,7 @@ const AgentDetails = () => {
       // Update localStorage
       localStorage.setItem('agentsData', JSON.stringify(updatedAgents));
       
-      toast({
-        title: "Agent Deleted",
+      toast.success("Agent Deleted", {
         description: `${agent.name} has been deleted successfully.`
       });
       
