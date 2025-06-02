@@ -1,8 +1,8 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import { Toaster } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
@@ -82,9 +82,6 @@ const MainLayout = () => {
           </div>
         </main>
       </div>
-      
-      {/* Toast notifications */}
-      <Toaster position="top-right" richColors />
     </div>
   );
 };
