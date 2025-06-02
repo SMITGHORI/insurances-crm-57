@@ -15,26 +15,40 @@ import {
   LogOut,
   Clock
 } from 'lucide-react';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 const Sidebar = ({ onNavItemClick }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { canAccessRoute, isAgent, isSuperAdmin } = usePermissions();
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  const menuItems = [
+  // Define menu items with their access requirements
+  const allMenuItems = [
     { path: '/dashboard', icon: <Home size={20} />, name: 'Dashboard' },
     { path: '/clients', icon: <Users size={20} />, name: 'Clients' },
     { path: '/policies', icon: <FileText size={20} />, name: 'Policies' },
-    { path: '/agents', icon: <Users size={20} />, name: 'Agents' },
+    { path: '/agents', icon: <Users size={20} />, name: 'Agents', adminOnly: true },
     { path: '/claims', icon: <ShieldCheck size={20} />, name: 'Claims' },
     { path: '/leads', icon: <Star size={20} />, name: 'Leads' },
     { path: '/quotations', icon: <FileEdit size={20} />, name: 'Quotations' },
-    { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices' },
+    { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices', adminOnly: true },
     { path: '/recent-activities', icon: <Clock size={20} />, name: 'Recent Activities' },
     { path: '/settings', icon: <Settings size={20} />, name: 'Settings' },
   ];
+
+  // Filter menu items based on user permissions
+  const menuItems = allMenuItems.filter(item => {
+    // Hide admin-only items from agents
+    if (item.adminOnly && isAgent()) {
+      return false;
+    }
+    
+    // Check if user can access the route
+    return canAccessRoute(item.path);
+  });
 
   return (
     <aside
@@ -58,6 +72,15 @@ const Sidebar = ({ onNavItemClick }) => {
           {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
+
+      {/* User Role Indicator */}
+      {!isCollapsed && (
+        <div className="px-4 py-2 border-b border-amba-lightblue/30">
+          <span className="text-xs text-amba-lightblue/80 uppercase tracking-wide">
+            {isSuperAdmin() ? 'Super Admin' : isAgent() ? 'Agent' : 'User'}
+          </span>
+        </div>
+      )}
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin">
