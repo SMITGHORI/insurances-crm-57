@@ -1,370 +1,341 @@
-# Insurance CRM Backend - Client Module
+
+# Insurance CRM Backend - Policies Module
 
 ## Overview
-This is a comprehensive Node.js + Express + MongoDB backend API for the client module of an insurance CRM system. It includes role-based access control, comprehensive validation, file uploads, and follows international coding standards.
+This backend API provides comprehensive insurance policy management functionality for the Insurance CRM system. Built with Node.js, Express.js, and MongoDB, it follows international coding standards and best practices.
 
-## Tech Stack
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **MongoDB** - Database with Mongoose ODM
-- **JWT** - Authentication
-- **Joi** - Validation
-- **Multer** - File uploads
-- **Jest** - Testing framework
+## Technology Stack
+- **Runtime**: Node.js (v16+)
+- **Framework**: Express.js
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JWT (JSON Web Tokens)
+- **Validation**: Joi
+- **Testing**: Jest with Supertest
+- **File Upload**: Multer
+- **Security**: bcryptjs, helmet, cors
 
 ## Features
-- ✅ Role-based access control (Super Admin, Manager, Agent)
-- ✅ Comprehensive client management (Individual, Corporate, Group)
-- ✅ Document upload and management
-- ✅ Advanced search and filtering
-- ✅ Data validation and sanitization
-- ✅ Error handling and logging
-- ✅ Unit and integration tests
-- ✅ API documentation
-- ✅ Performance optimizations
 
-## Project Structure
-```
-backend/
-├── controllers/
-│   └── clientController.js     # Client business logic
-├── models/
-│   └── Client.js              # MongoDB schema
-├── routes/
-│   └── clients.js             # API routes
-├── middleware/
-│   ├── auth.js                # Authentication
-│   ├── roleMiddleware.js      # Authorization
-│   ├── upload.js              # File upload
-│   └── validation.js          # Input validation
-├── validations/
-│   └── clientValidation.js    # Joi schemas
-├── utils/
-│   ├── errorHandler.js        # Error management
-│   ├── responseHandler.js     # Response formatting
-│   └── fileHandler.js         # File operations
-├── tests/
-│   └── clients.test.js        # Test suites
-└── docs/
-    └── api/
-        └── clients-api-documentation.md
-```
+### Core Functionality
+- ✅ **CRUD Operations**: Create, Read, Update, Delete policies
+- ✅ **Role-Based Access Control**: Super Admin, Manager, Agent roles
+- ✅ **Document Management**: Upload, download, delete policy documents
+- ✅ **Payment Tracking**: Payment history and premium management
+- ✅ **Policy Renewal**: Automated renewal process with history
+- ✅ **Search & Filtering**: Advanced search with multiple filters
+- ✅ **Pagination**: Efficient data loading with pagination
+- ✅ **Notes System**: Add private/public notes to policies
+- ✅ **Statistics & Reports**: Comprehensive policy analytics
 
-## Installation
-
-1. **Clone and setup:**
-```bash
-git clone <your-repo>
-cd backend
-npm install
-```
-
-2. **Environment variables:**
-```bash
-# Create .env file
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/insurance_crm
-JWT_SECRET=your-super-secret-jwt-key
-UPLOAD_PATH=./uploads
-MAX_FILE_SIZE=5242880
-```
-
-3. **Database setup:**
-```bash
-# Start MongoDB
-mongod
-
-# Create indexes (run once)
-npm run create-indexes
-```
-
-4. **Start development server:**
-```bash
-npm run dev
-```
+### Advanced Features
+- ✅ **Soft Delete**: Policies are soft-deleted for data integrity
+- ✅ **Audit Trail**: Track all changes with timestamps and user info
+- ✅ **Data Validation**: Comprehensive input validation with Joi
+- ✅ **Error Handling**: Standardized error responses
+- ✅ **Security**: JWT authentication, role-based authorization
+- ✅ **Performance**: Database indexing and query optimization
+- ✅ **Testing**: Comprehensive test suite with Jest
 
 ## API Endpoints
 
-### Authentication Required
-All endpoints require JWT token in Authorization header:
+### Policies Management
+```
+GET    /api/policies                    # Get all policies (with filters)
+GET    /api/policies/:id                # Get policy by ID
+POST   /api/policies                    # Create new policy
+PUT    /api/policies/:id                # Update policy
+DELETE /api/policies/:id                # Delete policy (soft delete)
+```
+
+### Document Management
+```
+POST   /api/policies/:id/documents      # Upload document
+GET    /api/policies/:id/documents      # Get policy documents
+DELETE /api/policies/:id/documents/:docId # Delete document
+```
+
+### Payment Management
+```
+POST   /api/policies/:id/payments       # Add payment record
+GET    /api/policies/:id/payments       # Get payment history
+```
+
+### Policy Operations
+```
+POST   /api/policies/:id/renew          # Renew policy
+POST   /api/policies/:id/notes          # Add note
+GET    /api/policies/:id/notes          # Get policy notes
+PUT    /api/policies/:id/assign         # Assign to agent
+```
+
+### Search & Analytics
+```
+GET    /api/policies/search/:query      # Search policies
+GET    /api/policies/agent/:agentId     # Get policies by agent
+GET    /api/policies/stats/summary      # Get statistics
+GET    /api/policies/expiring/:days     # Get expiring policies
+GET    /api/policies/renewals/due       # Get policies due for renewal
+```
+
+### Bulk Operations
+```
+POST   /api/policies/bulk/assign        # Bulk assign policies
+GET    /api/policies/export             # Export policies data
+```
+
+## Database Schema
+
+### Policy Model
+```javascript
+{
+  policyNumber: String,        // Unique policy identifier
+  clientId: ObjectId,          // Reference to Client
+  type: String,                // life, health, auto, home, business, etc.
+  subType: String,             // Policy subtype
+  status: String,              // active, pending, expired, cancelled, etc.
+  company: String,             // Insurance company name
+  companyPolicyNumber: String, // Company's internal policy number
+  
+  premium: {
+    amount: Number,            // Premium amount
+    frequency: String,         // monthly, quarterly, semi-annual, annual
+    nextDueDate: Date         // Next payment due date
+  },
+  
+  coverage: {
+    amount: Number,            // Coverage amount
+    deductible: Number,        // Deductible amount
+    benefits: [String],        // List of benefits
+    exclusions: [String]       // List of exclusions
+  },
+  
+  startDate: Date,             // Policy start date
+  endDate: Date,               // Policy end date
+  assignedAgentId: ObjectId,   // Reference to User (agent)
+  
+  commission: {
+    rate: Number,              // Commission rate percentage
+    amount: Number,            // Commission amount
+    paid: Boolean,             // Commission payment status
+    paidDate: Date            // Commission payment date
+  },
+  
+  // Embedded collections
+  documents: [DocumentSchema],
+  paymentHistory: [PaymentSchema],
+  renewalHistory: [RenewalSchema],
+  notes: [NoteSchema],
+  
+  // Additional fields
+  tags: [String],
+  priority: String,
+  isAutoRenewal: Boolean,
+  lastContactDate: Date,
+  nextFollowUpDate: Date,
+  
+  // Audit fields
+  createdBy: ObjectId,
+  updatedBy: ObjectId,
+  isDeleted: Boolean,
+  deletedAt: Date,
+  deletedBy: ObjectId
+}
+```
+
+### Embedded Schemas
+
+#### Document Schema
+```javascript
+{
+  name: String,
+  type: String,                // policy_document, claim_form, etc.
+  url: String,
+  size: Number,
+  mimeType: String,
+  uploadedBy: ObjectId,
+  uploadedAt: Date
+}
+```
+
+#### Payment Schema
+```javascript
+{
+  amount: Number,
+  date: Date,
+  method: String,              // cash, check, bank_transfer, etc.
+  status: String,              // pending, completed, failed, refunded
+  transactionId: String,
+  notes: String
+}
+```
+
+#### Renewal Schema
+```javascript
+{
+  renewalDate: Date,
+  previousEndDate: Date,
+  premium: Number,
+  agentId: ObjectId,
+  notes: String
+}
+```
+
+#### Note Schema
+```javascript
+{
+  content: String,
+  createdBy: ObjectId,
+  createdAt: Date,
+  isPrivate: Boolean,
+  tags: [String]
+}
+```
+
+## Authentication & Authorization
+
+### JWT Authentication
+All API endpoints require JWT authentication via Bearer token:
 ```
 Authorization: Bearer <your-jwt-token>
 ```
 
-### Base URL
-```
-http://localhost:5000/api/clients
-```
+### Role-Based Access Control
 
-### Available Endpoints
+#### Super Admin
+- Full access to all policies and operations
+- Can create, read, update, delete any policy
+- Access to all statistics and reports
+- Can assign policies to agents
 
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|---------|
-| GET | `/` | Get all clients | All roles |
-| GET | `/:id` | Get client by ID | All roles |
-| POST | `/` | Create client | Admin, Manager |
-| PUT | `/:id` | Update client | All roles* |
-| DELETE | `/:id` | Delete client | Admin only |
-| POST | `/:id/documents` | Upload document | All roles* |
-| GET | `/:id/documents` | Get documents | All roles* |
-| DELETE | `/:id/documents/:docId` | Delete document | All roles* |
+#### Manager
+- Access to all policies within their region/team
+- Can create and update policies
+- Can assign policies to agents
+- Access to statistics and reports
 
-*Agents can only access their assigned clients
-
-## Role-Based Access Control
-
-### Super Admin
-- Full access to all clients
-- Can create, read, update, delete any client
-- Can assign agents to clients
-- Can view system statistics
-
-### Manager
-- Can view all clients in their region/team
-- Can create and update clients
-- Can assign agents to clients
-- Cannot delete clients
-
-### Agent
-- Can only view clients assigned to them
-- Can update assigned clients
-- Can upload documents for assigned clients
-- Cannot delete clients or view other agents' clients
-
-## Data Models
-
-### Individual Client
-```javascript
-{
-  clientType: "individual",
-  firstName: "John",
-  lastName: "Doe",
-  email: "john.doe@email.com",
-  phone: "9876543210",
-  dob: "1985-06-15",
-  gender: "male",
-  panNumber: "ABCDE1234F",
-  // ... other fields
-}
-```
-
-### Corporate Client
-```javascript
-{
-  clientType: "corporate",
-  companyName: "Tech Solutions Ltd",
-  registrationNo: "REG123456",
-  email: "contact@techsolutions.com",
-  industry: "IT",
-  employeeCount: 250,
-  contactPersonName: "Vijay Rao",
-  // ... other fields
-}
-```
-
-### Group Client
-```javascript
-{
-  clientType: "group",
-  groupName: "Family Insurance Group",
-  groupType: "family",
-  memberCount: 5,
-  primaryContactName: "John Smith",
-  // ... other fields
-}
-```
-
-## Validation Rules
-
-### Common Validations
-- Email: Valid email format, unique
-- Phone: 10-digit number
-- PIN code: 6-digit number
-- PAN: Format ABCDE1234F
-- GST: Valid GST number format
-
-### File Upload
-- Max size: 5MB
-- Allowed types: PDF, JPG, PNG
-- Virus scanning (configurable)
+#### Agent
+- Access only to policies assigned to them
+- Can update certain fields of assigned policies
+- Can add payments, notes, and documents
+- Limited access to statistics
 
 ## Error Handling
+The API uses a standardized error response format with appropriate HTTP status codes:
 
-### Error Response Format
 ```javascript
 {
-  "success": false,
-  "message": "Error description",
-  "errors": [
+  success: false,
+  message: "Error message",
+  timestamp: "2024-01-01T10:00:00.000Z",
+  errors: [
     {
-      "field": "email",
-      "message": "Invalid email format"
+      field: "premium.amount",
+      message: "Premium amount must be positive",
+      value: -100
     }
-  ],
-  "timestamp": "2024-01-15T10:30:00Z"
+  ]
 }
 ```
 
-### HTTP Status Codes
-- 200: Success
-- 201: Created
-- 400: Bad Request (validation error)
-- 401: Unauthorized
-- 403: Forbidden
-- 404: Not Found
-- 500: Internal Server Error
+## Response Format
+All API responses follow a consistent format:
+
+```javascript
+{
+  success: true,
+  message: "Operation successful",
+  data: { /* response data */ },
+  timestamp: "2024-01-01T10:00:00.000Z"
+}
+```
 
 ## Testing
+Comprehensive test suite for all endpoints using Jest and Supertest:
 
-### Run Tests
 ```bash
-# Unit tests
+# Run tests
 npm test
 
-# Integration tests
-npm run test:integration
-
-# Test coverage
+# Run tests with coverage
 npm run test:coverage
-
-# Watch mode
-npm run test:watch
 ```
 
-### Test Structure
-- Unit tests for models and utilities
-- Integration tests for API endpoints
-- Authentication and authorization tests
-- Validation tests
-- File upload tests
+## Security Best Practices
+- ✅ JWT Authentication
+- ✅ Role-Based Access Control (RBAC)
+- ✅ Input Validation
+- ✅ Parameter Sanitization
+- ✅ Error Handling without leaking sensitive info
+- ✅ Secure Password Storage with bcrypt
+- ✅ Content Security Policy (CSP)
+- ✅ Rate Limiting
+- ✅ CORS Configuration
 
-## Performance Optimizations
+## Installation & Setup
 
-### Database Indexes
-```javascript
-// Compound indexes for common queries
-{ assignedAgentId: 1, status: 1 }
-{ clientType: 1, status: 1 }
-{ createdAt: -1 }
+### Prerequisites
+- Node.js v16+
+- MongoDB v4+
+- NPM or Yarn
 
-// Text index for search
-{ clientId: "text", email: "text", "individualData.firstName": "text" }
-```
-
-### Query Optimizations
-- Pagination with skip/limit
-- Field selection with lean()
-- Proper use of aggregation pipeline
-- Connection pooling
-
-## Security Features
-
-### Input Validation
-- Joi schema validation
-- XSS protection
-- SQL injection prevention
-- File type validation
-
-### Authentication & Authorization
-- JWT token validation
-- Role-based access control
-- Resource ownership checks
-- Password hashing with bcrypt
-
-### File Security
-- File type restrictions
-- File size limits
-- Secure file storage
-- Virus scanning (optional)
-
-## Monitoring & Logging
-
-### Logging Levels
-- ERROR: Application errors
-- WARN: Warning conditions
-- INFO: General information
-- DEBUG: Debug information
-
-### Health Checks
+### Installation
 ```bash
-GET /api/health
-```
+# Clone the repository
+git clone https://github.com/your-username/insurance-crm-backend.git
 
-### Metrics
-- Response times
-- Error rates
-- Database query performance
-- File upload statistics
+# Install dependencies
+cd insurance-crm-backend
+npm install
 
-## Deployment
+# Set environment variables (create .env file)
+cp .env.example .env
 
-### Production Environment
-```bash
-# Build for production
-npm run build
-
-# Start production server
+# Run the server
 npm start
 
-# Using PM2
+# Run in development mode
+npm run dev
+```
+
+### Environment Variables
+```
+NODE_ENV=development
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/insurance_crm
+MONGODB_TEST_URI=mongodb://localhost:27017/insurance_crm_test
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRES_IN=1d
+UPLOAD_DIR=uploads
+```
+
+## Deployment
+Deployment instructions for various environments:
+
+### Docker
+```bash
+# Build the Docker image
+docker build -t insurance-crm-backend .
+
+# Run the container
+docker run -p 5000:5000 insurance-crm-backend
+```
+
+### Custom Server
+```bash
+# Install PM2 globally
+npm install pm2 -g
+
+# Start the application with PM2
 pm2 start ecosystem.config.js
 ```
 
-### Environment Variables (Production)
-```bash
-NODE_ENV=production
-PORT=3000
-MONGODB_URI=mongodb://your-production-db
-JWT_SECRET=your-production-secret
-REDIS_URL=redis://your-redis-instance
-```
+## Documentation
+API documentation is available at:
+- [Swagger UI](http://localhost:5000/api-docs)
+- [Postman Collection](./docs/postman/insurance-crm-api.json)
 
-### Docker Support
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-```
+## Contributors
+- Your Name <your.email@example.com>
 
-## API Rate Limiting
-```javascript
-// Configure rate limiting
-const rateLimit = require('express-rate-limit');
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-```
-
-## Contributing
-
-### Code Standards
-- ESLint configuration
-- Prettier formatting
-- Conventional commits
-- JSDoc documentation
-
-### Development Workflow
-1. Create feature branch
-2. Write tests first (TDD)
-3. Implement feature
-4. Update documentation
-5. Submit pull request
-
-## Support
-
-### Documentation
-- API documentation: `/docs/api/`
-- Postman collection: `/docs/postman/`
-- OpenAPI spec: `/docs/openapi.json`
-
-### Contact
-- Email: dev-team@company.com
-- Slack: #insurance-crm-dev
-- Documentation: https://docs.company.com/crm
+## License
+MIT
