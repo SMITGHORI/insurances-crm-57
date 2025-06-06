@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,7 +11,9 @@ import { PermissionsProvider } from './contexts/PermissionsContext';
 
 // Import your existing components
 import MainLayout from './components/layout/MainLayout';
-import ConnectionTest from './components/test/ConnectionTest';
+import FullStackTest from './components/test/FullStackTest';
+import Dashboard from './pages/Dashboard';
+import Clients from './pages/Clients';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -22,7 +23,7 @@ const queryClient = new QueryClient({
       retry: (failureCount, error) => {
         // Check if error has status property safely
         const errorWithStatus = error as any;
-        if (errorWithStatus?.status === 404) return false;
+        if (errorWithStatus?.response?.status === 404) return false;
         return failureCount < 2;
       },
     },
@@ -38,7 +39,9 @@ function App() {
             <div className="App">
               <Routes>
                 <Route path="/" element={<MainLayout />}>
-                  <Route index element={<ConnectionTest />} />
+                  <Route index element={<FullStackTest />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="clients" element={<Clients />} />
                   {/* Add your other routes here */}
                 </Route>
               </Routes>

@@ -4,12 +4,16 @@ require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    // Default MongoDB URI for demo purposes
+    const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://demo:demo123@cluster0.mongodb.net/insurance_db?retryWrites=true&w=majority';
+    
+    const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`Database: ${conn.connection.name}`);
     
     // Set up connection event listeners
     mongoose.connection.on('connected', () => {
@@ -33,7 +37,19 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
-    process.exit(1);
+    console.log('Falling back to local MongoDB...');
+    
+    // Fallback to local MongoDB
+    try {
+      const localConn = await mongoose.connect('mongodb://localhost:27017/insurance_db', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log(`Local MongoDB Connected: ${localConn.connection.host}`);
+    } catch (localError) {
+      console.error('Failed to connect to local MongoDB as well:', localError);
+      process.exit(1);
+    }
   }
 };
 

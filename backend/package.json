@@ -5,8 +5,10 @@
   "description": "Backend API for Insurance Management System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node start.js",
     "dev": "nodemon server.js",
+    "server": "node server.js",
+    "install-and-start": "npm install && node server.js",
     "test": "jest",
     "test:watch": "jest --watch"
   },
