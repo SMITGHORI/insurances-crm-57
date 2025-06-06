@@ -6,12 +6,13 @@ const API_CONFIG = {
     timeout: 10000,
   },
   production: {
-    baseURL: process.env.REACT_APP_API_URL || 'https://your-backend-domain.com/api',
+    baseURL: import.meta.env.VITE_API_URL || 'https://your-backend-domain.com/api',
     timeout: 15000,
   }
 };
 
-const environment = process.env.NODE_ENV || 'development';
+// Use import.meta.env instead of process.env for Vite
+const environment = import.meta.env.MODE || 'development';
 export const apiConfig = API_CONFIG[environment];
 
 // API Endpoints

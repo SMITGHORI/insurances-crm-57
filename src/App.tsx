@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,7 +15,9 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       retry: (failureCount, error) => {
-        if (error?.status === 404) return false;
+        // Check if error has status property safely
+        const errorWithStatus = error as any;
+        if (errorWithStatus?.status === 404) return false;
         return failureCount < 2;
       },
     },
