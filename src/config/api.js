@@ -14,9 +14,6 @@ const API_CONFIG = {
 const environment = process.env.NODE_ENV || 'development';
 export const apiConfig = API_CONFIG[environment];
 
-// Export API_CONFIG for backward compatibility
-export { API_CONFIG };
-
 // API Endpoints
 export const API_ENDPOINTS = {
   CLAIMS: '/claims',
@@ -24,7 +21,8 @@ export const API_ENDPOINTS = {
   AGENTS: '/agents',
   POLICIES: '/policies',
   AUTH: '/auth',
-  UPLOAD: '/upload'
+  UPLOAD: '/upload',
+  HEALTH: '/health'
 };
 
 // HTTP Status codes
