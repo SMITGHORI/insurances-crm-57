@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
- * Backend API service for claim operations
+ * Backend API service for claims operations
  * Connects to your Node.js + Express + MongoDB backend
  */
 class ClaimsBackendApiService {
@@ -61,8 +61,8 @@ class ClaimsBackendApiService {
     
     // Add filtering parameters
     if (params.search) queryParams.append('search', params.search);
-    if (params.status && params.status !== 'All') queryParams.append('status', params.status);
-    if (params.claimType) queryParams.append('claimType', params.claimType);
+    if (params.status && params.status !== 'all') queryParams.append('status', params.status);
+    if (params.claimType && params.claimType !== 'all') queryParams.append('claimType', params.claimType);
     if (params.priority) queryParams.append('priority', params.priority);
     if (params.assignedTo) queryParams.append('assignedTo', params.assignedTo);
     if (params.clientId) queryParams.append('clientId', params.clientId);
@@ -178,14 +178,10 @@ class ClaimsBackendApiService {
   /**
    * Update claim status
    */
-  async updateClaimStatus(claimId, status, reason, approvedAmount) {
-    const requestBody = { status };
-    if (reason) requestBody.reason = reason;
-    if (approvedAmount !== undefined) requestBody.approvedAmount = approvedAmount;
-
+  async updateClaimStatus(claimId, statusData) {
     const response = await this.request(`/${claimId}/status`, {
       method: 'PUT',
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(statusData),
     });
 
     toast.success('Claim status updated successfully');
@@ -216,7 +212,7 @@ class ClaimsBackendApiService {
   /**
    * Search claims
    */
-  async searchClaims(query, limit = 20) {
+  async searchClaims(query, limit = 10) {
     const response = await this.request(`/search/${encodeURIComponent(query)}?limit=${limit}`);
     return response.data;
   }
@@ -227,12 +223,11 @@ class ClaimsBackendApiService {
   async getClaimsStats(params = {}) {
     const queryParams = new URLSearchParams();
     
-    if (params.period) queryParams.append('period', params.period);
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
-
+    
     const queryString = queryParams.toString();
-    const endpoint = `/stats/summary${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/stats${queryString ? `?${queryString}` : ''}`;
 
     const response = await this.request(endpoint);
     return response.data;
@@ -249,33 +244,16 @@ class ClaimsBackendApiService {
   /**
    * Get claims aging report
    */
-  async getClaimsAgingReport(params = {}) {
-    const queryParams = new URLSearchParams();
-    
-    if (params.startDate) queryParams.append('startDate', params.startDate);
-    if (params.endDate) queryParams.append('endDate', params.endDate);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/reports/aging${queryString ? `?${queryString}` : ''}`;
-
-    const response = await this.request(endpoint);
+  async getClaimsAgingReport() {
+    const response = await this.request('/reports/aging');
     return response.data;
   }
 
   /**
    * Get settlement analysis report
    */
-  async getSettlementReport(params = {}) {
-    const queryParams = new URLSearchParams();
-    
-    if (params.startDate) queryParams.append('startDate', params.startDate);
-    if (params.endDate) queryParams.append('endDate', params.endDate);
-    if (params.claimType) queryParams.append('claimType', params.claimType);
-
-    const queryString = queryParams.toString();
-    const endpoint = `/reports/settlement${queryString ? `?${queryString}` : ''}`;
-
-    const response = await this.request(endpoint);
+  async getSettlementReport() {
+    const response = await this.request('/reports/settlement');
     return response.data;
   }
 
@@ -344,71 +322,6 @@ class ClaimsBackendApiService {
     });
 
     toast.success('Claims imported successfully');
-    return response.data;
-  }
-
-  /**
-   * Get claim timeline events
-   */
-  async getClaimTimeline(claimId) {
-    const claim = await this.getClaimById(claimId);
-    return claim.timeline || [];
-  }
-
-  /**
-   * Add timeline event to claim
-   */
-  async addTimelineEvent(claimId, eventData) {
-    // This would typically be handled by the backend automatically
-    // but can be used for custom timeline events
-    const response = await this.request(`/${claimId}/timeline`, {
-      method: 'POST',
-      body: JSON.stringify(eventData),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Get claim financial summary
-   */
-  async getClaimFinancials(claimId) {
-    const claim = await this.getClaimById(claimId);
-    return {
-      claimAmount: claim.claimAmount,
-      approvedAmount: claim.approvedAmount,
-      deductible: claim.deductible,
-      financial: claim.financial || {},
-      outstandingAmount: claim.outstandingAmount || (claim.approvedAmount - (claim.financial?.totalPaid || 0))
-    };
-  }
-
-  /**
-   * Process claim payment
-   */
-  async processPayment(claimId, paymentData) {
-    const response = await this.request(`/${claimId}/payments`, {
-      method: 'POST',
-      body: JSON.stringify(paymentData),
-    });
-
-    toast.success('Payment processed successfully');
-    return response.data;
-  }
-
-  /**
-   * Get claim payment history
-   */
-  async getPaymentHistory(claimId) {
-    const response = await this.request(`/${claimId}/payments`);
-    return response.data;
-  }
-
-  /**
-   * Generate claim report
-   */
-  async generateClaimReport(claimId, reportType = 'summary') {
-    const response = await this.request(`/${claimId}/reports/${reportType}`);
     return response.data;
   }
 }

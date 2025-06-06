@@ -14,6 +14,30 @@ const API_CONFIG = {
 const environment = process.env.NODE_ENV || 'development';
 export const apiConfig = API_CONFIG[environment];
 
+// Export API_CONFIG for backward compatibility
+export { API_CONFIG };
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  CLAIMS: '/claims',
+  CLIENTS: '/clients',
+  AGENTS: '/agents',
+  POLICIES: '/policies',
+  AUTH: '/auth',
+  UPLOAD: '/upload'
+};
+
+// HTTP Status codes
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  INTERNAL_SERVER_ERROR: 500
+};
+
 // Default headers for all API requests
 export const defaultHeaders = {
   'Content-Type': 'application/json',

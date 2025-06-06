@@ -1,444 +1,401 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { claimsBackendApi } from '../services/api/claimsApiBackend';
+import { toast } from 'sonner';
 
 /**
- * React Query hooks for claims management with backend integration
- * Provides optimistic updates and proper error handling
- * Integrates with Node.js/Express/MongoDB backend
+ * React Query hooks for Claims Backend API integration
+ * Provides data fetching, caching, and state management for claims
  */
 
-// Query keys for cache management
+// Query keys for consistent cache management
 export const claimsQueryKeys = {
-  all: ['claims-backend'],
+  all: ['claims'],
   lists: () => [...claimsQueryKeys.all, 'list'],
-  list: (params) => [...claimsQueryKeys.lists(), params],
+  list: (filters) => [...claimsQueryKeys.lists(), filters],
   details: () => [...claimsQueryKeys.all, 'detail'],
   detail: (id) => [...claimsQueryKeys.details(), id],
-  documents: (id) => [...claimsQueryKeys.detail(id), 'documents'],
-  notes: (id) => [...claimsQueryKeys.detail(id), 'notes'],
-  timeline: (id) => [...claimsQueryKeys.detail(id), 'timeline'],
   stats: () => [...claimsQueryKeys.all, 'stats'],
-  dashboardStats: () => [...claimsQueryKeys.stats(), 'dashboard'],
+  documents: (claimId) => [...claimsQueryKeys.all, 'documents', claimId],
+  notes: (claimId) => [...claimsQueryKeys.all, 'notes', claimId],
   search: (query) => [...claimsQueryKeys.all, 'search', query],
+  reports: () => [...claimsQueryKeys.all, 'reports'],
+  dashboard: () => [...claimsQueryKeys.all, 'dashboard'],
 };
 
 /**
- * Hook to fetch claims with filtering and pagination
+ * Hook to fetch claims with filtering, pagination, and caching
  */
-export const useClaimsBackend = (params = {}) => {
+export const useClaims = (params = {}, options = {}) => {
   return useQuery({
     queryKey: claimsQueryKeys.list(params),
     queryFn: () => claimsBackendApi.getClaims(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-    onError: (error) => {
-      console.error('Error fetching claims:', error);
-      toast.error('Failed to load claims');
-    },
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    ...options,
   });
 };
 
 /**
  * Hook to fetch a single claim by ID
  */
-export const useClaimBackend = (claimId) => {
+export const useClaim = (claimId, options = {}) => {
   return useQuery({
     queryKey: claimsQueryKeys.detail(claimId),
     queryFn: () => claimsBackendApi.getClaimById(claimId),
-    enabled: !!claimId, // Only run if claimId exists
+    enabled: !!claimId,
     staleTime: 5 * 60 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claim:', error);
-      toast.error('Failed to load claim details');
-    },
+    gcTime: 10 * 60 * 1000,
+    ...options,
   });
 };
 
 /**
- * Hook to create a new claim
+ * Hook to fetch claims statistics
  */
-export const useCreateClaimBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (claimData) => {
-      console.log('Creating claim with data:', claimData);
-      
-      // Basic validation
-      if (!claimData.clientId || !claimData.policyId || !claimData.claimAmount) {
-        throw new Error('Missing required fields: client, policy, or claim amount');
-      }
-
-      return claimsBackendApi.createClaim(claimData);
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate and refetch claims list
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      // Invalidate dashboard stats
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
-      
-      console.log('Claim created successfully:', data);
-    },
-    onError: (error, variables) => {
-      console.error('Error creating claim:', error);
-      toast.error(`Failed to create claim: ${error.message}`);
-    },
+export const useClaimsStats = (params = {}, options = {}) => {
+  return useQuery({
+    queryKey: claimsQueryKeys.stats(),
+    queryFn: () => claimsBackendApi.getClaimsStats(params),
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000,
+    ...options,
   });
 };
 
 /**
- * Hook to update an existing claim
+ * Hook to fetch dashboard statistics
  */
-export const useUpdateClaimBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, claimData }) => {
-      console.log('Updating claim with data:', claimData);
-      
-      return claimsBackendApi.updateClaim(id, claimData);
-    },
-    onSuccess: (data, variables) => {
-      const { id } = variables;
-      
-      // Update specific claim in cache
-      queryClient.setQueryData(claimsQueryKeys.detail(id), data);
-      
-      // Invalidate lists to refresh them
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      console.log('Claim updated successfully:', data);
-    },
-    onError: (error, variables) => {
-      console.error('Error updating claim:', error);
-      toast.error(`Failed to update claim: ${error.message}`);
-    },
+export const useClaimsDashboard = (options = {}) => {
+  return useQuery({
+    queryKey: claimsQueryKeys.dashboard(),
+    queryFn: () => claimsBackendApi.getDashboardStats(),
+    staleTime: 1 * 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    ...options,
   });
 };
 
 /**
- * Hook to delete a claim
+ * Hook to fetch claim documents
  */
-export const useDeleteClaimBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (claimId) => claimsBackendApi.deleteClaim(claimId),
-    onSuccess: (data, claimId) => {
-      // Remove claim from cache
-      queryClient.removeQueries({ queryKey: claimsQueryKeys.detail(claimId) });
-      
-      // Invalidate lists to refresh them
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      // Invalidate dashboard stats
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
-      
-      console.log('Claim deleted successfully');
-    },
-    onError: (error) => {
-      console.error('Error deleting claim:', error);
-      toast.error(`Failed to delete claim: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to upload claim document
- */
-export const useUploadClaimDocumentBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, documentType, file, name }) => 
-      claimsBackendApi.uploadDocument(claimId, documentType, file, name),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Invalidate documents cache
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.documents(claimId) });
-      
-      // Invalidate claim details to refresh document count
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
-      
-      console.log('Document uploaded successfully:', data);
-    },
-    onError: (error) => {
-      console.error('Error uploading document:', error);
-      toast.error(`Failed to upload document: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to get claim documents
- */
-export const useClaimDocumentsBackend = (claimId) => {
+export const useClaimDocuments = (claimId, options = {}) => {
   return useQuery({
     queryKey: claimsQueryKeys.documents(claimId),
     queryFn: () => claimsBackendApi.getClaimDocuments(claimId),
     enabled: !!claimId,
     staleTime: 5 * 60 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claim documents:', error);
-      toast.error('Failed to load claim documents');
-    },
+    ...options,
   });
 };
 
 /**
- * Hook to delete claim document
+ * Hook to fetch claim notes
  */
-export const useDeleteClaimDocumentBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, documentId }) => 
-      claimsBackendApi.deleteDocument(claimId, documentId),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Invalidate documents cache
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.documents(claimId) });
-      
-      // Invalidate claim details to refresh document count
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
-      
-      console.log('Document deleted successfully');
-    },
-    onError: (error) => {
-      console.error('Error deleting document:', error);
-      toast.error(`Failed to delete document: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to update claim status
- */
-export const useUpdateClaimStatusBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, status, reason, approvedAmount }) => 
-      claimsBackendApi.updateClaimStatus(claimId, status, reason, approvedAmount),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Update specific claim in cache
-      queryClient.setQueryData(claimsQueryKeys.detail(claimId), data);
-      
-      // Invalidate lists to refresh them
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      // Invalidate dashboard stats
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
-      
-      console.log('Claim status updated successfully:', data);
-    },
-    onError: (error) => {
-      console.error('Error updating claim status:', error);
-      toast.error(`Failed to update claim status: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to add claim note
- */
-export const useAddClaimNoteBackend = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, noteData }) => claimsBackendApi.addNote(claimId, noteData),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Invalidate notes cache
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.notes(claimId) });
-      
-      // Invalidate claim details
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
-      
-      console.log('Note added successfully:', data);
-    },
-    onError: (error) => {
-      console.error('Error adding note:', error);
-      toast.error(`Failed to add note: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to get claim notes
- */
-export const useClaimNotesBackend = (claimId) => {
+export const useClaimNotes = (claimId, options = {}) => {
   return useQuery({
     queryKey: claimsQueryKeys.notes(claimId),
     queryFn: () => claimsBackendApi.getClaimNotes(claimId),
     enabled: !!claimId,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claim notes:', error);
-      toast.error('Failed to load claim notes');
-    },
+    staleTime: 1 * 60 * 1000,
+    ...options,
   });
 };
 
 /**
  * Hook to search claims
  */
-export const useSearchClaimsBackend = (query, options = {}) => {
+export const useClaimsSearch = (query, options = {}) => {
   return useQuery({
     queryKey: claimsQueryKeys.search(query),
-    queryFn: () => claimsBackendApi.searchClaims(query, options.limit),
+    queryFn: () => claimsBackendApi.searchClaims(query),
     enabled: !!query && query.length >= 2,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    retry: 1,
-    onError: (error) => {
-      console.error('Error searching claims:', error);
-      toast.error('Failed to search claims');
-    },
+    staleTime: 2 * 60 * 1000,
+    ...options,
   });
 };
 
 /**
- * Hook to get claims statistics
+ * Hook to fetch claims aging report
  */
-export const useClaimsStatsBackend = (params = {}) => {
+export const useClaimsAgingReport = (options = {}) => {
   return useQuery({
-    queryKey: [...claimsQueryKeys.stats(), params],
-    queryFn: () => claimsBackendApi.getClaimsStats(params),
+    queryKey: [...claimsQueryKeys.reports(), 'aging'],
+    queryFn: () => claimsBackendApi.getClaimsAgingReport(),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claims stats:', error);
-      toast.error('Failed to load claims statistics');
-    },
+    ...options,
   });
 };
 
 /**
- * Hook to get dashboard statistics
+ * Hook to fetch settlement report
  */
-export const useClaimsDashboardStatsBackend = () => {
+export const useSettlementReport = (options = {}) => {
   return useQuery({
-    queryKey: claimsQueryKeys.dashboardStats(),
-    queryFn: () => claimsBackendApi.getDashboardStats(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching dashboard stats:', error);
-      toast.error('Failed to load dashboard statistics');
-    },
+    queryKey: [...claimsQueryKeys.reports(), 'settlement'],
+    queryFn: () => claimsBackendApi.getSettlementReport(),
+    staleTime: 10 * 60 * 1000,
+    ...options,
   });
 };
 
 /**
- * Hook to bulk update claims
+ * Mutation hook to create a new claim
  */
-export const useBulkUpdateClaimsBackend = () => {
+export const useCreateClaim = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (claimData) => claimsBackendApi.createClaim(claimData),
+    onSuccess: (data, variables) => {
+      // Invalidate and refetch claims lists
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboard() });
+      
+      // Add the new claim to the cache
+      queryClient.setQueryData(claimsQueryKeys.detail(data._id), data);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to create claim');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to update a claim
+ */
+export const useUpdateClaim = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, ...claimData }) => claimsBackendApi.updateClaim(id, claimData),
+    onSuccess: (data, variables) => {
+      // Update the specific claim in cache
+      queryClient.setQueryData(claimsQueryKeys.detail(variables.id), data);
+      
+      // Invalidate lists to refresh data
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update claim');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to delete a claim
+ */
+export const useDeleteClaim = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (claimId) => claimsBackendApi.deleteClaim(claimId),
+    onSuccess: (data, claimId) => {
+      // Remove from cache
+      queryClient.removeQueries({ queryKey: claimsQueryKeys.detail(claimId) });
+      
+      // Invalidate lists
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete claim');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to upload claim document
+ */
+export const useUploadClaimDocument = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimId, documentType, file, name }) => 
+      claimsBackendApi.uploadDocument(claimId, documentType, file, name),
+    onSuccess: (data, variables) => {
+      // Invalidate documents cache
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.documents(variables.claimId) });
+      
+      // Invalidate claim details to refresh document count
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(variables.claimId) });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to upload document');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to delete claim document
+ */
+export const useDeleteClaimDocument = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimId, documentId }) => 
+      claimsBackendApi.deleteDocument(claimId, documentId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.documents(variables.claimId) });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(variables.claimId) });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete document');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to update claim status
+ */
+export const useUpdateClaimStatus = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimId, ...statusData }) => 
+      claimsBackendApi.updateClaimStatus(claimId, statusData),
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(claimsQueryKeys.detail(variables.claimId), data);
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update claim status');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook to add claim note
+ */
+export const useAddClaimNote = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimId, ...noteData }) => 
+      claimsBackendApi.addNote(claimId, noteData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.notes(variables.claimId) });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(variables.claimId) });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to add note');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook for bulk operations
+ */
+export const useBulkUpdateClaims = (options = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ claimIds, updateData }) => 
       claimsBackendApi.bulkUpdateClaims(claimIds, updateData),
-    onSuccess: (data, variables) => {
-      // Invalidate all claims lists
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      // Invalidate dashboard stats
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
-      
-      console.log('Claims bulk updated successfully:', data);
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
     },
     onError: (error) => {
-      console.error('Error bulk updating claims:', error);
-      toast.error(`Failed to update claims: ${error.message}`);
+      toast.error(error.message || 'Failed to update claims');
     },
+    ...options,
   });
 };
 
 /**
- * Hook to export claims data
+ * Mutation hook for bulk assignment
  */
-export const useExportClaimsBackend = () => {
-  return useMutation({
-    mutationFn: (filters) => claimsBackendApi.exportClaims(filters),
-    onSuccess: (data) => {
-      console.log('Claims exported successfully:', data);
-    },
-    onError: (error) => {
-      console.error('Error exporting claims:', error);
-      toast.error(`Failed to export claims: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to get claim timeline
- */
-export const useClaimTimelineBackend = (claimId) => {
-  return useQuery({
-    queryKey: claimsQueryKeys.timeline(claimId),
-    queryFn: () => claimsBackendApi.getClaimTimeline(claimId),
-    enabled: !!claimId,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claim timeline:', error);
-      toast.error('Failed to load claim timeline');
-    },
-  });
-};
-
-/**
- * Hook to get claim financials
- */
-export const useClaimFinancialsBackend = (claimId) => {
-  return useQuery({
-    queryKey: [...claimsQueryKeys.detail(claimId), 'financials'],
-    queryFn: () => claimsBackendApi.getClaimFinancials(claimId),
-    enabled: !!claimId,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching claim financials:', error);
-      toast.error('Failed to load claim financials');
-    },
-  });
-};
-
-/**
- * Hook to process claim payment
- */
-export const useProcessClaimPaymentBackend = () => {
+export const useBulkAssignClaims = (options = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ claimId, paymentData }) => 
-      claimsBackendApi.processPayment(claimId, paymentData),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Invalidate claim details
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
-      
-      // Invalidate financials
-      queryClient.invalidateQueries({ queryKey: [...claimsQueryKeys.detail(claimId), 'financials'] });
-      
-      console.log('Payment processed successfully:', data);
+    mutationFn: ({ claimIds, assignedTo }) => 
+      claimsBackendApi.bulkAssignClaims(claimIds, assignedTo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
     },
     onError: (error) => {
-      console.error('Error processing payment:', error);
-      toast.error(`Failed to process payment: ${error.message}`);
+      toast.error(error.message || 'Failed to assign claims');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Mutation hook for importing claims
+ */
+export const useImportClaims = (options = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file) => claimsBackendApi.importClaims(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.stats() });
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to import claims');
+    },
+    ...options,
+  });
+};
+
+/**
+ * Hook for exporting claims data
+ */
+export const useExportClaims = () => {
+  return useMutation({
+    mutationFn: (filters) => claimsBackendApi.exportClaims(filters),
+    onError: (error) => {
+      toast.error(error.message || 'Failed to export claims');
     },
   });
+};
+
+/**
+ * Hook for downloading template
+ */
+export const useDownloadTemplate = () => {
+  return useMutation({
+    mutationFn: () => claimsBackendApi.downloadTemplate(),
+    onError: (error) => {
+      toast.error(error.message || 'Failed to download template');
+    },
+  });
+};
+
+// Helper hook for prefetching claim data
+export const usePrefetchClaim = () => {
+  const queryClient = useQueryClient();
+
+  return (claimId) => {
+    queryClient.prefetchQuery({
+      queryKey: claimsQueryKeys.detail(claimId),
+      queryFn: () => claimsBackendApi.getClaimById(claimId),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+};
+
+// Helper hook for optimistic updates
+export const useOptimisticClaimUpdate = () => {
+  const queryClient = useQueryClient();
+
+  return (claimId, updateFn) => {
+    queryClient.setQueryData(claimsQueryKeys.detail(claimId), updateFn);
+  };
 };

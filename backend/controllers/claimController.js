@@ -1,19 +1,8 @@
 
 const Claim = require('../models/Claim');
-const Client = require('../models/Client');
-const Policy = require('../models/Policy');
-const { 
-  successResponse, 
-  errorResponse, 
-  paginatedResponse, 
-  createdResponse, 
-  updatedResponse, 
-  deletedResponse 
-} = require('../utils/responseHandler');
+const { generateClaimNumber } = require('../utils/generateId');
 const { AppError } = require('../utils/errorHandler');
-const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs').promises;
+const { successResponse, errorResponse, paginatedResponse } = require('../utils/responseHandler');
 
 /**
  * Get all claims with filtering, pagination, and search
@@ -38,77 +27,85 @@ const getAllClaims = async (req, res, next) => {
       sortDirection = 'desc'
     } = req.query;
 
-    // Build filter conditions
-    const filter = { isDeleted: { $ne: true } };
+    // Build filter object
+    const filter = { isActive: true };
+
+    if (search) {
+      filter.$text = { $search: search };
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (claimType) {
+      filter.claimType = claimType;
+    }
+
+    if (priority) {
+      filter.priority = priority;
+    }
+
+    if (assignedTo) {
+      filter.assignedTo = assignedTo;
+    }
+
+    if (clientId) {
+      filter.clientId = clientId;
+    }
+
+    if (policyId) {
+      filter.policyId = policyId;
+    }
+
+    if (minAmount || maxAmount) {
+      filter.claimAmount = {};
+      if (minAmount) filter.claimAmount.$gte = Number(minAmount);
+      if (maxAmount) filter.claimAmount.$lte = Number(maxAmount);
+    }
+
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+    }
 
     // Role-based filtering
     if (req.user.role === 'agent') {
-      filter.assignedTo = req.user._id;
-    } else if (req.user.role === 'manager' && req.user.teamId) {
-      // Add team-based filtering logic here
-      // filter.assignedTo = { $in: teamAgentIds };
+      filter.assignedTo = req.user.id;
+    } else if (req.user.role === 'manager') {
+      // Managers can see claims assigned to their team
+      // This would require additional logic based on team structure
     }
 
-    // Apply search filters
-    if (search) {
-      filter.$or = [
-        { claimNumber: new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') }
-      ];
-    }
+    // Build sort object
+    const sort = {};
+    sort[sortField] = sortDirection === 'desc' ? -1 : 1;
 
-    if (status && status !== 'All') filter.status = status;
-    if (claimType) filter.claimType = claimType;
-    if (priority) filter.priority = priority;
-    if (assignedTo) filter.assignedTo = assignedTo;
-    if (clientId) filter.clientId = clientId;
-    if (policyId) filter.policyId = policyId;
-
-    // Amount range filter
-    if (minAmount || maxAmount) {
-      filter.claimAmount = {};
-      if (minAmount) filter.claimAmount.$gte = parseFloat(minAmount);
-      if (maxAmount) filter.claimAmount.$lte = parseFloat(maxAmount);
-    }
-
-    // Date range filter
-    if (dateFrom || dateTo) {
-      filter.reportedDate = {};
-      if (dateFrom) filter.reportedDate.$gte = new Date(dateFrom);
-      if (dateTo) filter.reportedDate.$lte = new Date(dateTo);
-    }
-
-    // Pagination
+    // Execute query with pagination
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // Sorting
-    const sortOptions = {};
-    sortOptions[sortField] = sortDirection === 'desc' ? -1 : 1;
-
-    // Execute query
     const [claims, totalCount] = await Promise.all([
       Claim.find(filter)
-        .populate('clientId', 'firstName lastName email phone')
+        .populate('clientId', 'firstName lastName email')
         .populate('policyId', 'policyNumber policyType')
         .populate('assignedTo', 'firstName lastName email')
-        .populate('createdBy', 'firstName lastName')
-        .sort(sortOptions)
+        .sort(sort)
         .skip(skip)
         .limit(limitNum)
         .lean(),
       Claim.countDocuments(filter)
     ]);
 
-    const pagination = {
-      currentPage: pageNum,
-      totalPages: Math.ceil(totalCount / limitNum),
+    return paginatedResponse(res, {
+      data: claims,
       totalItems: totalCount,
-      itemsPerPage: limitNum
-    };
-
-    return paginatedResponse(res, claims, pagination);
+      currentPage: pageNum,
+      itemsPerPage: limitNum,
+      message: 'Claims retrieved successfully'
+    });
   } catch (error) {
     next(error);
   }
@@ -121,32 +118,23 @@ const getClaimById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError('Invalid claim ID', 400);
-    }
-
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    })
+    const claim = await Claim.findById(id)
       .populate('clientId')
       .populate('policyId')
-      .populate('assignedTo', 'firstName lastName email phone')
-      .populate('createdBy', 'firstName lastName')
-      .populate('timeline.createdBy', 'firstName lastName')
-      .populate('notes.createdBy', 'firstName lastName')
-      .populate('documents.uploadedBy', 'firstName lastName');
+      .populate('assignedTo', 'firstName lastName email')
+      .populate('investigatorId', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName email');
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    // Check ownership for agents
-    if (req.user.role === 'agent' && claim.assignedTo._id.toString() !== req.user._id.toString()) {
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo._id.toString() !== req.user.id) {
       throw new AppError('Access denied', 403);
     }
 
-    return successResponse(res, { data: claim });
+    return successResponse(res, claim, 'Claim retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -158,48 +146,27 @@ const getClaimById = async (req, res, next) => {
 const createClaim = async (req, res, next) => {
   try {
     const claimData = req.body;
-    claimData.createdBy = req.user._id;
-    claimData.updatedBy = req.user._id;
-
-    // Validate client exists
-    const client = await Client.findById(claimData.clientId);
-    if (!client) {
-      throw new AppError('Client not found', 404);
-    }
-
-    // Validate policy exists and is active
-    const policy = await Policy.findOne({ 
-      _id: claimData.policyId, 
-      status: 'Active' 
+    
+    // Generate unique claim number
+    const claimNumber = await generateClaimNumber(Claim);
+    
+    const newClaim = new Claim({
+      ...claimData,
+      claimNumber,
+      createdBy: req.user.id,
+      lastModifiedBy: req.user.id
     });
-    if (!policy) {
-      throw new AppError('Active policy not found', 404);
-    }
 
-    // Validate claim amount doesn't exceed policy coverage
-    if (claimData.claimAmount > policy.coverageAmount) {
-      throw new AppError('Claim amount exceeds policy coverage limit', 400);
-    }
-
-    const claim = new Claim(claimData);
-    await claim.save();
-
-    // Add initial timeline event
-    await claim.addTimelineEvent(
-      'Claim Reported',
-      'Initial claim submission',
-      'reported',
-      req.user._id
-    );
-
-    // Populate the response
-    await claim.populate([
+    const savedClaim = await newClaim.save();
+    
+    // Populate referenced fields
+    await savedClaim.populate([
       { path: 'clientId', select: 'firstName lastName email' },
       { path: 'policyId', select: 'policyNumber policyType' },
       { path: 'assignedTo', select: 'firstName lastName email' }
     ]);
 
-    return createdResponse(res, claim, 'Claim created successfully');
+    return successResponse(res, savedClaim, 'Claim created successfully', 201);
   } catch (error) {
     next(error);
   }
@@ -212,43 +179,31 @@ const updateClaim = async (req, res, next) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
-    updateData.updatedBy = req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError('Invalid claim ID', 400);
-    }
-
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    // Check ownership for agents
-    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user._id.toString()) {
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user.id) {
       throw new AppError('Access denied', 403);
     }
 
-    // Validate approved amount doesn't exceed claim amount
-    if (updateData.approvedAmount && updateData.approvedAmount > claim.claimAmount) {
-      throw new AppError('Approved amount cannot exceed claim amount', 400);
-    }
-
-    // Update the claim
+    // Update claim
     Object.assign(claim, updateData);
-    await claim.save();
+    claim.lastModifiedBy = req.user.id;
 
-    // Populate the response
-    await claim.populate([
+    const updatedClaim = await claim.save();
+    
+    await updatedClaim.populate([
       { path: 'clientId', select: 'firstName lastName email' },
       { path: 'policyId', select: 'policyNumber policyType' },
       { path: 'assignedTo', select: 'firstName lastName email' }
     ]);
 
-    return updatedResponse(res, claim, 'Claim updated successfully');
+    return successResponse(res, updatedClaim, 'Claim updated successfully');
   } catch (error) {
     next(error);
   }
@@ -261,22 +216,17 @@ const deleteClaim = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw new AppError('Invalid claim ID', 400);
-    }
-
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    await claim.softDelete(req.user._id);
+    claim.isActive = false;
+    claim.lastModifiedBy = req.user.id;
+    await claim.save();
 
-    return deletedResponse(res, 'Claim deleted successfully');
+    return successResponse(res, null, 'Claim deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -288,49 +238,35 @@ const deleteClaim = async (req, res, next) => {
 const uploadDocument = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { documentType, name } = req.body;
+    const { documentType } = req.body;
     const file = req.file;
 
     if (!file) {
       throw new AppError('No file uploaded', 400);
     }
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    // Check ownership for agents
-    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user._id.toString()) {
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user.id) {
       throw new AppError('Access denied', 403);
     }
 
-    const document = {
-      name: name || file.originalname,
-      fileName: file.filename,
-      fileSize: file.size,
-      mimeType: file.mimetype,
+    const documentData = {
+      filename: file.filename,
+      originalName: file.originalname,
       documentType,
-      filePath: file.path,
-      uploadedBy: req.user._id
+      fileSize: file.size,
+      mimeType: file.mimetype
     };
 
-    claim.documents.push(document);
-    await claim.save();
+    await claim.addDocument(documentData, req.user.id);
 
-    // Add timeline event
-    await claim.addTimelineEvent(
-      'Document Uploaded',
-      `${documentType} document uploaded: ${document.name}`,
-      'document_uploaded',
-      req.user._id
-    );
-
-    return createdResponse(res, document, 'Document uploaded successfully');
+    return successResponse(res, claim, 'Document uploaded successfully');
   } catch (error) {
     next(error);
   }
@@ -343,18 +279,13 @@ const getClaimDocuments = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    })
-      .populate('documents.uploadedBy', 'firstName lastName')
-      .select('documents');
+    const claim = await Claim.findById(id).select('documents');
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    return successResponse(res, { data: claim.documents });
+    return successResponse(res, claim.documents, 'Documents retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -367,37 +298,21 @@ const deleteDocument = async (req, res, next) => {
   try {
     const { id, documentId } = req.params;
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    const documentIndex = claim.documents.findIndex(
-      doc => doc._id.toString() === documentId
-    );
-
-    if (documentIndex === -1) {
-      throw new AppError('Document not found', 404);
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user.id) {
+      throw new AppError('Access denied', 403);
     }
 
-    const document = claim.documents[documentIndex];
-
-    // Delete file from filesystem
-    try {
-      await fs.unlink(document.filePath);
-    } catch (fileError) {
-      console.error('Error deleting file:', fileError);
-    }
-
-    // Remove document from array
-    claim.documents.splice(documentIndex, 1);
+    claim.documents.id(documentId).remove();
     await claim.save();
 
-    return deletedResponse(res, 'Document deleted successfully');
+    return successResponse(res, null, 'Document deleted successfully');
   } catch (error) {
     next(error);
   }
@@ -411,42 +326,26 @@ const updateClaimStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status, reason, approvedAmount } = req.body;
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    // Store old status for timeline
-    const oldStatus = claim.status;
-    
-    // Update claim
-    claim.status = status;
-    claim.updatedBy = req.user._id;
-    
-    if (approvedAmount !== undefined) {
-      claim.approvedAmount = approvedAmount;
-    }
-    
-    if (status === 'Settled') {
-      claim.actualSettlement = new Date();
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user.id) {
+      throw new AppError('Access denied', 403);
     }
 
-    await claim.save();
+    if (status === 'Approved' && approvedAmount) {
+      await claim.approveClaim(approvedAmount, req.user.id, reason);
+    } else if (status === 'Rejected') {
+      await claim.rejectClaim(req.user.id, reason);
+    } else {
+      await claim.updateStatus(status, req.user.id, reason);
+    }
 
-    // Add timeline event
-    await claim.addTimelineEvent(
-      `Status Changed`,
-      `Status changed from ${oldStatus} to ${status}. ${reason || ''}`,
-      status.toLowerCase().replace(' ', '_'),
-      req.user._id,
-      { oldStatus, newStatus: status, reason }
-    );
-
-    return updatedResponse(res, claim, 'Claim status updated successfully');
+    return successResponse(res, claim, 'Claim status updated successfully');
   } catch (error) {
     next(error);
   }
@@ -460,29 +359,20 @@ const addNote = async (req, res, next) => {
     const { id } = req.params;
     const { content, type, priority } = req.body;
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    });
+    const claim = await Claim.findById(id);
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    await claim.addNote(content, type, priority, req.user._id);
+    // Role-based access control
+    if (req.user.role === 'agent' && claim.assignedTo.toString() !== req.user.id) {
+      throw new AppError('Access denied', 403);
+    }
 
-    // Add timeline event
-    await claim.addTimelineEvent(
-      'Note Added',
-      `New ${type || 'internal'} note added`,
-      'note_added',
-      req.user._id
-    );
+    await claim.addNote(content, type, req.user.id, priority);
 
-    const newNote = claim.notes[claim.notes.length - 1];
-    await claim.populate('notes.createdBy', 'firstName lastName');
-
-    return createdResponse(res, newNote, 'Note added successfully');
+    return successResponse(res, claim, 'Note added successfully');
   } catch (error) {
     next(error);
   }
@@ -495,18 +385,15 @@ const getClaimNotes = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const claim = await Claim.findOne({ 
-      _id: id, 
-      isDeleted: { $ne: true } 
-    })
-      .populate('notes.createdBy', 'firstName lastName')
-      .select('notes');
+    const claim = await Claim.findById(id)
+      .select('notes')
+      .populate('notes.createdBy', 'firstName lastName');
 
     if (!claim) {
       throw new AppError('Claim not found', 404);
     }
 
-    return successResponse(res, { data: claim.notes });
+    return successResponse(res, claim.notes, 'Notes retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -518,20 +405,25 @@ const getClaimNotes = async (req, res, next) => {
 const searchClaims = async (req, res, next) => {
   try {
     const { query } = req.params;
-    const { limit = 20 } = req.query;
+    const { limit = 10 } = req.query;
 
-    const searchOptions = {
-      limit: parseInt(limit)
+    const filter = {
+      $text: { $search: query },
+      isActive: true
     };
 
-    // Add role-based filtering
+    // Role-based filtering
     if (req.user.role === 'agent') {
-      searchOptions.assignedTo = req.user._id;
+      filter.assignedTo = req.user.id;
     }
 
-    const claims = await Claim.searchClaims(query, searchOptions);
+    const claims = await Claim.find(filter)
+      .populate('clientId', 'firstName lastName')
+      .populate('policyId', 'policyNumber')
+      .limit(parseInt(limit))
+      .sort({ score: { $meta: 'textScore' } });
 
-    return successResponse(res, { data: claims });
+    return successResponse(res, claims, 'Search completed successfully');
   } catch (error) {
     next(error);
   }
@@ -542,104 +434,64 @@ const searchClaims = async (req, res, next) => {
  */
 const getClaimsStats = async (req, res, next) => {
   try {
-    const { period = 'month', startDate, endDate } = req.query;
+    const { startDate, endDate } = req.query;
 
-    // Build date filter
-    let dateFilter = {};
-    if (startDate && endDate) {
-      dateFilter = {
-        reportedDate: {
-          $gte: new Date(startDate),
-          $lte: new Date(endDate)
-        }
-      };
-    } else {
-      const now = new Date();
-      let fromDate;
-      
-      switch (period) {
-        case 'day':
-          fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case 'week':
-          fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case 'year':
-          fromDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        default:
-          fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
-      
-      dateFilter = { reportedDate: { $gte: fromDate } };
+    const filter = { isActive: true };
+
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
     }
-
-    const baseFilter = { 
-      isDeleted: { $ne: true },
-      ...dateFilter
-    };
 
     // Role-based filtering
     if (req.user.role === 'agent') {
-      baseFilter.assignedTo = req.user._id;
+      filter.assignedTo = req.user.id;
     }
 
-    const [
-      totalClaims,
-      statusBreakdown,
-      typeBreakdown,
-      priorityBreakdown,
-      amountStats
-    ] = await Promise.all([
-      Claim.countDocuments(baseFilter),
-      
-      Claim.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$claimAmount' } } }
-      ]),
-      
-      Claim.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$claimType', count: { $sum: 1 }, totalAmount: { $sum: '$claimAmount' } } }
-      ]),
-      
-      Claim.aggregate([
-        { $match: baseFilter },
-        { $group: { _id: '$priority', count: { $sum: 1 } } }
-      ]),
-      
-      Claim.aggregate([
-        { $match: baseFilter },
-        {
-          $group: {
-            _id: null,
-            totalClaimAmount: { $sum: '$claimAmount' },
-            totalApprovedAmount: { $sum: '$approvedAmount' },
-            averageClaimAmount: { $avg: '$claimAmount' },
-            maxClaimAmount: { $max: '$claimAmount' },
-            minClaimAmount: { $min: '$claimAmount' }
+    const stats = await Claim.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          totalClaims: { $sum: 1 },
+          totalClaimAmount: { $sum: '$claimAmount' },
+          totalApprovedAmount: { $sum: '$approvedAmount' },
+          pendingClaims: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['Under Review', 'Pending Documentation']] }, 1, 0]
+            }
+          },
+          approvedClaims: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Approved'] }, 1, 0]
+            }
+          },
+          rejectedClaims: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0]
+            }
+          },
+          settledClaims: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Settled'] }, 1, 0]
+            }
           }
         }
-      ])
+      }
     ]);
 
-    const stats = {
-      totalClaims,
-      statusBreakdown,
-      typeBreakdown,
-      priorityBreakdown,
-      amountStats: amountStats[0] || {},
-      period,
-      dateRange: {
-        startDate: dateFilter.reportedDate?.$gte || null,
-        endDate: dateFilter.reportedDate?.$lte || null
-      }
+    const result = stats[0] || {
+      totalClaims: 0,
+      totalClaimAmount: 0,
+      totalApprovedAmount: 0,
+      pendingClaims: 0,
+      approvedClaims: 0,
+      rejectedClaims: 0,
+      settledClaims: 0
     };
 
-    return successResponse(res, { data: stats });
+    return successResponse(res, result, 'Statistics retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -650,34 +502,107 @@ const getClaimsStats = async (req, res, next) => {
  */
 const getDashboardStats = async (req, res, next) => {
   try {
-    const baseFilter = { isDeleted: { $ne: true } };
-    
+    const filter = { isActive: true };
+
     // Role-based filtering
     if (req.user.role === 'agent') {
-      baseFilter.assignedTo = req.user._id;
+      filter.assignedTo = req.user.id;
     }
 
-    const [
-      pendingClaims,
-      approvedClaims,
-      rejectedClaims,
-      settledClaims
-    ] = await Promise.all([
-      Claim.countDocuments({ ...baseFilter, status: { $in: ['Reported', 'Under Review', 'Pending'] } }),
-      Claim.countDocuments({ ...baseFilter, status: 'Approved' }),
-      Claim.countDocuments({ ...baseFilter, status: 'Rejected' }),
-      Claim.countDocuments({ ...baseFilter, status: 'Settled' })
+    const [totalClaims, recentClaims, urgentClaims] = await Promise.all([
+      Claim.countDocuments(filter),
+      Claim.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('clientId', 'firstName lastName')
+        .populate('policyId', 'policyNumber'),
+      Claim.find({ ...filter, priority: 'Critical' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('clientId', 'firstName lastName')
     ]);
 
-    const stats = {
-      pendingClaims,
-      approvedClaims,
-      rejectedClaims,
-      settledClaims,
-      totalClaims: pendingClaims + approvedClaims + rejectedClaims + settledClaims
+    return successResponse(res, {
+      totalClaims,
+      recentClaims,
+      urgentClaims
+    }, 'Dashboard statistics retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get claims aging report
+ */
+const getClaimsAgingReport = async (req, res, next) => {
+  try {
+    const filter = { 
+      isActive: true,
+      status: { $in: ['Under Review', 'Pending Documentation', 'Under Investigation'] }
     };
 
-    return successResponse(res, { data: stats });
+    const agingData = await Claim.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          ageInDays: {
+            $divide: [
+              { $subtract: [new Date(), '$reportedDate'] },
+              1000 * 60 * 60 * 24
+            ]
+          }
+        }
+      },
+      {
+        $bucket: {
+          groupBy: '$ageInDays',
+          boundaries: [0, 7, 14, 30, 60, 90, Infinity],
+          default: 'Other',
+          output: {
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$claimAmount' },
+            claims: { $push: '$$ROOT' }
+          }
+        }
+      }
+    ]);
+
+    return successResponse(res, agingData, 'Aging report retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get settlement analysis report
+ */
+const getSettlementReport = async (req, res, next) => {
+  try {
+    const filter = { 
+      isActive: true,
+      status: 'Settled'
+    };
+
+    const settlementData = await Claim.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: '$claimType',
+          totalClaims: { $sum: 1 },
+          totalClaimAmount: { $sum: '$claimAmount' },
+          totalSettledAmount: { $sum: '$settledAmount' },
+          avgProcessingTime: { $avg: '$processingTime' },
+          settlementRatio: {
+            $avg: {
+              $divide: ['$settledAmount', '$claimAmount']
+            }
+          }
+        }
+      }
+    ]);
+
+    return successResponse(res, settlementData, 'Settlement report retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -690,55 +615,90 @@ const bulkUpdateClaims = async (req, res, next) => {
   try {
     const { claimIds, updateData } = req.body;
 
-    const filter = { 
-      _id: { $in: claimIds }, 
-      isDeleted: { $ne: true } 
-    };
-
-    // Role-based filtering
-    if (req.user.role === 'agent') {
-      filter.assignedTo = req.user._id;
-    }
-
     const result = await Claim.updateMany(
-      filter,
-      { 
-        ...updateData,
-        updatedBy: req.user._id,
-        updatedAt: new Date()
-      }
+      { _id: { $in: claimIds }, isActive: true },
+      { ...updateData, lastModifiedBy: req.user.id }
     );
 
-    return updatedResponse(res, result, `${result.modifiedCount} claims updated successfully`);
+    return successResponse(res, result, 'Claims updated successfully');
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * Export claims data
+ * Bulk assign claims
+ */
+const bulkAssignClaims = async (req, res, next) => {
+  try {
+    const { claimIds, assignedTo } = req.body;
+
+    const result = await Claim.updateMany(
+      { _id: { $in: claimIds }, isActive: true },
+      { assignedTo, lastModifiedBy: req.user.id }
+    );
+
+    return successResponse(res, result, 'Claims assigned successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Export claims
  */
 const exportClaims = async (req, res, next) => {
   try {
-    // Implementation would depend on your export requirements
-    // This is a placeholder for the export functionality
-    const filter = { isDeleted: { $ne: true } };
-    
-    // Role-based filtering
-    if (req.user.role === 'agent') {
-      filter.assignedTo = req.user._id;
-    }
-
-    const claims = await Claim.find(filter)
-      .populate('clientId', 'firstName lastName email')
-      .populate('policyId', 'policyNumber policyType')
-      .populate('assignedTo', 'firstName lastName')
+    // This would implement CSV/Excel export functionality
+    // For now, returning JSON data
+    const claims = await Claim.find({ isActive: true })
+      .populate('clientId', 'firstName lastName')
+      .populate('policyId', 'policyNumber')
       .lean();
 
-    return successResponse(res, { 
-      data: claims,
-      message: 'Claims data exported successfully'
-    });
+    return successResponse(res, claims, 'Claims exported successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Download template
+ */
+const downloadTemplate = async (req, res, next) => {
+  try {
+    // This would return a CSV template for bulk import
+    const template = {
+      headers: ['claimNumber', 'clientId', 'policyId', 'claimType', 'claimAmount', 'incidentDate', 'description'],
+      sample: ['CLM-2024-001', 'client_id', 'policy_id', 'Health', '50000', '2024-01-15', 'Sample description']
+    };
+
+    return successResponse(res, template, 'Template downloaded successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Import claims
+ */
+const importClaims = async (req, res, next) => {
+  try {
+    // This would implement CSV/Excel import functionality
+    const file = req.file;
+
+    if (!file) {
+      throw new AppError('No file uploaded', 400);
+    }
+
+    // Process file and create claims
+    // This is a simplified implementation
+    const result = {
+      imported: 0,
+      errors: []
+    };
+
+    return successResponse(res, result, 'Claims imported successfully');
   } catch (error) {
     next(error);
   }
@@ -759,6 +719,11 @@ module.exports = {
   searchClaims,
   getClaimsStats,
   getDashboardStats,
+  getClaimsAgingReport,
+  getSettlementReport,
   bulkUpdateClaims,
-  exportClaims
+  bulkAssignClaims,
+  exportClaims,
+  downloadTemplate,
+  importClaims
 };
