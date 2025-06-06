@@ -1,35 +1,50 @@
 
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { AppError } = require('../utils/errorHandler');
 
-// Simple auth middleware for testing
-const authMiddleware = (req, res, next) => {
+/**
+ * Authentication middleware
+ * Verifies JWT token and attaches user to request object
+ */
+const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Get token from header
+    const authHeader = req.header('Authorization');
     
-    if (!token) {
-      // For development/testing, create a mock user
-      req.user = {
-        _id: '60d5ecb54b24a0001f5e9b8f',
-        name: 'Test User',
-        email: 'test@example.com',
-        role: 'super_admin'
-      };
-      return next();
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AppError('Access denied. No valid token provided.', 401);
     }
 
-    // In production, verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'test-secret');
-    req.user = decoded;
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from database
+    const user = await User.findById(decoded.userId)
+      .select('-password')
+      .lean();
+
+    if (!user) {
+      throw new AppError('Invalid token. User not found.', 401);
+    }
+
+    if (user.status !== 'active') {
+      throw new AppError('Account is inactive. Contact administrator.', 401);
+    }
+
+    // Attach user to request object
+    req.user = user;
     next();
   } catch (error) {
-    // For development, continue with mock user
-    req.user = {
-      _id: '60d5ecb54b24a0001f5e9b8f',
-      name: 'Test User',
-      email: 'test@example.com',
-      role: 'super_admin'
-    };
-    next();
+    if (error.name === 'JsonWebTokenError') {
+      next(new AppError('Invalid token.', 401));
+    } else if (error.name === 'TokenExpiredError') {
+      next(new AppError('Token expired.', 401));
+    } else {
+      next(error);
+    }
   }
 };
 

@@ -1,5 +1,8 @@
+
 import { toast } from 'sonner';
-import { apiConfig } from '../../config/api';
+
+// Base API configuration for your backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
  * Backend API service for client operations
@@ -7,7 +10,7 @@ import { apiConfig } from '../../config/api';
  */
 class ClientsBackendApiService {
   constructor() {
-    this.baseURL = `${apiConfig.baseURL}/clients`;
+    this.baseURL = `${API_BASE_URL}/clients`;
   }
 
   /**
@@ -31,11 +34,9 @@ class ClientsBackendApiService {
     }
 
     try {
-      console.log(`Making API request to: ${url}`, config);
       const response = await fetch(url, config);
       
       const responseData = await response.json();
-      console.log('API Response:', responseData);
       
       if (!response.ok) {
         throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -44,21 +45,6 @@ class ClientsBackendApiService {
       return responseData;
     } catch (error) {
       console.error('API Request failed:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Test connection to backend
-   */
-  async testConnection() {
-    try {
-      const response = await fetch(`${apiConfig.baseURL}/health`);
-      const data = await response.json();
-      console.log('Backend connection test:', data);
-      return data;
-    } catch (error) {
-      console.error('Backend connection failed:', error);
       throw error;
     }
   }
@@ -113,7 +99,6 @@ class ClientsBackendApiService {
       body: JSON.stringify(clientData),
     });
 
-    toast.success('Client created successfully');
     return response.data;
   }
 
@@ -126,7 +111,6 @@ class ClientsBackendApiService {
       body: JSON.stringify(clientData),
     });
 
-    toast.success('Client updated successfully');
     return response.data;
   }
 
@@ -138,7 +122,6 @@ class ClientsBackendApiService {
       method: 'DELETE',
     });
 
-    toast.success('Client deleted successfully');
     return response;
   }
 

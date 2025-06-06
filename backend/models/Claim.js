@@ -1,77 +1,84 @@
 
 const mongoose = require('mongoose');
 
-const claimTimelineSchema = new mongoose.Schema({
-  action: {
+/**
+ * Claim Document Schema
+ * Represents uploaded documents for a claim
+ */
+const claimDocumentSchema = new mongoose.Schema({
+  name: {
     type: String,
     required: true,
-    enum: ['Filed', 'Under Review', 'Approved', 'Rejected', 'Settled', 'Closed', 'Document Added', 'Status Updated']
+    trim: true,
+    maxlength: 255
   },
-  by: {
+  fileName: {
     type: String,
     required: true
   },
-  timestamp: {
-    type: Date,
-    default: Date.now
+  fileSize: {
+    type: Number,
+    required: true,
+    max: 10485760 // 10MB in bytes
   },
-  details: {
+  mimeType: {
     type: String,
-    required: true
-  },
-  metadata: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
-  }
-});
-
-const claimDocumentSchema = new mongoose.Schema({
-  filename: {
-    type: String,
-    required: true
-  },
-  originalName: {
-    type: String,
-    required: true
+    required: true,
+    enum: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ]
   },
   documentType: {
     type: String,
     required: true,
-    enum: ['medical_report', 'police_report', 'damage_assessment', 'receipt', 'invoice', 'photo', 'other']
+    enum: [
+      'incident_report',
+      'police_report',
+      'medical_report',
+      'repair_estimate',
+      'receipt',
+      'photo_evidence',
+      'witness_statement',
+      'insurance_form',
+      'other'
+    ]
   },
-  fileSize: {
-    type: Number,
-    required: true
-  },
-  mimeType: {
+  filePath: {
     type: String,
     required: true
   },
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent',
+    ref: 'User',
     required: true
   },
   uploadedAt: {
     type: Date,
     default: Date.now
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'verified', 'rejected'],
-    default: 'pending'
   }
 });
 
+/**
+ * Claim Note Schema
+ * Represents notes added to a claim
+ */
 const claimNoteSchema = new mongoose.Schema({
   content: {
     type: String,
     required: true,
+    trim: true,
     maxlength: 2000
   },
   type: {
     type: String,
-    enum: ['internal', 'client', 'system'],
+    required: true,
+    enum: ['internal', 'client_communication', 'system'],
     default: 'internal'
   },
   priority: {
@@ -81,7 +88,7 @@ const claimNoteSchema = new mongoose.Schema({
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent',
+    ref: 'User',
     required: true
   },
   createdAt: {
@@ -94,17 +101,63 @@ const claimNoteSchema = new mongoose.Schema({
   }
 });
 
+/**
+ * Claim Timeline Event Schema
+ * Tracks important events in claim processing
+ */
+const timelineEventSchema = new mongoose.Schema({
+  event: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: [
+      'reported',
+      'under_review',
+      'pending',
+      'approved',
+      'rejected',
+      'settled',
+      'closed',
+      'document_uploaded',
+      'note_added',
+      'assigned',
+      'amount_updated'
+    ]
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
+});
+
+/**
+ * Main Claim Schema
+ * Represents an insurance claim in the system
+ */
 const claimSchema = new mongoose.Schema({
   claimNumber: {
     type: String,
     required: true,
     unique: true,
-    index: true
-  },
-  insuranceCompanyClaimId: {
-    type: String,
-    sparse: true,
-    index: true
+    trim: true,
+    match: /^CLM-\d{4}-\d{3,6}$/
   },
   clientId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -121,19 +174,40 @@ const claimSchema = new mongoose.Schema({
   claimType: {
     type: String,
     required: true,
-    enum: ['Health', 'Life', 'Vehicle', 'Property', 'Travel', 'Disability'],
+    enum: [
+      'Auto',
+      'Home',
+      'Life',
+      'Health',
+      'Travel',
+      'Business',
+      'Disability',
+      'Property',
+      'Liability',
+      'Workers Compensation'
+    ],
     index: true
   },
   status: {
     type: String,
     required: true,
-    enum: ['Draft', 'Submitted', 'Under Review', 'Pending Documentation', 'Under Investigation', 'Approved', 'Rejected', 'Settled', 'Closed'],
-    default: 'Draft',
+    enum: [
+      'Reported',
+      'Under Review',
+      'Pending',
+      'Approved',
+      'Rejected',
+      'Settled',
+      'Closed',
+      'Deleted'
+    ],
+    default: 'Reported',
     index: true
   },
   priority: {
     type: String,
-    enum: ['Low', 'Medium', 'High', 'Critical'],
+    required: true,
+    enum: ['Low', 'Medium', 'High', 'Urgent'],
     default: 'Medium',
     index: true
   },
@@ -141,19 +215,21 @@ const claimSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0,
+    max: 10000000, // 10 million max
     index: true
   },
   approvedAmount: {
     type: Number,
     min: 0,
-    default: null
+    default: 0,
+    validate: {
+      validator: function(value) {
+        return value <= this.claimAmount;
+      },
+      message: 'Approved amount cannot exceed claim amount'
+    }
   },
-  settledAmount: {
-    type: Number,
-    min: 0,
-    default: null
-  },
-  deductibleAmount: {
+  deductible: {
     type: Number,
     min: 0,
     default: 0
@@ -161,39 +237,32 @@ const claimSchema = new mongoose.Schema({
   incidentDate: {
     type: Date,
     required: true,
-    index: true
+    index: true,
+    validate: {
+      validator: function(value) {
+        return value <= new Date();
+      },
+      message: 'Incident date cannot be in the future'
+    }
   },
   reportedDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
+    index: true
   },
   description: {
     type: String,
     required: true,
+    trim: true,
+    minlength: 10,
     maxlength: 2000
-  },
-  incidentLocation: {
-    address: String,
-    city: String,
-    state: String,
-    zipCode: String,
-    country: String,
-    coordinates: {
-      latitude: Number,
-      longitude: Number
-    }
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent',
+    ref: 'User',
     required: true,
     index: true
-  },
-  investigatorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent',
-    default: null
   },
   estimatedSettlement: {
     type: Date,
@@ -203,293 +272,225 @@ const claimSchema = new mongoose.Schema({
     type: Date,
     index: true
   },
+  
+  // Location information
+  incidentLocation: {
+    address: String,
+    city: String,
+    state: String,
+    zipCode: String,
+    coordinates: {
+      latitude: Number,
+      longitude: Number
+    }
+  },
+  
+  // Contact information
+  contactDetails: {
+    primaryContact: String,
+    phoneNumber: String,
+    email: String,
+    alternateContact: String
+  },
+  
+  // Third party information (for liability claims)
+  thirdParty: {
+    name: String,
+    insuranceCompany: String,
+    policyNumber: String,
+    contactNumber: String
+  },
+  
+  // Financial details
+  financial: {
+    totalIncurred: {
+      type: Number,
+      default: 0
+    },
+    totalPaid: {
+      type: Number,
+      default: 0
+    },
+    outstanding: {
+      type: Number,
+      default: 0
+    },
+    reserves: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Risk assessment
+  riskFactors: {
+    fraudIndicators: [String],
+    riskScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    investigationRequired: {
+      type: Boolean,
+      default: false
+    }
+  },
+  
+  // Relationships
   documents: [claimDocumentSchema],
   notes: [claimNoteSchema],
-  timeline: [claimTimelineSchema],
-  tags: [{
-    type: String,
-    maxlength: 50
-  }],
-  fraudIndicators: [{
-    type: String,
-    reason: String,
-    severity: {
-      type: String,
-      enum: ['Low', 'Medium', 'High']
-    },
-    detectedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  communicationHistory: [{
-    type: {
-      type: String,
-      enum: ['email', 'phone', 'sms', 'letter', 'meeting'],
-      required: true
-    },
-    direction: {
-      type: String,
-      enum: ['inbound', 'outbound'],
-      required: true
-    },
-    subject: String,
-    content: String,
-    participantId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Agent'
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    attachments: [String]
-  }],
-  paymentDetails: {
-    paymentMethod: {
-      type: String,
-      enum: ['bank_transfer', 'check', 'card', 'cash'],
-      default: null
-    },
-    bankDetails: {
-      accountName: String,
-      accountNumber: String,
-      bankName: String,
-      routingNumber: String,
-      swiftCode: String
-    },
-    paymentReference: String,
-    paymentDate: Date,
-    transactionId: String
-  },
-  relatedClaims: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Claim'
-  }],
-  renewalEligible: {
-    type: Boolean,
-    default: false
-  },
+  timeline: [timelineEventSchema],
+  
+  // Audit fields
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent',
+    ref: 'User',
     required: true
   },
-  lastModifiedBy: {
+  updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Agent'
+    ref: 'User'
   },
-  isActive: {
+  
+  // Soft delete
+  isDeleted: {
     type: Boolean,
-    default: true,
+    default: false,
     index: true
   },
-  metadata: {
-    source: {
-      type: String,
-      enum: ['web', 'mobile', 'api', 'import'],
-      default: 'web'
-    },
-    ipAddress: String,
-    userAgent: String,
-    referenceNumber: String,
-    externalSystemId: String
+  deletedAt: Date,
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  collection: 'claims'
 });
 
-// Indexes for better query performance
+// Compound indexes for complex queries
 claimSchema.index({ clientId: 1, status: 1 });
+claimSchema.index({ policyId: 1, status: 1 });
 claimSchema.index({ assignedTo: 1, status: 1 });
-claimSchema.index({ policyId: 1, claimType: 1 });
-claimSchema.index({ incidentDate: 1, reportedDate: 1 });
-claimSchema.index({ claimAmount: 1, status: 1 });
-claimSchema.index({ createdAt: -1 });
-claimSchema.index({ updatedAt: -1 });
-claimSchema.index({ 
-  claimNumber: 'text', 
+claimSchema.index({ claimType: 1, status: 1 });
+claimSchema.index({ reportedDate: -1, status: 1 });
+claimSchema.index({ incidentDate: -1, claimAmount: -1 });
+claimSchema.index({ isDeleted: 1, status: 1, assignedTo: 1 });
+
+// Text index for search functionality
+claimSchema.index({
+  claimNumber: 'text',
   description: 'text',
-  'incidentLocation.address': 'text'
+  'contactDetails.primaryContact': 'text'
 }, {
   weights: {
     claimNumber: 10,
     description: 5,
-    'incidentLocation.address': 1
+    'contactDetails.primaryContact': 3
   }
 });
 
-// Virtual for claim age
+// Virtual for claim age (days since reported)
 claimSchema.virtual('claimAge').get(function() {
   return Math.floor((Date.now() - this.reportedDate) / (1000 * 60 * 60 * 24));
 });
 
-// Virtual for processing time
-claimSchema.virtual('processingTime').get(function() {
-  if (this.actualSettlement) {
-    return Math.floor((this.actualSettlement - this.reportedDate) / (1000 * 60 * 60 * 24));
-  }
-  return null;
+// Virtual for outstanding amount
+claimSchema.virtual('outstandingAmount').get(function() {
+  return this.approvedAmount - this.financial.totalPaid;
 });
 
-// Virtual for total documents count
-claimSchema.virtual('documentsCount').get(function() {
-  return this.documents.length;
-});
-
-// Pre-save middleware
-claimSchema.pre('save', function(next) {
-  if (this.isModified() && !this.isNew) {
-    this.lastModifiedBy = this.modifiedBy;
+// Pre-save middleware to generate claim number
+claimSchema.pre('save', async function(next) {
+  if (this.isNew && !this.claimNumber) {
+    const year = new Date().getFullYear();
+    const count = await this.constructor.countDocuments({
+      claimNumber: new RegExp(`^CLM-${year}-`)
+    });
+    this.claimNumber = `CLM-${year}-${String(count + 1).padStart(3, '0')}`;
   }
   next();
 });
 
-// Post-save middleware to update timeline
-claimSchema.post('save', function(doc, next) {
-  if (this.isNew) {
+// Pre-save middleware to update timeline
+claimSchema.pre('save', function(next) {
+  if (this.isModified('status') && !this.isNew) {
     this.timeline.push({
-      action: 'Filed',
-      by: this.createdBy.toString(),
-      timestamp: new Date(),
-      details: 'Claim initially filed'
+      event: `Status changed to ${this.status}`,
+      description: `Claim status updated`,
+      status: this.status.toLowerCase().replace(' ', '_'),
+      createdBy: this.updatedBy || this.createdBy,
+      timestamp: new Date()
     });
   }
   next();
 });
 
-// Static methods
-claimSchema.statics.findByClaimNumber = function(claimNumber) {
-  return this.findOne({ claimNumber: claimNumber });
-};
-
-claimSchema.statics.findByStatus = function(status) {
-  return this.find({ status: status, isActive: true });
-};
-
-claimSchema.statics.findByAgent = function(agentId) {
-  return this.find({ assignedTo: agentId, isActive: true });
-};
-
-claimSchema.statics.findByClient = function(clientId) {
-  return this.find({ clientId: clientId, isActive: true });
-};
-
-claimSchema.statics.findByPolicy = function(policyId) {
-  return this.find({ policyId: policyId, isActive: true });
-};
-
-claimSchema.statics.findExpiring = function(days = 30) {
-  const targetDate = new Date();
-  targetDate.setDate(targetDate.getDate() + days);
-  
-  return this.find({
-    estimatedSettlement: { $lte: targetDate },
-    status: { $in: ['Under Review', 'Pending Documentation', 'Under Investigation'] },
-    isActive: true
+// Method to add timeline event
+claimSchema.methods.addTimelineEvent = function(event, description, status, createdBy, metadata = {}) {
+  this.timeline.push({
+    event,
+    description,
+    status,
+    createdBy,
+    metadata,
+    timestamp: new Date()
   });
+  return this.save();
 };
 
-// Instance methods
-claimSchema.methods.addNote = function(content, type, createdBy, priority = 'normal') {
+// Method to add note
+claimSchema.methods.addNote = function(content, type, priority, createdBy) {
   this.notes.push({
     content,
-    type,
+    type: type || 'internal',
+    priority: priority || 'normal',
     createdBy,
-    priority
+    createdAt: new Date()
   });
-  
-  this.timeline.push({
-    action: 'Note Added',
-    by: createdBy.toString(),
-    timestamp: new Date(),
-    details: `${type} note added`
-  });
-  
   return this.save();
 };
 
-claimSchema.methods.updateStatus = function(newStatus, updatedBy, reason = '') {
-  const oldStatus = this.status;
-  this.status = newStatus;
-  this.lastModifiedBy = updatedBy;
-  
-  this.timeline.push({
-    action: 'Status Updated',
-    by: updatedBy.toString(),
-    timestamp: new Date(),
-    details: reason || `Status changed from ${oldStatus} to ${newStatus}`
-  });
-  
+// Method to soft delete
+claimSchema.methods.softDelete = function(deletedBy) {
+  this.isDeleted = true;
+  this.deletedAt = new Date();
+  this.deletedBy = deletedBy;
+  this.status = 'Deleted';
   return this.save();
 };
 
-claimSchema.methods.addDocument = function(documentData, uploadedBy) {
-  this.documents.push({
-    ...documentData,
-    uploadedBy
-  });
-  
-  this.timeline.push({
-    action: 'Document Added',
-    by: uploadedBy.toString(),
-    timestamp: new Date(),
-    details: `Document ${documentData.originalName} uploaded`
-  });
-  
-  return this.save();
+// Static method to find non-deleted claims
+claimSchema.statics.findActive = function(conditions = {}) {
+  return this.find({ ...conditions, isDeleted: { $ne: true } });
 };
 
-claimSchema.methods.approveClaim = function(approvedAmount, approvedBy, reason = '') {
-  this.status = 'Approved';
-  this.approvedAmount = approvedAmount;
-  this.lastModifiedBy = approvedBy;
-  
-  this.timeline.push({
-    action: 'Approved',
-    by: approvedBy.toString(),
-    timestamp: new Date(),
-    details: reason || `Claim approved for amount: ${approvedAmount}`
-  });
-  
-  return this.save();
-};
+// Static method for advanced search
+claimSchema.statics.searchClaims = function(query, options = {}) {
+  const searchConditions = {
+    $and: [
+      { isDeleted: { $ne: true } },
+      {
+        $or: [
+          { claimNumber: new RegExp(query, 'i') },
+          { description: new RegExp(query, 'i') },
+          { 'contactDetails.primaryContact': new RegExp(query, 'i') }
+        ]
+      }
+    ]
+  };
 
-claimSchema.methods.rejectClaim = function(rejectedBy, reason) {
-  this.status = 'Rejected';
-  this.approvedAmount = 0;
-  this.lastModifiedBy = rejectedBy;
-  
-  this.timeline.push({
-    action: 'Rejected',
-    by: rejectedBy.toString(),
-    timestamp: new Date(),
-    details: reason || 'Claim rejected'
-  });
-  
-  return this.save();
-};
-
-claimSchema.methods.settleClaim = function(settledAmount, settledBy, paymentDetails, reason = '') {
-  this.status = 'Settled';
-  this.settledAmount = settledAmount;
-  this.actualSettlement = new Date();
-  this.lastModifiedBy = settledBy;
-  
-  if (paymentDetails) {
-    this.paymentDetails = { ...this.paymentDetails, ...paymentDetails };
+  if (options.assignedTo) {
+    searchConditions.$and.push({ assignedTo: options.assignedTo });
   }
-  
-  this.timeline.push({
-    action: 'Settled',
-    by: settledBy.toString(),
-    timestamp: new Date(),
-    details: reason || `Claim settled for amount: ${settledAmount}`
-  });
-  
-  return this.save();
+
+  return this.find(searchConditions)
+    .populate('clientId', 'firstName lastName email')
+    .populate('policyId', 'policyNumber policyType')
+    .populate('assignedTo', 'firstName lastName email')
+    .limit(options.limit || 20)
+    .sort({ createdAt: -1 });
 };
 
+// Export the model
 module.exports = mongoose.model('Claim', claimSchema);

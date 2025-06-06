@@ -1,349 +1,357 @@
 
 const Joi = require('joi');
 
+/**
+ * Validation schema for creating a new claim
+ */
 const claimValidation = Joi.object({
   clientId: Joi.string()
     .required()
+    .pattern(/^[0-9a-fA-F]{24}$/)
     .messages({
-      'any.required': 'Client ID is required',
-      'string.empty': 'Client ID cannot be empty'
+      'string.pattern.base': 'Client ID must be a valid MongoDB ObjectId',
+      'any.required': 'Client ID is required'
     }),
-  
+
   policyId: Joi.string()
     .required()
+    .pattern(/^[0-9a-fA-F]{24}$/)
     .messages({
-      'any.required': 'Policy ID is required',
-      'string.empty': 'Policy ID cannot be empty'
+      'string.pattern.base': 'Policy ID must be a valid MongoDB ObjectId',
+      'any.required': 'Policy ID is required'
     }),
-  
+
   claimType: Joi.string()
-    .valid('Health', 'Life', 'Vehicle', 'Property', 'Travel', 'Disability')
     .required()
+    .valid(
+      'Auto', 'Home', 'Life', 'Health', 'Travel', 
+      'Business', 'Disability', 'Property', 'Liability', 
+      'Workers Compensation'
+    )
     .messages({
       'any.required': 'Claim type is required',
-      'any.only': 'Claim type must be one of: Health, Life, Vehicle, Property, Travel, Disability'
+      'any.only': 'Invalid claim type'
     }),
-  
+
   priority: Joi.string()
-    .valid('Low', 'Medium', 'High', 'Critical')
-    .default('Medium')
-    .messages({
-      'any.only': 'Priority must be one of: Low, Medium, High, Critical'
-    }),
-  
+    .valid('Low', 'Medium', 'High', 'Urgent')
+    .default('Medium'),
+
   claimAmount: Joi.number()
-    .positive()
     .required()
+    .min(1)
+    .max(10000000)
     .messages({
-      'any.required': 'Claim amount is required',
-      'number.positive': 'Claim amount must be a positive number'
+      'number.min': 'Claim amount must be greater than 0',
+      'number.max': 'Claim amount cannot exceed 10,000,000',
+      'any.required': 'Claim amount is required'
     }),
-  
+
+  deductible: Joi.number()
+    .min(0)
+    .default(0),
+
   incidentDate: Joi.date()
-    .max('now')
     .required()
+    .max('now')
     .messages({
-      'any.required': 'Incident date is required',
-      'date.max': 'Incident date cannot be in the future'
+      'date.max': 'Incident date cannot be in the future',
+      'any.required': 'Incident date is required'
     }),
-  
+
   description: Joi.string()
+    .required()
     .min(10)
     .max(2000)
-    .required()
+    .trim()
     .messages({
-      'any.required': 'Description is required',
       'string.min': 'Description must be at least 10 characters long',
-      'string.max': 'Description cannot exceed 2000 characters'
+      'string.max': 'Description cannot exceed 2000 characters',
+      'any.required': 'Description is required'
     }),
-  
+
   assignedTo: Joi.string()
     .required()
+    .pattern(/^[0-9a-fA-F]{24}$/)
     .messages({
+      'string.pattern.base': 'Assigned agent ID must be a valid MongoDB ObjectId',
       'any.required': 'Assigned agent is required'
     }),
-  
+
   estimatedSettlement: Joi.date()
     .min('now')
-    .optional()
     .messages({
       'date.min': 'Estimated settlement date cannot be in the past'
     }),
-  
+
+  // Location information
   incidentLocation: Joi.object({
-    address: Joi.string().optional(),
-    city: Joi.string().optional(),
-    state: Joi.string().optional(),
-    zipCode: Joi.string().optional(),
-    country: Joi.string().optional(),
+    address: Joi.string().max(255),
+    city: Joi.string().max(100),
+    state: Joi.string().max(50),
+    zipCode: Joi.string().pattern(/^[0-9]{5}(-[0-9]{4})?$/),
     coordinates: Joi.object({
-      latitude: Joi.number().min(-90).max(90).optional(),
-      longitude: Joi.number().min(-180).max(180).optional()
-    }).optional()
-  }).optional(),
-  
-  tags: Joi.array()
-    .items(Joi.string().max(50))
-    .max(10)
-    .optional()
-    .messages({
-      'array.max': 'Maximum 10 tags allowed',
-      'string.max': 'Each tag cannot exceed 50 characters'
+      latitude: Joi.number().min(-90).max(90),
+      longitude: Joi.number().min(-180).max(180)
     })
+  }),
+
+  // Contact information
+  contactDetails: Joi.object({
+    primaryContact: Joi.string().max(100),
+    phoneNumber: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/),
+    email: Joi.string().email(),
+    alternateContact: Joi.string().max(100)
+  }),
+
+  // Third party information
+  thirdParty: Joi.object({
+    name: Joi.string().max(100),
+    insuranceCompany: Joi.string().max(100),
+    policyNumber: Joi.string().max(50),
+    contactNumber: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/)
+  })
 });
 
+/**
+ * Validation schema for updating a claim
+ */
 const updateClaimValidation = Joi.object({
   claimType: Joi.string()
-    .valid('Health', 'Life', 'Vehicle', 'Property', 'Travel', 'Disability')
-    .optional(),
-  
+    .valid(
+      'Auto', 'Home', 'Life', 'Health', 'Travel', 
+      'Business', 'Disability', 'Property', 'Liability', 
+      'Workers Compensation'
+    ),
+
   status: Joi.string()
-    .valid('Draft', 'Submitted', 'Under Review', 'Pending Documentation', 'Under Investigation', 'Approved', 'Rejected', 'Settled', 'Closed')
-    .optional(),
-  
+    .valid(
+      'Reported', 'Under Review', 'Pending', 'Approved', 
+      'Rejected', 'Settled', 'Closed'
+    ),
+
   priority: Joi.string()
-    .valid('Low', 'Medium', 'High', 'Critical')
-    .optional(),
-  
+    .valid('Low', 'Medium', 'High', 'Urgent'),
+
   claimAmount: Joi.number()
-    .positive()
-    .optional(),
-  
+    .min(1)
+    .max(10000000),
+
   approvedAmount: Joi.number()
     .min(0)
-    .optional(),
-  
-  settledAmount: Joi.number()
-    .min(0)
-    .optional(),
-  
-  deductibleAmount: Joi.number()
-    .min(0)
-    .optional(),
-  
+    .max(Joi.ref('claimAmount'))
+    .messages({
+      'number.max': 'Approved amount cannot exceed claim amount'
+    }),
+
+  deductible: Joi.number()
+    .min(0),
+
   incidentDate: Joi.date()
-    .max('now')
-    .optional(),
-  
+    .max('now'),
+
   description: Joi.string()
     .min(10)
     .max(2000)
-    .optional(),
-  
+    .trim(),
+
   assignedTo: Joi.string()
-    .optional(),
-  
-  investigatorId: Joi.string()
-    .optional(),
-  
+    .pattern(/^[0-9a-fA-F]{24}$/),
+
   estimatedSettlement: Joi.date()
-    .optional(),
-  
+    .min('now'),
+
+  actualSettlement: Joi.date(),
+
   incidentLocation: Joi.object({
-    address: Joi.string().optional(),
-    city: Joi.string().optional(),
-    state: Joi.string().optional(),
-    zipCode: Joi.string().optional(),
-    country: Joi.string().optional(),
+    address: Joi.string().max(255),
+    city: Joi.string().max(100),
+    state: Joi.string().max(50),
+    zipCode: Joi.string().pattern(/^[0-9]{5}(-[0-9]{4})?$/),
     coordinates: Joi.object({
-      latitude: Joi.number().min(-90).max(90).optional(),
-      longitude: Joi.number().min(-180).max(180).optional()
-    }).optional()
-  }).optional(),
-  
-  tags: Joi.array()
-    .items(Joi.string().max(50))
-    .max(10)
-    .optional(),
-  
-  paymentDetails: Joi.object({
-    paymentMethod: Joi.string()
-      .valid('bank_transfer', 'check', 'card', 'cash')
-      .optional(),
-    bankDetails: Joi.object({
-      accountName: Joi.string().optional(),
-      accountNumber: Joi.string().optional(),
-      bankName: Joi.string().optional(),
-      routingNumber: Joi.string().optional(),
-      swiftCode: Joi.string().optional()
-    }).optional(),
-    paymentReference: Joi.string().optional(),
-    paymentDate: Joi.date().optional(),
-    transactionId: Joi.string().optional()
-  }).optional(),
-  
-  renewalEligible: Joi.boolean().optional()
+      latitude: Joi.number().min(-90).max(90),
+      longitude: Joi.number().min(-180).max(180)
+    })
+  }),
+
+  contactDetails: Joi.object({
+    primaryContact: Joi.string().max(100),
+    phoneNumber: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/),
+    email: Joi.string().email(),
+    alternateContact: Joi.string().max(100)
+  }),
+
+  thirdParty: Joi.object({
+    name: Joi.string().max(100),
+    insuranceCompany: Joi.string().max(100),
+    policyNumber: Joi.string().max(50),
+    contactNumber: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/)
+  }),
+
+  financial: Joi.object({
+    totalIncurred: Joi.number().min(0),
+    totalPaid: Joi.number().min(0),
+    outstanding: Joi.number().min(0),
+    reserves: Joi.number().min(0)
+  }),
+
+  riskFactors: Joi.object({
+    fraudIndicators: Joi.array().items(Joi.string()),
+    riskScore: Joi.number().min(0).max(100),
+    investigationRequired: Joi.boolean()
+  })
 });
 
+/**
+ * Validation schema for claim document upload
+ */
 const claimDocumentValidation = Joi.object({
   documentType: Joi.string()
-    .valid('medical_report', 'police_report', 'damage_assessment', 'receipt', 'invoice', 'photo', 'other')
     .required()
+    .valid(
+      'incident_report', 'police_report', 'medical_report', 
+      'repair_estimate', 'receipt', 'photo_evidence', 
+      'witness_statement', 'insurance_form', 'other'
+    )
     .messages({
       'any.required': 'Document type is required',
-      'any.only': 'Document type must be one of: medical_report, police_report, damage_assessment, receipt, invoice, photo, other'
+      'any.only': 'Invalid document type'
     }),
-  
+
   name: Joi.string()
     .max(255)
-    .optional()
+    .trim()
     .messages({
       'string.max': 'Document name cannot exceed 255 characters'
     })
 });
 
+/**
+ * Validation schema for adding claim notes
+ */
 const claimNoteValidation = Joi.object({
   content: Joi.string()
+    .required()
     .min(1)
     .max(2000)
-    .required()
+    .trim()
     .messages({
-      'any.required': 'Note content is required',
       'string.min': 'Note content cannot be empty',
-      'string.max': 'Note content cannot exceed 2000 characters'
+      'string.max': 'Note content cannot exceed 2000 characters',
+      'any.required': 'Note content is required'
     }),
-  
+
   type: Joi.string()
-    .valid('internal', 'client', 'system')
-    .default('internal')
-    .messages({
-      'any.only': 'Note type must be one of: internal, client, system'
-    }),
-  
+    .valid('internal', 'client_communication', 'system')
+    .default('internal'),
+
   priority: Joi.string()
     .valid('low', 'normal', 'high', 'urgent')
     .default('normal')
-    .messages({
-      'any.only': 'Priority must be one of: low, normal, high, urgent'
-    })
 });
 
+/**
+ * Validation schema for updating claim status
+ */
 const claimStatusValidation = Joi.object({
   status: Joi.string()
-    .valid('Draft', 'Submitted', 'Under Review', 'Pending Documentation', 'Under Investigation', 'Approved', 'Rejected', 'Settled', 'Closed')
     .required()
+    .valid(
+      'Reported', 'Under Review', 'Pending', 'Approved', 
+      'Rejected', 'Settled', 'Closed'
+    )
     .messages({
       'any.required': 'Status is required',
       'any.only': 'Invalid status value'
     }),
-  
+
   reason: Joi.string()
     .max(500)
-    .optional()
+    .trim()
     .messages({
       'string.max': 'Reason cannot exceed 500 characters'
     }),
-  
+
   approvedAmount: Joi.number()
     .min(0)
+    .max(10000000)
     .when('status', {
       is: 'Approved',
       then: Joi.required(),
       otherwise: Joi.optional()
     })
     .messages({
-      'any.required': 'Approved amount is required when approving a claim',
-      'number.min': 'Approved amount cannot be negative'
-    }),
-  
-  settledAmount: Joi.number()
-    .min(0)
-    .when('status', {
-      is: 'Settled',
-      then: Joi.required(),
-      otherwise: Joi.optional()
+      'number.min': 'Approved amount must be greater than or equal to 0',
+      'number.max': 'Approved amount cannot exceed 10,000,000',
+      'any.required': 'Approved amount is required when status is Approved'
     })
-    .messages({
-      'any.required': 'Settled amount is required when settling a claim',
-      'number.min': 'Settled amount cannot be negative'
-    }),
-  
-  paymentDetails: Joi.object({
-    paymentMethod: Joi.string()
-      .valid('bank_transfer', 'check', 'card', 'cash')
-      .optional(),
-    paymentReference: Joi.string().optional(),
-    transactionId: Joi.string().optional()
-  }).when('status', {
-    is: 'Settled',
-    then: Joi.optional(),
-    otherwise: Joi.forbidden()
-  })
 });
 
+/**
+ * Validation schema for bulk update claims
+ */
 const bulkUpdateClaimsValidation = Joi.object({
   claimIds: Joi.array()
-    .items(Joi.string().required())
+    .items(
+      Joi.string().pattern(/^[0-9a-fA-F]{24}$/)
+    )
     .min(1)
     .max(100)
     .required()
     .messages({
-      'any.required': 'Claim IDs are required',
       'array.min': 'At least one claim ID is required',
-      'array.max': 'Maximum 100 claims can be updated at once'
+      'array.max': 'Cannot update more than 100 claims at once',
+      'any.required': 'Claim IDs are required'
     }),
-  
+
   updateData: Joi.object({
     status: Joi.string()
-      .valid('Draft', 'Submitted', 'Under Review', 'Pending Documentation', 'Under Investigation', 'Approved', 'Rejected', 'Settled', 'Closed')
-      .optional(),
-    
+      .valid(
+        'Reported', 'Under Review', 'Pending', 'Approved', 
+        'Rejected', 'Settled', 'Closed'
+      ),
+
     priority: Joi.string()
-      .valid('Low', 'Medium', 'High', 'Critical')
-      .optional(),
-    
-    assignedTo: Joi.string().optional(),
-    
-    tags: Joi.array()
-      .items(Joi.string().max(50))
-      .max(10)
-      .optional()
-  }).min(1).required()
-  .messages({
-    'object.min': 'At least one field must be provided for update'
+      .valid('Low', 'Medium', 'High', 'Urgent'),
+
+    assignedTo: Joi.string()
+      .pattern(/^[0-9a-fA-F]{24}$/),
+
+    claimType: Joi.string()
+      .valid(
+        'Auto', 'Home', 'Life', 'Health', 'Travel', 
+        'Business', 'Disability', 'Property', 'Liability', 
+        'Workers Compensation'
+      )
   })
+    .min(1)
+    .required()
+    .messages({
+      'object.min': 'At least one field to update is required',
+      'any.required': 'Update data is required'
+    })
 });
 
-const communicationValidation = Joi.object({
-  type: Joi.string()
-    .valid('email', 'phone', 'sms', 'letter', 'meeting')
+/**
+ * Validation schema for search parameters
+ */
+const searchValidation = Joi.object({
+  query: Joi.string()
+    .min(2)
+    .max(100)
+    .trim()
     .required()
     .messages({
-      'any.required': 'Communication type is required',
-      'any.only': 'Communication type must be one of: email, phone, sms, letter, meeting'
+      'string.min': 'Search query must be at least 2 characters long',
+      'string.max': 'Search query cannot exceed 100 characters',
+      'any.required': 'Search query is required'
     }),
-  
-  direction: Joi.string()
-    .valid('inbound', 'outbound')
-    .required()
-    .messages({
-      'any.required': 'Communication direction is required',
-      'any.only': 'Direction must be either inbound or outbound'
-    }),
-  
-  subject: Joi.string()
-    .max(200)
-    .optional()
-    .messages({
-      'string.max': 'Subject cannot exceed 200 characters'
-    }),
-  
-  content: Joi.string()
-    .max(5000)
-    .optional()
-    .messages({
-      'string.max': 'Content cannot exceed 5000 characters'
-    }),
-  
-  participantId: Joi.string().optional(),
-  
-  attachments: Joi.array()
-    .items(Joi.string())
-    .max(10)
-    .optional()
-    .messages({
-      'array.max': 'Maximum 10 attachments allowed'
-    })
+
+  limit: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(20)
 });
 
 module.exports = {
@@ -353,5 +361,5 @@ module.exports = {
   claimNoteValidation,
   claimStatusValidation,
   bulkUpdateClaimsValidation,
-  communicationValidation
+  searchValidation
 };

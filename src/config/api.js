@@ -1,66 +1,110 @@
 
-// API Configuration for different environments
-const API_CONFIG = {
-  development: {
-    baseURL: 'http://localhost:5000/api',
-    timeout: 10000,
-  },
-  production: {
-    baseURL: import.meta.env.VITE_API_URL || 'https://your-backend-domain.com/api',
-    timeout: 15000,
+/**
+ * API configuration for backend integration
+ * Centralizes API URLs and settings
+ */
+
+// Environment-based API configuration
+const getApiBaseUrl = () => {
+  // Check for environment variables (Vite uses VITE_ prefix)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
   }
+  
+  // Development fallback
+  if (import.meta.env.DEV) {
+    return 'http://localhost:5000/api';
+  }
+  
+  // Production fallback - replace with your actual production API URL
+  return '/api';
 };
 
-// Use import.meta.env instead of process.env for Vite
-const environment = import.meta.env.MODE || 'development';
-export const apiConfig = API_CONFIG[environment];
+export const API_CONFIG = {
+  BASE_URL: getApiBaseUrl(),
+  TIMEOUT: 30000, // 30 seconds
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000, // 1 second
+};
 
-// API Endpoints
+// API endpoints
 export const API_ENDPOINTS = {
-  CLAIMS: '/claims',
+  // Client endpoints
   CLIENTS: '/clients',
-  AGENTS: '/agents',
+  CLIENT_BY_ID: (id) => `/clients/${id}`,
+  CLIENT_DOCUMENTS: (id) => `/clients/${id}/documents`,
+  CLIENT_DOCUMENT: (clientId, documentId) => `/clients/${clientId}/documents/${documentId}`,
+  
+  // Policy endpoints
   POLICIES: '/policies',
-  AUTH: '/auth',
-  UPLOAD: '/upload',
-  HEALTH: '/health'
+  POLICY_BY_ID: (id) => `/policies/${id}`,
+  POLICY_DOCUMENTS: (id) => `/policies/${id}/documents`,
+  POLICY_RENEWALS: (id) => `/policies/${id}/renewals`,
+  POLICY_PAYMENTS: (id) => `/policies/${id}/payments`,
+  
+  // Agent endpoints
+  AGENTS: '/agents',
+  AGENT_BY_ID: (id) => `/agents/${id}`,
+  AGENT_CLIENTS: (id) => `/agents/${id}/clients`,
+  AGENT_POLICIES: (id) => `/agents/${id}/policies`,
+  AGENT_COMMISSIONS: (id) => `/agents/${id}/commissions`,
+  AGENT_PERFORMANCE: (id) => `/agents/${id}/performance`,
+  
+  // Claims endpoints
+  CLAIMS: '/claims',
+  CLAIM_BY_ID: (id) => `/claims/${id}`,
+  CLAIM_DOCUMENTS: (id) => `/claims/${id}/documents`,
+  CLAIM_DOCUMENT: (claimId, documentId) => `/claims/${claimId}/documents/${documentId}`,
+  CLAIM_NOTES: (id) => `/claims/${id}/notes`,
+  CLAIM_STATUS: (id) => `/claims/${id}/status`,
+  CLAIMS_STATS: '/claims/stats',
+  
+  // Leads endpoints
+  LEADS: '/leads',
+  LEAD_BY_ID: (id) => `/leads/${id}`,
+  LEAD_FOLLOWUPS: (id) => `/leads/${id}/followups`,
+  LEAD_NOTES: (id) => `/leads/${id}/notes`,
+  LEAD_ASSIGN: (id) => `/leads/${id}/assign`,
+  LEAD_CONVERT: (id) => `/leads/${id}/convert`,
+  LEADS_STATS: '/leads/stats',
+  
+  // Quotations endpoints
+  QUOTATIONS: '/quotations',
+  QUOTATION_BY_ID: (id) => `/quotations/${id}`,
+  QUOTATION_SEND: (id) => `/quotations/${id}/send`,
+  QUOTATION_STATUS: (id) => `/quotations/${id}/status`,
+  QUOTATIONS_STATS: '/quotations/stats',
+  
+  // Invoices endpoints
+  INVOICES: '/invoices',
+  INVOICE_BY_ID: (id) => `/invoices/${id}`,
+  INVOICE_SEND: (id) => `/invoices/${id}/send`,
+  INVOICE_STATUS: (id) => `/invoices/${id}/status`,
+  INVOICES_STATS: '/invoices/stats',
+  
+  // Activities endpoints
+  ACTIVITIES: '/activities',
+  ACTIVITY_BY_ID: (id) => `/activities/${id}`,
+  ACTIVITIES_STATS: '/activities/stats',
+  
+  // Auth endpoints
+  AUTH_LOGIN: '/auth/login',
+  AUTH_LOGOUT: '/auth/logout',
+  AUTH_REFRESH: '/auth/refresh',
+  AUTH_PROFILE: '/auth/profile',
 };
 
-// HTTP Status codes
+// HTTP status codes
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
+  NO_CONTENT: 204,
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
-  INTERNAL_SERVER_ERROR: 500
+  CONFLICT: 409,
+  INTERNAL_SERVER_ERROR: 500,
 };
 
-// Default headers for all API requests
-export const defaultHeaders = {
-  'Content-Type': 'application/json',
-  'Accept': 'application/json',
-};
-
-// Auth token management
-export const getAuthToken = () => {
-  return localStorage.getItem('auth_token');
-};
-
-export const setAuthToken = (token) => {
-  localStorage.setItem('auth_token', token);
-};
-
-export const removeAuthToken = () => {
-  localStorage.removeItem('auth_token');
-};
-
-// Create authorized headers with token
-export const getAuthorizedHeaders = () => {
-  const token = getAuthToken();
-  return {
-    ...defaultHeaders,
-    ...(token && { Authorization: `Bearer ${token}` })
-  };
-};
+export default API_CONFIG;

@@ -1,4 +1,5 @@
-import { apiConfig, API_ENDPOINTS, getAuthorizedHeaders } from '../../config/api.js';
+
+import { API_CONFIG, API_ENDPOINTS, HTTP_STATUS } from '../../config/api.js';
 
 /**
  * Claims API Service
@@ -158,22 +159,32 @@ const mockClaimsData = [
 
 class ClaimsApiService {
   constructor() {
-    this.baseURL = apiConfig.baseURL;
-    this.timeout = apiConfig.timeout;
-    this.retryAttempts = 3;
-    this.retryDelay = 1000;
+    this.baseURL = API_CONFIG.BASE_URL;
+    this.timeout = API_CONFIG.TIMEOUT;
+    this.retryAttempts = API_CONFIG.RETRY_ATTEMPTS;
+    this.retryDelay = API_CONFIG.RETRY_DELAY;
     this.isOfflineMode = false;
   }
 
   /**
    * Generic request method with retry logic and offline fallback
+   * Optimized for Express.js backend integration
    */
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
-      headers: getAuthorizedHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
       ...options,
     };
+
+    // Add authorization token if available
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
 
     // Add timeout to the request
     const controller = new AbortController();
@@ -211,6 +222,7 @@ class ClaimsApiService {
 
   /**
    * Offline fallback methods using localStorage and mock data
+   * Data structure optimized for MongoDB documents
    */
   getOfflineClaims() {
     try {
@@ -232,6 +244,7 @@ class ClaimsApiService {
 
   /**
    * Get claims with filtering, sorting, and pagination
+   * API endpoint: GET /api/claims
    */
   async getClaims(params = {}) {
     try {
@@ -319,12 +332,14 @@ class ClaimsApiService {
 
   /**
    * Get claim by ID
+   * API endpoint: GET /api/claims/:id
    */
   async getClaimById(claimId) {
     try {
       const endpoint = `${API_ENDPOINTS.CLAIMS}/${claimId}`;
       return await this.request(endpoint);
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claim = claims.find(c => c._id?.toString() === claimId?.toString());
       
@@ -338,6 +353,7 @@ class ClaimsApiService {
 
   /**
    * Create new claim
+   * API endpoint: POST /api/claims
    */
   async createClaim(claimData) {
     try {
@@ -346,6 +362,7 @@ class ClaimsApiService {
         body: JSON.stringify(claimData),
       });
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const newId = new Date().getTime().toString();
       const claimNumber = `CLM-${new Date().getFullYear()}-${String(claims.length + 1).padStart(3, '0')}`;
@@ -380,6 +397,7 @@ class ClaimsApiService {
 
   /**
    * Update existing claim
+   * API endpoint: PUT /api/claims/:id
    */
   async updateClaim(claimId, claimData) {
     try {
@@ -389,6 +407,7 @@ class ClaimsApiService {
         body: JSON.stringify(claimData),
       });
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claimIndex = claims.findIndex(c => c._id?.toString() === claimId?.toString());
       
@@ -399,7 +418,7 @@ class ClaimsApiService {
       const updatedClaim = {
         ...claims[claimIndex],
         ...claimData,
-        _id: claims[claimIndex]._id,
+        _id: claims[claimIndex]._id, // Preserve original ID
         updatedAt: new Date().toISOString()
       };
       
@@ -412,6 +431,7 @@ class ClaimsApiService {
 
   /**
    * Delete claim
+   * API endpoint: DELETE /api/claims/:id
    */
   async deleteClaim(claimId) {
     try {
@@ -420,6 +440,7 @@ class ClaimsApiService {
         method: 'DELETE',
       });
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claimIndex = claims.findIndex(c => c._id?.toString() === claimId?.toString());
       
@@ -436,6 +457,7 @@ class ClaimsApiService {
 
   /**
    * Upload claim document
+   * API endpoint: POST /api/claims/:id/documents
    */
   async uploadDocument(claimId, documentType, file) {
     const formData = new FormData();
@@ -449,6 +471,7 @@ class ClaimsApiService {
         body: formData,
       });
     } catch (error) {
+      // Offline fallback - simulate successful upload
       return {
         success: true,
         document: {
@@ -463,12 +486,14 @@ class ClaimsApiService {
 
   /**
    * Get claim documents
+   * API endpoint: GET /api/claims/:id/documents
    */
   async getClaimDocuments(claimId) {
     try {
       const endpoint = `${API_ENDPOINTS.CLAIMS}/${claimId}/documents`;
       return await this.request(endpoint);
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claim = claims.find(c => c._id?.toString() === claimId?.toString());
       
@@ -481,6 +506,7 @@ class ClaimsApiService {
 
   /**
    * Delete claim document
+   * API endpoint: DELETE /api/claims/:claimId/documents/:documentId
    */
   async deleteDocument(claimId, documentId) {
     try {
@@ -489,12 +515,14 @@ class ClaimsApiService {
         method: 'DELETE',
       });
     } catch (error) {
+      // Offline fallback
       return { success: true };
     }
   }
 
   /**
    * Add claim note
+   * API endpoint: POST /api/claims/:id/notes
    */
   async addNote(claimId, noteData) {
     try {
@@ -504,6 +532,7 @@ class ClaimsApiService {
         body: JSON.stringify(noteData),
       });
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claimIndex = claims.findIndex(c => c._id?.toString() === claimId?.toString());
       
@@ -527,6 +556,7 @@ class ClaimsApiService {
 
   /**
    * Update claim status
+   * API endpoint: PATCH /api/claims/:id/status
    */
   async updateClaimStatus(claimId, status, reason = '') {
     try {
@@ -536,6 +566,7 @@ class ClaimsApiService {
         body: JSON.stringify({ status, reason }),
       });
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       const claimIndex = claims.findIndex(c => c._id?.toString() === claimId?.toString());
       
@@ -562,6 +593,7 @@ class ClaimsApiService {
 
   /**
    * Get claims statistics
+   * API endpoint: GET /api/claims/stats
    */
   async getClaimsStats(params = {}) {
     try {
@@ -572,6 +604,7 @@ class ClaimsApiService {
       const endpoint = `${API_ENDPOINTS.CLAIMS}/stats?${queryParams.toString()}`;
       return await this.request(endpoint);
     } catch (error) {
+      // Offline fallback
       const claims = this.getOfflineClaims();
       
       return {

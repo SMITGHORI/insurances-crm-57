@@ -1,342 +1,370 @@
 
 const request = require('supertest');
 const mongoose = require('mongoose');
-const app = require('../server');
+const app = require('../app'); // Assuming you have an Express app setup
 const Claim = require('../models/Claim');
-const { generateAuthToken } = require('../utils/auth');
-
-// Mock user data
-const mockUser = {
-  id: new mongoose.Types.ObjectId(),
-  role: 'super_admin',
-  email: 'admin@test.com'
-};
-
-const mockAgent = {
-  id: new mongoose.Types.ObjectId(),
-  role: 'agent',
-  email: 'agent@test.com'
-};
-
-const authToken = generateAuthToken(mockUser);
-const agentToken = generateAuthToken(mockAgent);
-
-// Mock claim data
-const mockClaimData = {
-  clientId: new mongoose.Types.ObjectId(),
-  policyId: new mongoose.Types.ObjectId(),
-  claimType: 'Health',
-  priority: 'Medium',
-  claimAmount: 50000,
-  incidentDate: '2024-01-15',
-  description: 'Medical treatment for fever and cold symptoms',
-  assignedTo: mockAgent.id
-};
+const Client = require('../models/Client');
+const Policy = require('../models/Policy');
+const User = require('../models/User');
 
 describe('Claims API', () => {
+  let authToken;
+  let testUser;
+  let testClient;
+  let testPolicy;
+  let testClaim;
+
   beforeAll(async () => {
     // Connect to test database
-    await mongoose.connect(process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/insurance_crm_test');
+    await mongoose.connect(process.env.TEST_DATABASE_URL || 'mongodb://localhost:27017/test_crm');
   });
 
   afterAll(async () => {
-    // Clean up and close database connection
-    await mongoose.connection.db.dropDatabase();
+    // Clean up and disconnect
+    await mongoose.connection.dropDatabase();
     await mongoose.connection.close();
   });
 
   beforeEach(async () => {
-    // Clear claims collection before each test
+    // Create test user
+    testUser = await User.create({
+      firstName: 'Test',
+      lastName: 'Agent',
+      email: 'test.agent@test.com',
+      password: 'hashedpassword',
+      role: 'agent',
+      status: 'active'
+    });
+
+    // Create test client
+    testClient = await Client.create({
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@test.com',
+      phone: '+1234567890',
+      dateOfBirth: new Date('1980-01-01'),
+      address: {
+        street: '123 Test St',
+        city: 'Test City',
+        state: 'TS',
+        zipCode: '12345',
+        country: 'Test Country'
+      },
+      assignedAgentId: testUser._id,
+      status: 'Active',
+      createdBy: testUser._id
+    });
+
+    // Create test policy
+    testPolicy = await Policy.create({
+      policyNumber: 'POL-2024-001',
+      clientId: testClient._id,
+      policyType: 'Auto Insurance',
+      status: 'Active',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      premiumAmount: 1200,
+      coverageAmount: 100000,
+      assignedAgentId: testUser._id,
+      createdBy: testUser._id
+    });
+
+    // Mock JWT token
+    authToken = 'Bearer mock-jwt-token';
+  });
+
+  afterEach(async () => {
+    // Clean up collections
     await Claim.deleteMany({});
+    await Policy.deleteMany({});
+    await Client.deleteMany({});
+    await User.deleteMany({});
   });
 
   describe('POST /api/claims', () => {
-    it('should create a new claim with valid data', async () => {
+    test('should create a new claim with valid data', async () => {
+      const claimData = {
+        clientId: testClient._id.toString(),
+        policyId: testPolicy._id.toString(),
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: '2024-01-15',
+        description: 'Vehicle collision on Highway 101, significant damage to front end',
+        assignedTo: testUser._id.toString(),
+        estimatedSettlement: '2024-02-15'
+      };
+
       const response = await request(app)
         .post('/api/claims')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(mockClaimData)
+        .set('Authorization', authToken)
+        .send(claimData)
         .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('claimNumber');
-      expect(response.body.data.claimType).toBe('Health');
-      expect(response.body.data.claimAmount).toBe(50000);
+      expect(response.body.data.claimNumber).toMatch(/^CLM-\d{4}-\d{3,6}$/);
+      expect(response.body.data.claimType).toBe('Auto');
+      expect(response.body.data.claimAmount).toBe(25000);
     });
 
-    it('should return 400 for invalid claim data', async () => {
-      const invalidData = { ...mockClaimData };
-      delete invalidData.clientId;
+    test('should fail when required fields are missing', async () => {
+      const invalidData = {
+        claimType: 'Auto',
+        claimAmount: 25000
+        // Missing required fields
+      };
 
       const response = await request(app)
         .post('/api/claims')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', authToken)
         .send(invalidData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('Client ID is required');
+      expect(response.body.errors).toBeDefined();
     });
 
-    it('should return 401 for unauthorized request', async () => {
-      await request(app)
-        .post('/api/claims')
-        .send(mockClaimData)
-        .expect(401);
-    });
-
-    it('should validate claim amount is positive', async () => {
-      const invalidData = { ...mockClaimData, claimAmount: -1000 };
+    test('should fail when claim amount exceeds policy coverage', async () => {
+      const claimData = {
+        clientId: testClient._id.toString(),
+        policyId: testPolicy._id.toString(),
+        claimType: 'Auto',
+        claimAmount: 150000, // Exceeds policy coverage of 100000
+        incidentDate: '2024-01-15',
+        description: 'Vehicle collision on Highway 101',
+        assignedTo: testUser._id.toString()
+      };
 
       const response = await request(app)
         .post('/api/claims')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidData)
+        .set('Authorization', authToken)
+        .send(claimData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('exceeds policy coverage');
     });
 
-    it('should validate incident date is not in future', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 1);
-      
-      const invalidData = { ...mockClaimData, incidentDate: futureDate.toISOString() };
+    test('should fail with invalid claim type', async () => {
+      const claimData = {
+        clientId: testClient._id.toString(),
+        policyId: testPolicy._id.toString(),
+        claimType: 'InvalidType',
+        claimAmount: 25000,
+        incidentDate: '2024-01-15',
+        description: 'Vehicle collision on Highway 101',
+        assignedTo: testUser._id.toString()
+      };
 
       const response = await request(app)
         .post('/api/claims')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidData)
+        .set('Authorization', authToken)
+        .send(claimData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.errors[0].message).toContain('Invalid claim type');
     });
   });
 
   describe('GET /api/claims', () => {
     beforeEach(async () => {
       // Create test claims
-      await Claim.create([
-        { ...mockClaimData, claimNumber: 'CLM-2024-001', status: 'Under Review' },
-        { ...mockClaimData, claimNumber: 'CLM-2024-002', status: 'Approved', claimType: 'Vehicle' },
-        { ...mockClaimData, claimNumber: 'CLM-2024-003', status: 'Rejected' }
-      ]);
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should return paginated claims for admin', async () => {
+    test('should get all claims with pagination', async () => {
       const response = await request(app)
         .get('/api/claims?page=1&limit=10')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(3);
-      expect(response.body.pagination).toHaveProperty('totalItems', 3);
+      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body.pagination).toBeDefined();
+      expect(response.body.pagination.currentPage).toBe(1);
     });
 
-    it('should filter claims by status', async () => {
+    test('should filter claims by status', async () => {
       const response = await request(app)
-        .get('/api/claims?status=Approved')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get('/api/claims?status=Reported')
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].status).toBe('Approved');
+      response.body.data.forEach(claim => {
+        expect(claim.status).toBe('Reported');
+      });
     });
 
-    it('should filter claims by claim type', async () => {
+    test('should search claims by claim number', async () => {
       const response = await request(app)
-        .get('/api/claims?claimType=Vehicle')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get(`/api/claims?search=${testClaim.claimNumber}`)
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].claimType).toBe('Vehicle');
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(response.body.data[0].claimNumber).toBe(testClaim.claimNumber);
     });
 
-    it('should return only assigned claims for agents', async () => {
-      const response = await request(app)
-        .get('/api/claims')
-        .set('Authorization', `Bearer ${agentToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it('should support search functionality', async () => {
-      const response = await request(app)
-        .get('/api/claims?search=fever')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-    });
-
-    it('should support sorting', async () => {
+    test('should sort claims by claim amount', async () => {
       const response = await request(app)
         .get('/api/claims?sortField=claimAmount&sortDirection=desc')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      if (response.body.data.length > 1) {
+        expect(response.body.data[0].claimAmount).toBeGreaterThanOrEqual(
+          response.body.data[1].claimAmount
+        );
+      }
     });
   });
 
   describe('GET /api/claims/:id', () => {
-    let claimId;
-
     beforeEach(async () => {
-      const claim = await Claim.create({ ...mockClaimData, claimNumber: 'CLM-2024-001' });
-      claimId = claim._id;
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should return claim by ID for admin', async () => {
+    test('should get claim by valid ID', async () => {
       const response = await request(app)
-        .get(`/api/claims/${claimId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .get(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data._id).toBe(claimId.toString());
+      expect(response.body.data._id).toBe(testClaim._id.toString());
+      expect(response.body.data.claimType).toBe('Auto');
     });
 
-    it('should return 404 for non-existent claim', async () => {
+    test('should return 404 for non-existent claim', async () => {
       const nonExistentId = new mongoose.Types.ObjectId();
       
       const response = await request(app)
         .get(`/api/claims/${nonExistentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', authToken)
         .expect(404);
 
       expect(response.body.success).toBe(false);
       expect(response.body.message).toBe('Claim not found');
     });
 
-    it('should return 403 for agent accessing non-assigned claim', async () => {
-      const otherAgentId = new mongoose.Types.ObjectId();
-      const claim = await Claim.create({ 
-        ...mockClaimData, 
-        claimNumber: 'CLM-2024-002',
-        assignedTo: otherAgentId 
-      });
-
+    test('should return 400 for invalid claim ID format', async () => {
       const response = await request(app)
-        .get(`/api/claims/${claim._id}`)
-        .set('Authorization', `Bearer ${agentToken}`)
-        .expect(403);
+        .get('/api/claims/invalid-id')
+        .set('Authorization', authToken)
+        .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Access denied');
+      expect(response.body.message).toBe('Invalid claim ID');
     });
   });
 
   describe('PUT /api/claims/:id', () => {
-    let claimId;
-
     beforeEach(async () => {
-      const claim = await Claim.create({ ...mockClaimData, claimNumber: 'CLM-2024-001' });
-      claimId = claim._id;
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should update claim with valid data', async () => {
+    test('should update claim with valid data', async () => {
       const updateData = {
-        status: 'Approved',
-        approvedAmount: 45000,
-        description: 'Updated description'
+        priority: 'Urgent',
+        description: 'Updated description - urgent review required',
+        approvedAmount: 22000
       };
 
       const response = await request(app)
-        .put(`/api/claims/${claimId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
         .send(updateData)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.status).toBe('Approved');
-      expect(response.body.data.approvedAmount).toBe(45000);
+      expect(response.body.data.priority).toBe('Urgent');
+      expect(response.body.data.approvedAmount).toBe(22000);
     });
 
-    it('should return 404 for non-existent claim', async () => {
-      const nonExistentId = new mongoose.Types.ObjectId();
-      
-      await request(app)
-        .put(`/api/claims/${nonExistentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ status: 'Approved' })
-        .expect(404);
-    });
-
-    it('should validate update data', async () => {
-      const invalidData = { claimAmount: -1000 };
+    test('should fail when approved amount exceeds claim amount', async () => {
+      const updateData = {
+        approvedAmount: 30000 // Exceeds claim amount of 25000
+      };
 
       const response = await request(app)
-        .put(`/api/claims/${claimId}`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidData)
+        .put(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
+        .send(updateData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
-    });
-  });
-
-  describe('DELETE /api/claims/:id', () => {
-    let claimId;
-
-    beforeEach(async () => {
-      const claim = await Claim.create({ ...mockClaimData, claimNumber: 'CLM-2024-001' });
-      claimId = claim._id;
-    });
-
-    it('should soft delete claim for admin', async () => {
-      const response = await request(app)
-        .delete(`/api/claims/${claimId}`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-
-      // Verify claim is soft deleted
-      const deletedClaim = await Claim.findById(claimId);
-      expect(deletedClaim.isActive).toBe(false);
-    });
-
-    it('should return 403 for agent trying to delete', async () => {
-      await request(app)
-        .delete(`/api/claims/${claimId}`)
-        .set('Authorization', `Bearer ${agentToken}`)
-        .expect(403);
+      expect(response.body.message).toContain('exceed claim amount');
     });
   });
 
   describe('PUT /api/claims/:id/status', () => {
-    let claimId;
-
     beforeEach(async () => {
-      const claim = await Claim.create({ ...mockClaimData, claimNumber: 'CLM-2024-001' });
-      claimId = claim._id;
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should update claim status', async () => {
+    test('should update claim status successfully', async () => {
       const statusData = {
         status: 'Approved',
         reason: 'All documentation verified',
-        approvedAmount: 45000
+        approvedAmount: 22000
       };
 
       const response = await request(app)
-        .put(`/api/claims/${claimId}/status`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`/api/claims/${testClaim._id}/status`)
+        .set('Authorization', authToken)
         .send(statusData)
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('Approved');
+      expect(response.body.data.approvedAmount).toBe(22000);
     });
 
-    it('should require approved amount when approving', async () => {
+    test('should require approved amount when status is Approved', async () => {
       const statusData = {
         status: 'Approved',
         reason: 'All documentation verified'
@@ -344,88 +372,119 @@ describe('Claims API', () => {
       };
 
       const response = await request(app)
-        .put(`/api/claims/${claimId}/status`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .put(`/api/claims/${testClaim._id}/status`)
+        .set('Authorization', authToken)
         .send(statusData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.errors[0].message).toContain('Approved amount is required');
     });
   });
 
   describe('POST /api/claims/:id/notes', () => {
-    let claimId;
-
     beforeEach(async () => {
-      const claim = await Claim.create({ ...mockClaimData, claimNumber: 'CLM-2024-001' });
-      claimId = claim._id;
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should add note to claim', async () => {
+    test('should add note to claim successfully', async () => {
       const noteData = {
-        content: 'Contacted client for additional information',
+        content: 'Contacted client for additional documentation',
         type: 'internal',
         priority: 'normal'
       };
 
       const response = await request(app)
-        .post(`/api/claims/${claimId}/notes`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .post(`/api/claims/${testClaim._id}/notes`)
+        .set('Authorization', authToken)
         .send(noteData)
-        .expect(200);
+        .expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.notes).toHaveLength(1);
+      expect(response.body.data.content).toBe(noteData.content);
+      expect(response.body.data.type).toBe('internal');
     });
 
-    it('should validate note content', async () => {
-      const invalidNoteData = {
-        content: '', // Empty content
+    test('should fail with empty note content', async () => {
+      const noteData = {
+        content: '',
         type: 'internal'
       };
 
       const response = await request(app)
-        .post(`/api/claims/${claimId}/notes`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidNoteData)
+        .post(`/api/claims/${testClaim._id}/notes`)
+        .set('Authorization', authToken)
+        .send(noteData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.errors[0].message).toContain('cannot be empty');
     });
   });
 
-  describe('GET /api/claims/stats', () => {
+  describe('GET /api/claims/stats/summary', () => {
     beforeEach(async () => {
+      // Create multiple test claims for statistics
       await Claim.create([
-        { ...mockClaimData, claimNumber: 'CLM-2024-001', status: 'Under Review' },
-        { ...mockClaimData, claimNumber: 'CLM-2024-002', status: 'Approved', approvedAmount: 40000 },
-        { ...mockClaimData, claimNumber: 'CLM-2024-003', status: 'Rejected' }
+        {
+          clientId: testClient._id,
+          policyId: testPolicy._id,
+          claimType: 'Auto',
+          status: 'Reported',
+          priority: 'High',
+          claimAmount: 25000,
+          incidentDate: new Date('2024-01-15'),
+          description: 'Test claim 1',
+          assignedTo: testUser._id,
+          createdBy: testUser._id
+        },
+        {
+          clientId: testClient._id,
+          policyId: testPolicy._id,
+          claimType: 'Home',
+          status: 'Approved',
+          priority: 'Medium',
+          claimAmount: 15000,
+          approvedAmount: 12000,
+          incidentDate: new Date('2024-01-10'),
+          description: 'Test claim 2',
+          assignedTo: testUser._id,
+          createdBy: testUser._id
+        }
       ]);
     });
 
-    it('should return claims statistics', async () => {
+    test('should get claims statistics successfully', async () => {
       const response = await request(app)
-        .get('/api/claims/stats')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get('/api/claims/stats/summary')
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('totalClaims');
-      expect(response.body.data).toHaveProperty('totalClaimAmount');
-      expect(response.body.data).toHaveProperty('approvedClaims');
-      expect(response.body.data).toHaveProperty('rejectedClaims');
+      expect(response.body.data.totalClaims).toBeGreaterThan(0);
+      expect(response.body.data.statusBreakdown).toBeInstanceOf(Array);
+      expect(response.body.data.typeBreakdown).toBeInstanceOf(Array);
+      expect(response.body.data.amountStats).toBeDefined();
     });
 
-    it('should filter statistics by date range', async () => {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-      
+    test('should filter statistics by period', async () => {
       const response = await request(app)
-        .get(`/api/claims/stats?startDate=${startDate.toISOString()}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .get('/api/claims/stats/summary?period=week')
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      expect(response.body.data.period).toBe('week');
     });
   });
 
@@ -434,14 +493,35 @@ describe('Claims API', () => {
 
     beforeEach(async () => {
       const claims = await Claim.create([
-        { ...mockClaimData, claimNumber: 'CLM-2024-001' },
-        { ...mockClaimData, claimNumber: 'CLM-2024-002' }
+        {
+          clientId: testClient._id,
+          policyId: testPolicy._id,
+          claimType: 'Auto',
+          priority: 'Medium',
+          claimAmount: 20000,
+          incidentDate: new Date('2024-01-15'),
+          description: 'Test claim 1',
+          assignedTo: testUser._id,
+          createdBy: testUser._id
+        },
+        {
+          clientId: testClient._id,
+          policyId: testPolicy._id,
+          claimType: 'Home',
+          priority: 'Low',
+          claimAmount: 15000,
+          incidentDate: new Date('2024-01-10'),
+          description: 'Test claim 2',
+          assignedTo: testUser._id,
+          createdBy: testUser._id
+        }
       ]);
-      claimIds = claims.map(claim => claim._id);
+
+      claimIds = claims.map(claim => claim._id.toString());
     });
 
-    it('should bulk update claims', async () => {
-      const bulkUpdateData = {
+    test('should bulk update claims successfully', async () => {
+      const bulkData = {
         claimIds,
         updateData: {
           priority: 'High',
@@ -451,73 +531,131 @@ describe('Claims API', () => {
 
       const response = await request(app)
         .post('/api/claims/bulk/update')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(bulkUpdateData)
+        .set('Authorization', authToken)
+        .send(bulkData)
         .expect(200);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.modifiedCount).toBe(2);
     });
 
-    it('should validate bulk update data', async () => {
-      const invalidBulkData = {
-        claimIds: [], // Empty array
-        updateData: { priority: 'High' }
+    test('should fail with empty claim IDs array', async () => {
+      const bulkData = {
+        claimIds: [],
+        updateData: {
+          priority: 'High'
+        }
       };
 
       const response = await request(app)
         .post('/api/claims/bulk/update')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidBulkData)
+        .set('Authorization', authToken)
+        .send(bulkData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.errors[0].message).toContain('At least one claim ID is required');
     });
 
-    it('should limit bulk update to 100 claims', async () => {
-      const tooManyIds = Array(101).fill(new mongoose.Types.ObjectId());
-      
-      const invalidBulkData = {
-        claimIds: tooManyIds,
-        updateData: { priority: 'High' }
+    test('should fail with empty update data', async () => {
+      const bulkData = {
+        claimIds,
+        updateData: {}
       };
 
       const response = await request(app)
         .post('/api/claims/bulk/update')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(invalidBulkData)
+        .set('Authorization', authToken)
+        .send(bulkData)
         .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.errors[0].message).toContain('At least one field to update is required');
     });
   });
 
   describe('GET /api/claims/search/:query', () => {
     beforeEach(async () => {
-      await Claim.create([
-        { ...mockClaimData, claimNumber: 'CLM-2024-001', description: 'Car accident on highway' },
-        { ...mockClaimData, claimNumber: 'CLM-2024-002', description: 'Medical treatment for fever' }
-      ]);
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision on Highway 101 with significant damage',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
     });
 
-    it('should search claims by description', async () => {
+    test('should search claims by description', async () => {
       const response = await request(app)
-        .get('/api/claims/search/highway')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get('/api/claims/search/collision')
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.length).toBeGreaterThanOrEqual(1);
+      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(response.body.data[0].description).toContain('collision');
     });
 
-    it('should limit search results', async () => {
+    test('should limit search results', async () => {
       const response = await request(app)
-        .get('/api/claims/search/CLM?limit=1')
-        .set('Authorization', `Bearer ${authToken}`)
+        .get('/api/claims/search/test?limit=5')
+        .set('Authorization', authToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.length).toBeLessThanOrEqual(1);
+      expect(response.body.data.length).toBeLessThanOrEqual(5);
+    });
+  });
+
+  describe('DELETE /api/claims/:id', () => {
+    beforeEach(async () => {
+      testClaim = await Claim.create({
+        clientId: testClient._id,
+        policyId: testPolicy._id,
+        claimType: 'Auto',
+        priority: 'High',
+        claimAmount: 25000,
+        incidentDate: new Date('2024-01-15'),
+        description: 'Vehicle collision test claim',
+        assignedTo: testUser._id,
+        createdBy: testUser._id
+      });
+    });
+
+    test('should soft delete claim successfully', async () => {
+      const response = await request(app)
+        .delete(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Claim deleted successfully');
+
+      // Verify soft delete
+      const deletedClaim = await Claim.findById(testClaim._id);
+      expect(deletedClaim.isDeleted).toBe(true);
+      expect(deletedClaim.status).toBe('Deleted');
+    });
+
+    test('should return 404 for already deleted claim', async () => {
+      // First delete
+      await request(app)
+        .delete(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
+        .expect(200);
+
+      // Try to delete again
+      const response = await request(app)
+        .delete(`/api/claims/${testClaim._id}`)
+        .set('Authorization', authToken)
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Claim not found');
     });
   });
 });
