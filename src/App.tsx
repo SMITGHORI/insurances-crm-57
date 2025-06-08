@@ -41,6 +41,7 @@ const AgentDetails = lazy(() => import('@/pages/AgentDetails'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Auth = lazy(() => import('@/pages/Auth'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const CommunicationDashboard = lazy(() => import('@/components/communication/CommunicationDashboard'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -87,6 +88,13 @@ function App() {
                     <Route path="dashboard" element={
                       <RouteGuard route="/dashboard">
                         <Dashboard />
+                      </RouteGuard>
+                    } />
+                    
+                    {/* Communication Routes */}
+                    <Route path="communication" element={
+                      <RouteGuard route="/communication">
+                        <CommunicationDashboard />
                       </RouteGuard>
                     } />
                     
