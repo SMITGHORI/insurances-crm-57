@@ -9,10 +9,12 @@ import { Separator } from "@/components/ui/separator";
 import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   // Form states
   const [profileForm, setProfileForm] = useState({
