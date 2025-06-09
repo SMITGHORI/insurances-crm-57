@@ -1,963 +1,592 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { User, Building, Users } from 'lucide-react';
-import { 
-  Form, 
-  FormControl, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { generateClientId } from '../../utils/idGenerator';
+import { generateClientId } from '@/utils/idGenerator';
+import { FileUploader } from '@/components/ui/file-uploader';
+import ClientAnniversaryForm from './ClientAnniversaryForm';
 
-const ClientForm = ({ onClose, onSuccess, existingClients = [] }) => {
-  const [clientType, setClientType] = useState('individual');
-  const [previewClientId, setPreviewClientId] = useState('');
+const ClientForm = ({ client, onSubmit, onCancel }) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('basic');
+  const [errors, setErrors] = useState({});
+  const isEditMode = !!client?.id;
 
-  // Generate preview client ID
-  useEffect(() => {
-    const existingIds = existingClients.map(client => client?.clientId).filter(Boolean);
-    const generatedId = generateClientId(existingIds);
-    setPreviewClientId(generatedId);
-  }, [existingClients]);
-
-  const form = useForm({
-    defaultValues: {
-      clientType: 'individual',
-      firstName: '',
-      lastName: '',
-      dob: '',
-      gender: '',
-      companyName: '',
-      registrationNo: '',
-      industry: '',
-      employeeCount: '',
-      groupName: '',
-      groupType: '',
-      memberCount: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      country: 'India',
+  // Initialize form data with anniversary and communication preferences
+  const [formData, setFormData] = useState({
+    clientType: client?.clientType || 'individual',
+    name: client?.name || '',
+    email: client?.email || '',
+    contact: client?.contact || '',
+    location: client?.location || '',
+    status: client?.status || 'Active',
+    dob: client?.dob || '',
+    gender: client?.gender || '',
+    panNumber: client?.panNumber || '',
+    occupation: client?.occupation || '',
+    registrationNo: client?.registrationNo || '',
+    gstNumber: client?.gstNumber || '',
+    industry: client?.industry || '',
+    employeeCount: client?.employeeCount || '',
+    contactPerson: client?.contactPerson || '',
+    contactPersonDesignation: client?.contactPersonDesignation || '',
+    groupType: client?.groupType || '',
+    memberCount: client?.memberCount || '',
+    primaryContact: client?.primaryContact || '',
+    primaryContactDesignation: client?.primaryContactDesignation || '',
+    notes: client?.notes || '',
+    importantDates: client?.importantDates || {},
+    communicationPreferences: client?.communicationPreferences || {
+      email: { enabled: true, birthday: true, anniversary: true, offers: true },
+      whatsapp: { enabled: false, birthday: false, anniversary: false },
+      sms: { enabled: false, birthday: false, anniversary: false }
     },
+    documents: client?.documents || {}
   });
 
-  const handleSubmit = (data) => {
-    // Construct the client name based on client type
-    let name = '';
-    if (clientType === 'individual') {
-      name = `${data.firstName} ${data.lastName}`;
-    } else if (clientType === 'corporate') {
-      name = data.companyName;
-    } else if (clientType === 'group') {
-      name = data.groupName;
-    }
+  // Handle form field changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     
-    // Prepare client data with type
-    const clientData = {
-      ...data,
-      name,
-      type: clientType === 'individual' ? 'Individual' : 
-            clientType === 'corporate' ? 'Corporate' : 'Group',
+    // Clear error for this field if it exists
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error for this field if it exists
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  // Handle document upload
+  const handleDocumentUpload = (docType, file) => {
+    if (!file) return;
+    
+    // In a real app, you would upload the file to a server here
+    // For now, we'll just store the file metadata
+    const fileData = {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadDate: new Date().toISOString(),
+      url: URL.createObjectURL(file) // This is temporary and will be lost on page refresh
     };
     
-    console.log("Form data:", clientData);
-    onSuccess && onSuccess(clientData);
+    setFormData(prev => ({
+      ...prev,
+      documents: {
+        ...prev.documents,
+        [docType]: fileData
+      }
+    }));
+    
+    toast.success(`${docType} document uploaded successfully`);
   };
 
-  const handleClientTypeChange = (value) => {
-    setClientType(value);
-    form.setValue('clientType', value);
+  // Validate form before submission
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Basic validation
+    if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+    if (!formData.contact) {
+      newErrors.contact = 'Contact number is required';
+    } else if (!/^\d{10}$/.test(formData.contact.replace(/\D/g, ''))) {
+      newErrors.contact = 'Contact should be 10 digits';
+    }
+    if (!formData.location) newErrors.location = 'Location is required';
+    
+    // Type-specific validation
+    if (formData.clientType === 'individual') {
+      if (!formData.dob) newErrors.dob = 'Date of birth is required';
+      if (!formData.gender) newErrors.gender = 'Gender is required';
+      if (!formData.panNumber) {
+        newErrors.panNumber = 'PAN number is required';
+      } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber)) {
+        newErrors.panNumber = 'Invalid PAN format';
+      }
+    } else if (formData.clientType === 'corporate') {
+      if (!formData.registrationNo) newErrors.registrationNo = 'Registration number is required';
+      if (!formData.industry) newErrors.industry = 'Industry is required';
+      if (!formData.employeeCount) newErrors.employeeCount = 'Employee count is required';
+      if (!formData.contactPerson) newErrors.contactPerson = 'Contact person is required';
+    } else if (formData.clientType === 'group') {
+      if (!formData.groupType) newErrors.groupType = 'Group type is required';
+      if (!formData.memberCount) newErrors.memberCount = 'Member count is required';
+      if (!formData.primaryContact) newErrors.primaryContact = 'Primary contact is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
+
+  // Handle form submission
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
+    
+    // Prepare client data
+    const clientData = {
+      ...formData,
+      id: client?.id || Date.now(),
+      clientId: client?.clientId || generateClientId([]),
+      type: formData.clientType.charAt(0).toUpperCase() + formData.clientType.slice(1)
+    };
+    
+    // Submit the form
+    onSubmit(clientData);
+  };
+
+  // Reset form when client changes
+  useEffect(() => {
+    if (client) {
+      setFormData({
+        clientType: client.clientType || client.type?.toLowerCase() || 'individual',
+        name: client.name || '',
+        email: client.email || '',
+        contact: client.contact || '',
+        location: client.location || '',
+        status: client.status || 'Active',
+        dob: client.dob || '',
+        gender: client.gender || '',
+        panNumber: client.panNumber || '',
+        occupation: client.occupation || '',
+        registrationNo: client.registrationNo || '',
+        gstNumber: client.gstNumber || '',
+        industry: client.industry || '',
+        employeeCount: client.employeeCount || '',
+        contactPerson: client.contactPerson || '',
+        contactPersonDesignation: client.contactPersonDesignation || '',
+        groupType: client.groupType || '',
+        memberCount: client.memberCount || '',
+        primaryContact: client.primaryContact || '',
+        primaryContactDesignation: client.primaryContactDesignation || '',
+        notes: client.notes || '',
+        importantDates: client.importantDates || {},
+        communicationPreferences: client.communicationPreferences || {
+          email: { enabled: true, birthday: true, anniversary: true, offers: true },
+          whatsapp: { enabled: false, birthday: false, anniversary: false },
+          sms: { enabled: false, birthday: false, anniversary: false }
+        },
+        documents: client.documents || {}
+      });
+    }
+  }, [client]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Add New Client
-        </h3>
-        
-        {/* Client ID Preview */}
-        <div className="mb-4 p-2 border border-dashed border-gray-300 rounded-md bg-gray-50">
-          <p className="text-sm text-gray-500">Client ID (will be assigned automatically)</p>
-          <p className="font-mono text-gray-900 font-medium">{previewClientId}</p>
-        </div>
-        
-        {/* Client Type Selection */}
-        <div className="mb-6">
-          <p className="block text-sm font-medium text-gray-700 mb-2">
-            Client Type
-          </p>
-          <RadioGroup 
-            value={clientType}
-            onValueChange={handleClientTypeChange}
-            className="grid grid-cols-3 gap-4"
-          >
-            <FormItem className={`flex flex-col items-center justify-center rounded-md p-2 cursor-pointer border-2 ${clientType === 'individual' ? 'border-amba-blue bg-amba-blue/5' : 'border-gray-200'}`}>
-              <FormControl>
-                <RadioGroupItem value="individual" id="individual" className="sr-only" />
-              </FormControl>
-              <User className={`h-6 w-6 mb-1 ${clientType === 'individual' ? 'text-amba-blue' : 'text-gray-500'}`} />
-              <FormLabel className={`font-medium ${clientType === 'individual' ? 'text-amba-blue' : 'text-gray-700'}`}>Individual</FormLabel>
-            </FormItem>
-            <FormItem className={`flex flex-col items-center justify-center rounded-md p-2 cursor-pointer border-2 ${clientType === 'corporate' ? 'border-amba-blue bg-amba-blue/5' : 'border-gray-200'}`}>
-              <FormControl>
-                <RadioGroupItem value="corporate" id="corporate" className="sr-only" />
-              </FormControl>
-              <Building className={`h-6 w-6 mb-1 ${clientType === 'corporate' ? 'text-amba-blue' : 'text-gray-500'}`} />
-              <FormLabel className={`font-medium ${clientType === 'corporate' ? 'text-amba-blue' : 'text-gray-700'}`}>Corporate</FormLabel>
-            </FormItem>
-            <FormItem className={`flex flex-col items-center justify-center rounded-md p-2 cursor-pointer border-2 ${clientType === 'group' ? 'border-amba-blue bg-amba-blue/5' : 'border-gray-200'}`}>
-              <FormControl>
-                <RadioGroupItem value="group" id="group" className="sr-only" />
-              </FormControl>
-              <Users className={`h-6 w-6 mb-1 ${clientType === 'group' ? 'text-amba-blue' : 'text-gray-500'}`} />
-              <FormLabel className={`font-medium ${clientType === 'group' ? 'text-amba-blue' : 'text-gray-700'}`}>Group</FormLabel>
-            </FormItem>
-          </RadioGroup>
-        </div>
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-sm">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">
+          {isEditMode ? 'Edit Client' : 'Add New Client'}
+        </h2>
+      </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Dynamic fields based on client type */}
-            {clientType === 'individual' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Aarav" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Sharma" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="basic">Basic Info</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="communication">Communication</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+        </TabsList>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
+        <TabsContent value="basic" className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="clientType">Client Type</Label>
+              <Select
+                value={formData.clientType}
+                onValueChange={(value) => handleSelectChange('clientType', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="corporate">Corporate</SelectItem>
+                  <SelectItem value="group">Group</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="name">
+                {formData.clientType === 'individual' ? 'Full Name' : 
+                 formData.clientType === 'corporate' ? 'Company Name' : 'Group Name'}
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className={errors.name ? 'border-red-500' : ''}
+              />
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+              </div>
+              <div>
+                <Label htmlFor="contact">Contact Number</Label>
+                <Input
+                  id="contact"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleChange}
+                  className={errors.contact ? 'border-red-500' : ''}
+                />
+                {errors.contact && <p className="text-red-500 text-sm mt-1">{errors.contact}</p>}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                className={errors.location ? 'border-red-500' : ''}
+              />
+              {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => handleSelectChange('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="details" className="space-y-6">
+          {formData.clientType === 'individual' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="dob">Date of Birth</Label>
+                  <Input
+                    id="dob"
                     name="dob"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of Birth*</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} max="2007-05-20" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    type="date"
+                    value={formData.dob}
+                    onChange={handleChange}
+                    className={errors.dob ? 'border-red-500' : ''}
                   />
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender*</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {errors.dob && <p className="text-red-500 text-sm mt-1">{errors.dob}</p>}
                 </div>
+                <div>
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) => handleSelectChange('gender', value)}
+                  >
+                    <SelectTrigger className={errors.gender ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
+                </div>
+              </div>
 
-                <FormField
-                  control={form.control}
-                  name="panNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>PAN Number*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="ABCDE1234F" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="aadharNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Aadhar Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="1234 5678 9012" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="panNumber">PAN Number</Label>
+                  <Input
+                    id="panNumber"
+                    name="panNumber"
+                    value={formData.panNumber}
+                    onChange={handleChange}
+                    className={errors.panNumber ? 'border-red-500' : ''}
                   />
-                  <FormField
-                    control={form.control}
+                  {errors.panNumber && <p className="text-red-500 text-sm mt-1">{errors.panNumber}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="occupation">Occupation</Label>
+                  <Input
+                    id="occupation"
                     name="occupation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Occupation</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Software Engineer" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="annualIncome"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Annual Income (₹)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="500000" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="maritalStatus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Marital Status</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="single">Single</SelectItem>
-                            <SelectItem value="married">Married</SelectItem>
-                            <SelectItem value="divorced">Divorced</SelectItem>
-                            <SelectItem value="widowed">Widowed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="nomineeName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nominee Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Priya Sharma" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="nomineeRelation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nominee Relation</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Spouse" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="nomineeContact"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nominee Contact</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="+91 98765 43210" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.occupation}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {clientType === 'corporate' && (
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company Name*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Infosys Technologies Ltd." required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
+          {formData.clientType === 'corporate' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="registrationNo">Registration Number</Label>
+                  <Input
+                    id="registrationNo"
                     name="registrationNo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Registration Number*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="U12345MH2010PTC123456" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.registrationNo}
+                    onChange={handleChange}
+                    className={errors.registrationNo ? 'border-red-500' : ''}
                   />
-                  <FormField
-                    control={form.control}
+                  {errors.registrationNo && <p className="text-red-500 text-sm mt-1">{errors.registrationNo}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="gstNumber">GST Number</Label>
+                  <Input
+                    id="gstNumber"
                     name="gstNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>GST Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="22AAAAA0000A1Z5" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.gstNumber}
+                    onChange={handleChange}
                   />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="industry"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Industry*</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select industry" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="IT">Information Technology</SelectItem>
-                            <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                            <SelectItem value="Healthcare">Healthcare</SelectItem>
-                            <SelectItem value="Finance">Finance</SelectItem>
-                            <SelectItem value="Retail">Retail</SelectItem>
-                            <SelectItem value="Education">Education</SelectItem>
-                            <SelectItem value="Hospitality">Hospitality & Tourism</SelectItem>
-                            <SelectItem value="Construction">Construction</SelectItem>
-                            <SelectItem value="Transport">Transportation</SelectItem>
-                            <SelectItem value="Agriculture">Agriculture</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="industry">Industry</Label>
+                  <Select
+                    value={formData.industry}
+                    onValueChange={(value) => handleSelectChange('industry', value)}
+                  >
+                    <SelectTrigger className={errors.industry ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                      <SelectItem value="Retail">Retail</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.industry && <p className="text-red-500 text-sm mt-1">{errors.industry}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="employeeCount">Number of Employees</Label>
+                  <Input
+                    id="employeeCount"
                     name="employeeCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Number of Employees*</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="100" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    type="number"
+                    value={formData.employeeCount}
+                    onChange={handleChange}
+                    className={errors.employeeCount ? 'border-red-500' : ''}
                   />
+                  {errors.employeeCount && <p className="text-red-500 text-sm mt-1">{errors.employeeCount}</p>}
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="turnover"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Annual Turnover (₹ in Lakhs)</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="1000" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Input
+                    id="contactPerson"
+                    name="contactPerson"
+                    value={formData.contactPerson}
+                    onChange={handleChange}
+                    className={errors.contactPerson ? 'border-red-500' : ''}
                   />
-                  <FormField
-                    control={form.control}
-                    name="yearEstablished"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year Established</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="2010" min="1900" max="2025" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {errors.contactPerson && <p className="text-red-500 text-sm mt-1">{errors.contactPerson}</p>}
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Website</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="https://www.infosys.com" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="pt-3 border-t border-gray-200 mb-2">
-                  <h4 className="font-medium text-gray-700 mb-2">Primary Contact Person</h4>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="contactPersonName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Vikram Mehta" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
+                <div>
+                  <Label htmlFor="contactPersonDesignation">Designation</Label>
+                  <Input
+                    id="contactPersonDesignation"
                     name="contactPersonDesignation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Designation*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="HR Manager" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="contactPersonEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email*</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} placeholder="vikram.mehta@infosys.com" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="contactPersonPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="+91 98765 43210" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    value={formData.contactPersonDesignation}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {clientType === 'group' && (
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="groupName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Group Name*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Sharma Family Group" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="groupType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Group Type*</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select group type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="family">Family</SelectItem>
-                            <SelectItem value="association">Association</SelectItem>
-                            <SelectItem value="trust">Trust</SelectItem>
-                            <SelectItem value="society">Housing Society</SelectItem>
-                            <SelectItem value="community">Community</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
+          {formData.clientType === 'group' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="groupType">Group Type</Label>
+                  <Select
+                    value={formData.groupType}
+                    onValueChange={(value) => handleSelectChange('groupType', value)}
+                  >
+                    <SelectTrigger className={errors.groupType ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Select group type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Family">Family</SelectItem>
+                      <SelectItem value="Association">Association</SelectItem>
+                      <SelectItem value="Community">Community</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.groupType && <p className="text-red-500 text-sm mt-1">{errors.groupType}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="memberCount">Number of Members</Label>
+                  <Input
+                    id="memberCount"
                     name="memberCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Number of Members*</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} placeholder="10" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    type="number"
+                    value={formData.memberCount}
+                    onChange={handleChange}
+                    className={errors.memberCount ? 'border-red-500' : ''}
                   />
+                  {errors.memberCount && <p className="text-red-500 text-sm mt-1">{errors.memberCount}</p>}
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="primaryContactName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primary Contact Person*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Rajesh Sharma" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="relationshipWithGroup"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relationship with Group</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Head of Family" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="registrationID"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Registration ID (if applicable)</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Registration ID" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="groupFormationDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Formation Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="groupCategory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Group Category</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="general">General</SelectItem>
-                            <SelectItem value="religious">Religious</SelectItem>
-                            <SelectItem value="educational">Educational</SelectItem>
-                            <SelectItem value="professional">Professional</SelectItem>
-                            <SelectItem value="social">Social Welfare</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="groupPurpose"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Purpose of Group</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Family health insurance coverage" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
-            )}
 
-            {/* Common fields for all client types */}
-            <div className="pt-4 border-t border-gray-200">
-              <h4 className="font-medium text-gray-700 mb-2">Contact Information</h4>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address*</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} placeholder="name@example.com" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="primaryContact">Primary Contact</Label>
+                  <Input
+                    id="primaryContact"
+                    name="primaryContact"
+                    value={formData.primaryContact}
+                    onChange={handleChange}
+                    className={errors.primaryContact ? 'border-red-500' : ''}
                   />
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="+91 98765 43210" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {errors.primaryContact && <p className="text-red-500 text-sm mt-1">{errors.primaryContact}</p>}
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="altPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Alternate Phone Number</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="+91 98765 43210" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address*</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="123 MG Road" required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Mumbai" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State*</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select state" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="AN">Andaman and Nicobar Islands</SelectItem>
-                            <SelectItem value="AP">Andhra Pradesh</SelectItem>
-                            <SelectItem value="AR">Arunachal Pradesh</SelectItem>
-                            <SelectItem value="AS">Assam</SelectItem>
-                            <SelectItem value="BR">Bihar</SelectItem>
-                            <SelectItem value="CH">Chandigarh</SelectItem>
-                            <SelectItem value="CT">Chhattisgarh</SelectItem>
-                            <SelectItem value="DL">Delhi</SelectItem>
-                            <SelectItem value="GA">Goa</SelectItem>
-                            <SelectItem value="GJ">Gujarat</SelectItem>
-                            <SelectItem value="HR">Haryana</SelectItem>
-                            <SelectItem value="HP">Himachal Pradesh</SelectItem>
-                            <SelectItem value="JK">Jammu and Kashmir</SelectItem>
-                            <SelectItem value="JH">Jharkhand</SelectItem>
-                            <SelectItem value="KA">Karnataka</SelectItem>
-                            <SelectItem value="KL">Kerala</SelectItem>
-                            <SelectItem value="MP">Madhya Pradesh</SelectItem>
-                            <SelectItem value="MH">Maharashtra</SelectItem>
-                            <SelectItem value="MN">Manipur</SelectItem>
-                            <SelectItem value="ML">Meghalaya</SelectItem>
-                            <SelectItem value="MZ">Mizoram</SelectItem>
-                            <SelectItem value="NL">Nagaland</SelectItem>
-                            <SelectItem value="OR">Odisha</SelectItem>
-                            <SelectItem value="PB">Punjab</SelectItem>
-                            <SelectItem value="RJ">Rajasthan</SelectItem>
-                            <SelectItem value="SK">Sikkim</SelectItem>
-                            <SelectItem value="TN">Tamil Nadu</SelectItem>
-                            <SelectItem value="TG">Telangana</SelectItem>
-                            <SelectItem value="TR">Tripura</SelectItem>
-                            <SelectItem value="UP">Uttar Pradesh</SelectItem>
-                            <SelectItem value="UK">Uttarakhand</SelectItem>
-                            <SelectItem value="WB">West Bengal</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="pincode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>PIN Code*</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="400001" required />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                <div>
+                  <Label htmlFor="primaryContactDesignation">Designation</Label>
+                  <Input
+                    id="primaryContactDesignation"
+                    name="primaryContactDesignation"
+                    value={formData.primaryContactDesignation}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Additional information */}
-            <div className="pt-4 border-t border-gray-200">
-              <h4 className="font-medium text-gray-700 mb-2">Additional Information</h4>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="source"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Client Source</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="How did you find this client?" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="referral">Referral</SelectItem>
-                          <SelectItem value="website">Website</SelectItem>
-                          <SelectItem value="social">Social Media</SelectItem>
-                          <SelectItem value="campaign">Marketing Campaign</SelectItem>
-                          <SelectItem value="lead">Lead Generation</SelectItem>
-                          <SelectItem value="direct">Direct Contact</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              rows={4}
+            />
+          </div>
+        </TabsContent>
 
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Any additional information" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <TabsContent value="communication" className="space-y-6">
+          <ClientAnniversaryForm
+            formData={formData}
+            setFormData={setFormData}
+            clientType={formData.clientType}
+          />
+        </TabsContent>
 
-                <FormField
-                  control={form.control}
-                  name="assignedAgentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Assigned Agent</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select an agent" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="1">Amit Kumar</SelectItem>
-                          <SelectItem value="2">Priya Sharma</SelectItem>
-                          <SelectItem value="3">Raj Patel</SelectItem>
-                          <SelectItem value="4">Neha Gupta</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+        <TabsContent value="documents" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label>PAN Card</Label>
+              <FileUploader
+                accept=".jpg,.jpeg,.png,.pdf"
+                maxSize={5 * 1024 * 1024} // 5MB
+                onFileUpload={(file) => handleDocumentUpload('pan', file)}
+                currentFile={formData.documents?.pan}
+              />
             </div>
-
-            {/* Form actions */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-amba-blue hover:bg-amba-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
-              >
-                Add Client
-              </button>
+            <div>
+              <Label>Aadhaar Card</Label>
+              <FileUploader
+                accept=".jpg,.jpeg,.png,.pdf"
+                maxSize={5 * 1024 * 1024} // 5MB
+                onFileUpload={(file) => handleDocumentUpload('aadhaar', file)}
+                currentFile={formData.documents?.aadhaar}
+              />
             </div>
-          </form>
-        </Form>
+            <div>
+              <Label>ID Proof (Passport/Voter ID)</Label>
+              <FileUploader
+                accept=".jpg,.jpeg,.png,.pdf"
+                maxSize={5 * 1024 * 1024} // 5MB
+                onFileUpload={(file) => handleDocumentUpload('idProof', file)}
+                currentFile={formData.documents?.idProof}
+              />
+            </div>
+            <div>
+              <Label>Address Proof</Label>
+              <FileUploader
+                accept=".jpg,.jpeg,.png,.pdf"
+                maxSize={5 * 1024 * 1024} // 5MB
+                onFileUpload={(file) => handleDocumentUpload('addressProof', file)}
+                currentFile={formData.documents?.addressProof}
+              />
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="flex justify-end space-x-4 mt-8">
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit}>
+          {isEditMode ? 'Update Client' : 'Create Client'}
+        </Button>
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateClientId } from '../utils/idGenerator';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import AnniversaryManager from '@/components/clients/AnniversaryManager';
 
 const ClientDetailsView = () => {
   const { id } = useParams();
@@ -113,6 +114,29 @@ const ClientDetailsView = () => {
     const foundClient = clientsList.find(c => c.id === parseInt(id));
     
     if (foundClient) {
+      // Ensure anniversary and communication preferences exist
+      if (!foundClient.importantDates) {
+        foundClient.importantDates = {};
+      }
+      if (!foundClient.communicationPreferences) {
+        foundClient.communicationPreferences = {
+          email: { enabled: true, birthday: true, anniversary: true, offers: true },
+          whatsapp: { enabled: false, birthday: false, anniversary: false },
+          sms: { enabled: false, birthday: false, anniversary: false }
+        };
+      }
+      
+      // Add sample anniversary dates for demonstration
+      if (foundClient.type === 'Individual' && !foundClient.importantDates.marriageAnniversary) {
+        foundClient.importantDates.marriageAnniversary = '2020-05-15';
+      }
+      if (foundClient.type === 'Corporate' && !foundClient.importantDates.incorporationDate) {
+        foundClient.importantDates.incorporationDate = '2018-08-20';
+      }
+      if (foundClient.type === 'Group' && !foundClient.importantDates.groupAnniversary) {
+        foundClient.importantDates.groupAnniversary = '2019-12-01';
+      }
+      
       // Ensure documents property exists
       if (!foundClient.documents) {
         foundClient.documents = {};
@@ -389,6 +413,12 @@ const ClientDetailsView = () => {
                 className="py-3 px-4 border-b-2 font-medium text-sm whitespace-nowrap"
               >
                 Claims ({claims.length})
+              </TabsTrigger>
+              <TabsTrigger 
+                value="anniversaries"
+                className="py-3 px-4 border-b-2 font-medium text-sm whitespace-nowrap"
+              >
+                Anniversaries
               </TabsTrigger>
               <TabsTrigger 
                 value="documents"
@@ -706,6 +736,10 @@ const ClientDetailsView = () => {
                 <Button>Create New Claim</Button>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="anniversaries" className="p-6">
+            <AnniversaryManager client={client} />
           </TabsContent>
 
           <TabsContent value="documents" className="p-6">
