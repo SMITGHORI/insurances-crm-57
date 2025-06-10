@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -42,6 +43,7 @@ const Settings = lazy(() => import('@/pages/Settings'));
 const Auth = lazy(() => import('@/pages/Auth'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const CommunicationDashboard = lazy(() => import('@/components/communication/CommunicationDashboard'));
+const OffersModule = lazy(() => import('@/components/offers/OffersModule'));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -95,6 +97,13 @@ function App() {
                     <Route path="communication" element={
                       <RouteGuard route="/communication">
                         <CommunicationDashboard />
+                      </RouteGuard>
+                    } />
+                    
+                    {/* Offers & Broadcasts Routes */}
+                    <Route path="offers" element={
+                      <RouteGuard route="/offers">
+                        <OffersModule />
                       </RouteGuard>
                     } />
                     

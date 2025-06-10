@@ -13,7 +13,8 @@ import {
   Home,
   Settings,
   LogOut,
-  Clock
+  Clock,
+  Gift
 } from 'lucide-react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 
@@ -30,10 +31,11 @@ const Sidebar = ({ onNavItemClick }) => {
     { path: '/dashboard', icon: <Home size={20} />, name: 'Dashboard' },
     { path: '/clients', icon: <Users size={20} />, name: 'Clients' },
     { path: '/policies', icon: <FileText size={20} />, name: 'Policies' },
-    { path: '/agents', icon: <Users size={20} />, name: 'Agents', adminOnly: true },
     { path: '/claims', icon: <ShieldCheck size={20} />, name: 'Claims' },
     { path: '/leads', icon: <Star size={20} />, name: 'Leads' },
     { path: '/quotations', icon: <FileEdit size={20} />, name: 'Quotations' },
+    { path: '/offers', icon: <Gift size={20} />, name: 'Offers & Broadcasts' },
+    { path: '/agents', icon: <Users size={20} />, name: 'Agents', adminOnly: true },
     { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices', adminOnly: true },
     { path: '/recent-activities', icon: <Clock size={20} />, name: 'Recent Activities' },
     { path: '/settings', icon: <Settings size={20} />, name: 'Settings' },
