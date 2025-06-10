@@ -1,3 +1,4 @@
+
 import { commissionService } from '@/services/commissionService';
 
 export const getSampleInvoices = () => [
@@ -195,6 +196,40 @@ export const getInvoiceStatusLabel = (status) => {
   };
   
   return statusLabels[status] || status;
+};
+
+/**
+ * Get status badge class for invoice status (used by mobile view)
+ */
+export const getStatusBadgeClass = (status) => {
+  const statusClasses = {
+    'draft': 'bg-gray-100 text-gray-800',
+    'sent': 'bg-blue-100 text-blue-800',
+    'paid': 'bg-green-100 text-green-800',
+    'overdue': 'bg-red-100 text-red-800',
+    'cancelled': 'bg-red-100 text-red-800'
+  };
+  
+  return statusClasses[status] || 'bg-gray-100 text-gray-800';
+};
+
+/**
+ * Format invoice date for display
+ */
+export const formatInvoiceDateForDisplay = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString;
+  }
 };
 
 /**
