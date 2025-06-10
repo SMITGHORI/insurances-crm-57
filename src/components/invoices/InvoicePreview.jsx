@@ -49,30 +49,117 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
 
       console.log('Starting PDF generation...');
       
-      const canvas = await html2canvas(invoiceRef.current, {
+      // Create a temporary container for PDF generation with A4 dimensions
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.top = '-9999px';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.width = '210mm';
+      tempContainer.style.minHeight = '297mm';
+      tempContainer.style.backgroundColor = '#ffffff';
+      tempContainer.style.fontFamily = 'Arial, sans-serif';
+      tempContainer.style.fontSize = '12px';
+      tempContainer.style.lineHeight = '1.4';
+      tempContainer.style.color = '#000000';
+      
+      // Clone the invoice content
+      const clonedContent = invoiceRef.current.cloneNode(true);
+      
+      // Ensure proper styling for PDF
+      clonedContent.style.width = '100%';
+      clonedContent.style.height = 'auto';
+      clonedContent.style.padding = '20mm';
+      clonedContent.style.boxSizing = 'border-box';
+      clonedContent.style.backgroundColor = '#ffffff';
+      clonedContent.style.color = '#000000';
+      
+      // Override any problematic styles for PDF
+      const allElements = clonedContent.querySelectorAll('*');
+      allElements.forEach(el => {
+        // Ensure text is black and backgrounds are white
+        if (el.style) {
+          if (el.style.color && el.style.color !== '#000000') {
+            el.style.color = '#000000';
+          }
+          if (el.style.backgroundColor && el.style.backgroundColor.includes('gray')) {
+            el.style.backgroundColor = '#f8f9fa';
+          }
+        }
+        
+        // Override specific class-based styles
+        if (el.classList) {
+          if (el.classList.contains('text-white')) {
+            el.style.color = '#000000';
+          }
+          if (el.classList.contains('bg-blue-600') || el.classList.contains('bg-blue-700')) {
+            el.style.backgroundColor = '#1e40af';
+            el.style.color = '#ffffff';
+          }
+        }
+      });
+      
+      tempContainer.appendChild(clonedContent);
+      document.body.appendChild(tempContainer);
+      
+      // Generate canvas with higher quality settings
+      const canvas = await html2canvas(tempContainer, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
-        width: invoiceRef.current.scrollWidth,
-        height: invoiceRef.current.scrollHeight,
-        logging: false
+        width: tempContainer.scrollWidth,
+        height: tempContainer.scrollHeight,
+        logging: false,
+        letterRendering: true,
+        dpi: 300,
+        foreignObjectRendering: true
       });
 
       console.log('Canvas generated successfully');
 
-      const imgData = canvas.toDataURL('image/png');
+      // Create PDF with exact A4 dimensions
       const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = 297; // A4 height in mm
       
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      
+      // Calculate proper scaling to fit A4
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 0;
-
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // Convert pixels to mm (assuming 96 DPI)
+      const mmPerPx = 25.4 / 96;
+      const imgWidthMM = imgWidth * mmPerPx / 2; // Divide by 2 because of scale: 2
+      const imgHeightMM = imgHeight * mmPerPx / 2;
+      
+      // Scale to fit within A4 margins (leaving 10mm margin on each side)
+      const maxWidth = pdfWidth - 20;
+      const maxHeight = pdfHeight - 20;
+      
+      let finalWidth = imgWidthMM;
+      let finalHeight = imgHeightMM;
+      
+      if (imgWidthMM > maxWidth) {
+        const ratio = maxWidth / imgWidthMM;
+        finalWidth = maxWidth;
+        finalHeight = imgHeightMM * ratio;
+      }
+      
+      if (finalHeight > maxHeight) {
+        const ratio = maxHeight / finalHeight;
+        finalHeight = maxHeight;
+        finalWidth = finalWidth * ratio;
+      }
+      
+      // Center the image on the page
+      const x = (pdfWidth - finalWidth) / 2;
+      const y = 10; // 10mm from top
+      
+      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight, undefined, 'FAST');
+      
+      // Clean up
+      document.body.removeChild(tempContainer);
       
       console.log('PDF generated successfully');
       return pdf;
@@ -167,7 +254,7 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
                 style={{ 
                   width: '210mm',
                   minHeight: '297mm',
-                  transform: 'scale(0.8)',
+                  transform: 'scale(0.7)',
                   transformOrigin: 'top center',
                   margin: '0 auto'
                 }}
@@ -175,6 +262,7 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
                 <div ref={invoiceRef} className="w-full h-full">
                   <ProfessionalInvoiceTemplate 
                     invoice={invoiceData}
+                    isPDF={false}
                   />
                 </div>
               </div>
@@ -186,6 +274,7 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
                 <div className="w-full">
                   <ProfessionalInvoiceTemplate 
                     invoice={invoiceData}
+                    isPDF={false}
                   />
                 </div>
               </div>
