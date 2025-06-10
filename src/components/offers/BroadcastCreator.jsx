@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -236,12 +237,12 @@ const BroadcastCreator = () => {
             id="content"
             value={formData.content}
             onChange={(e) => handleInputChange('content', e.target.value)}
-            placeholder="Enter your message content. Use {{name}}, {{firstName}} for personalization"
+            placeholder="Enter your message content. Use placeholders like {{name}}, {{firstName}} for personalization"
             className="min-h-32"
             required
           />
-          <p className="text-sm text-gray-500">
-            Use placeholders: {{name}}, {{firstName}}, {{email}}, {{phone}} for personalization
+          <p className="text-sm text-muted-foreground">
+            Use placeholders: {`{{name}}, {{firstName}}, {{email}}, {{phone}}`} for personalization
           </p>
         </div>
 
@@ -311,7 +312,7 @@ const BroadcastCreator = () => {
             onChange={(e) => handleInputChange('scheduledAt', e.target.value)}
             min={new Date().toISOString().slice(0, 16)}
           />
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Leave empty to send immediately
           </p>
         </div>
@@ -364,8 +365,8 @@ const BroadcastCreator = () => {
                 {eligibleClients.map((client) => (
                   <div key={client._id} className="p-3 border rounded-lg">
                     <h4 className="font-medium">{client.displayName}</h4>
-                    <p className="text-sm text-gray-500">{client.email}</p>
-                    <p className="text-sm text-gray-500">{client.phone}</p>
+                    <p className="text-sm text-muted-foreground">{client.email}</p>
+                    <p className="text-sm text-muted-foreground">{client.phone}</p>
                     <div className="flex gap-1 mt-2">
                       <Badge variant="outline" className="text-xs">
                         {client.clientType}
@@ -378,7 +379,7 @@ const BroadcastCreator = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">
+              <p className="text-muted-foreground text-center py-4">
                 No eligible clients found for the selected criteria
               </p>
             )}
@@ -390,3 +391,4 @@ const BroadcastCreator = () => {
 };
 
 export default BroadcastCreator;
+
