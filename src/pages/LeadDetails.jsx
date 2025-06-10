@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,59 +12,7 @@ import LeadAssignDialog from '@/components/leads/LeadAssignDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
-
-// Dummy lead data
-const dummyLeadData = {
-  id: 'LD001',
-  name: 'Arun Sharma',
-  phone: '9876543210',
-  email: 'arun.sharma@example.com',
-  address: '123 Main Street, Mumbai, Maharashtra',
-  source: 'Website',
-  product: 'Health Insurance',
-  status: 'In Progress',
-  budget: '₹5,00,000',
-  createdAt: '2025-04-10',
-  assignedTo: 'Raj Malhotra',
-  nextFollowUp: '2025-05-22',
-  lastInteraction: '2025-05-15',
-  priority: 'High',
-  additionalInfo: 'Looking for family health insurance plan for 4 members',
-  followUps: [
-    {
-      id: 1,
-      date: '2025-05-15',
-      time: '15:30',
-      type: 'Call',
-      outcome: 'Discussed plan options. Client is interested in premium plans.',
-      nextAction: 'Send brochures for selected plans',
-      createdBy: 'Raj Malhotra'
-    },
-    {
-      id: 2,
-      date: '2025-05-10',
-      time: '11:00',
-      type: 'Email',
-      outcome: 'Initial contact established. Client requested more information.',
-      nextAction: 'Schedule a call to discuss requirements',
-      createdBy: 'Raj Malhotra'
-    }
-  ],
-  notes: [
-    {
-      id: 1,
-      date: '2025-05-15',
-      content: 'Client has specific requirements for maternity coverage',
-      createdBy: 'Raj Malhotra'
-    },
-    {
-      id: 2,
-      date: '2025-05-10',
-      content: 'Client mentioned previous claim issues with current insurer',
-      createdBy: 'Raj Malhotra'
-    }
-  ]
-};
+import { useLead, useDeleteLead } from '@/hooks/useLeads';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -79,6 +28,8 @@ const getStatusColor = (status) => {
       return 'bg-red-500';
     case 'Not Interested':
       return 'bg-red-500';
+    case 'Converted':
+      return 'bg-green-600';
     default:
       return 'bg-gray-500';
   }
@@ -87,26 +38,30 @@ const getStatusColor = (status) => {
 const LeadDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [lead] = useState(dummyLeadData);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('followups');
   const [loading, setLoading] = useState(true);
   const isMobile = window.innerWidth <= 768;
 
-  if (!lead) {
-    return (
-      <div className="container mx-auto p-4">
-        <p>Lead not found</p>
-      </div>
-    );
-  }
+  // Use React Query to fetch lead data
+  const { data: lead, isLoading, error } = useLead(id);
+  const deleteLeadMutation = useDeleteLead();
 
-  const handleDelete = () => {
-    // In a real app, this would call an API endpoint to delete the lead
-    setShowDeleteDialog(false);
-    toast.success(`Lead "${lead.name}" deleted successfully`);
-    navigate('/leads');
+  useEffect(() => {
+    if (!isLoading) {
+      setLoading(false);
+    }
+  }, [isLoading]);
+
+  const handleDelete = async () => {
+    try {
+      await deleteLeadMutation.mutateAsync(id);
+      setShowDeleteDialog(false);
+      navigate('/leads');
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+    }
   };
 
   const handleConvertToClient = () => {
@@ -121,8 +76,29 @@ const LeadDetails = () => {
   };
 
   // Show professional loading skeleton
-  if (loading) {
+  if (loading || isLoading) {
     return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Show error state
+  if (error || !lead) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/leads')}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+        </div>
+        <p className="text-red-600">
+          {error ? `Error loading lead: ${error.message}` : 'Lead not found'}
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -145,7 +121,7 @@ const LeadDetails = () => {
                 {lead.status}
               </Badge>
             </h1>
-            <p className="text-sm text-gray-500">Lead ID: {lead.id}</p>
+            <p className="text-sm text-gray-500">Lead ID: {lead.leadId || lead.id}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 self-end sm:self-auto">
@@ -199,13 +175,15 @@ const LeadDetails = () => {
                 <p className="text-sm text-gray-500">Email</p>
               </div>
             </div>
-            <div className="flex items-start space-x-3">
-              <User className="h-5 w-5 text-gray-500 mt-0.5" />
-              <div>
-                <p className="font-medium">{lead.address}</p>
-                <p className="text-sm text-gray-500">Address</p>
+            {lead.address && (
+              <div className="flex items-start space-x-3">
+                <User className="h-5 w-5 text-gray-500 mt-0.5" />
+                <div>
+                  <p className="font-medium">{lead.address}</p>
+                  <p className="text-sm text-gray-500">Address</p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -222,10 +200,12 @@ const LeadDetails = () => {
               <p className="text-sm text-gray-500">Product</p>
               <p className="font-medium">{lead.product}</p>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Budget</p>
-              <p className="font-medium">{lead.budget}</p>
-            </div>
+            {lead.budget && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">Budget</p>
+                <p className="font-medium">₹{lead.budget.toLocaleString()}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">Priority</p>
               <p className="font-medium">{lead.priority}</p>
@@ -249,17 +229,21 @@ const LeadDetails = () => {
               <p className="text-sm text-gray-500">Created On</p>
               <p className="font-medium">{lead.createdAt}</p>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Last Interaction</p>
-              <p className="font-medium">{lead.lastInteraction}</p>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">Next Follow-up</p>
-              <div className="flex items-center">
-                <Calendar className="h-3.5 w-3.5 mr-1 text-gray-500" />
-                <p className="font-medium text-blue-600">{lead.nextFollowUp}</p>
+            {lead.lastInteraction && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">Last Interaction</p>
+                <p className="font-medium">{lead.lastInteraction}</p>
               </div>
-            </div>
+            )}
+            {lead.nextFollowUp && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">Next Follow-up</p>
+                <div className="flex items-center">
+                  <Calendar className="h-3.5 w-3.5 mr-1 text-gray-500" />
+                  <p className="font-medium text-blue-600">{lead.nextFollowUp}</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -270,14 +254,16 @@ const LeadDetails = () => {
       </div>
 
       {/* Additional information */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Additional Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>{lead.additionalInfo}</p>
-        </CardContent>
-      </Card>
+      {lead.additionalInfo && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Additional Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{lead.additionalInfo}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs for follow-ups and notes */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -311,8 +297,12 @@ const LeadDetails = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteLeadMutation.isLoading}
+            >
+              {deleteLeadMutation.isLoading ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
