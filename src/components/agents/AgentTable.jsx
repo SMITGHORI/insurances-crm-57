@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -149,63 +150,82 @@ const AgentTable = ({
                 </TableCell>
               </TableRow>
             ) : (
-              agents.map((agent) => (
-                <TableRow key={agent._id} className="hover:bg-gray-50">
-                  <TableCell>{agent.name}</TableCell>
-                  <TableCell>{agent.email}</TableCell>
-                  <TableCell>{agent.phone}</TableCell>
-                  <TableCell>
-                    {getStatusBadge(agent.status)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onViewAgent(agent._id)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onEditAgent(agent._id)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-800"
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete {agent.name}? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDeleteAgent(agent._id)}
+              agents.map((agent) => {
+                // Ensure we have a valid agent ID - use _id for backend, id for frontend/mock data
+                const agentId = agent._id || agent.id;
+                
+                if (!agentId) {
+                  console.error('Agent missing ID:', agent);
+                  return null;
+                }
+
+                return (
+                  <TableRow key={agentId} className="hover:bg-gray-50">
+                    <TableCell>{agent.name}</TableCell>
+                    <TableCell>{agent.email}</TableCell>
+                    <TableCell>{agent.phone}</TableCell>
+                    <TableCell>
+                      {getStatusBadge(agent.status)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            console.log('Viewing agent with ID:', agentId);
+                            onViewAgent(agentId);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            console.log('Editing agent with ID:', agentId);
+                            onEditAgent(agentId);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-800"
                               disabled={isDeleting}
                             >
-                              {isDeleting ? 'Deleting...' : 'Delete'}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {agent.name}? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => {
+                                  console.log('Deleting agent with ID:', agentId);
+                                  onDeleteAgent(agentId);
+                                }}
+                                disabled={isDeleting}
+                              >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -225,16 +245,19 @@ const AgentTable = ({
             >
               Previous
             </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={currentPage === page ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onPageChange(page)}
-              >
-                {page}
-              </Button>
-            ))}
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              const page = i + 1;
+              return (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onPageChange(page)}
+                >
+                  {page}
+                </Button>
+              );
+            })}
             <Button
               variant="outline"
               size="sm"

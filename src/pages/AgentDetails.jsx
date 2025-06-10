@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
@@ -44,19 +45,45 @@ const AgentDetails = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
   useEffect(() => {
+    console.log('AgentDetails: Looking for agent with ID:', id);
+    
+    if (!id || id === 'undefined') {
+      console.error('AgentDetails: Invalid agent ID:', id);
+      toast.error("Invalid Agent ID", {
+        description: "The agent ID is missing or invalid."
+      });
+      navigate('/agents');
+      return;
+    }
+
     // Load agent data from localStorage or API in production
     const storedAgents = localStorage.getItem('agentsData');
     if (storedAgents) {
       const agents = JSON.parse(storedAgents);
-      const foundAgent = agents.find(agent => agent.id === parseInt(id));
+      console.log('AgentDetails: Available agents:', agents);
+      
+      // Look for agent by both _id (backend) and id (frontend)
+      const foundAgent = agents.find(agent => 
+        agent._id === id || agent.id === id || agent._id === parseInt(id) || agent.id === parseInt(id)
+      );
+      
+      console.log('AgentDetails: Found agent:', foundAgent);
+      
       if (foundAgent) {
         setAgent(foundAgent);
       } else {
+        console.error('AgentDetails: Agent not found for ID:', id);
         toast.error("Agent Not Found", {
           description: "The requested agent could not be found."
         });
         navigate('/agents');
       }
+    } else {
+      console.error('AgentDetails: No agents data found in localStorage');
+      toast.error("No Data Available", {
+        description: "No agent data is available."
+      });
+      navigate('/agents');
     }
     setLoading(false);
   }, [id, navigate]);
