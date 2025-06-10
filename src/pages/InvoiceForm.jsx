@@ -91,9 +91,6 @@ const InvoiceForm = () => {
       premiumType: 'Annual',
       coverageStartDate: new Date(),
       coverageEndDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      commissionRate: '',
-      commissionAmount: '',
-      brokerageDetails: '',
       policyType: '',
       sumInsured: '',
       deductible: '',
@@ -145,9 +142,6 @@ const InvoiceForm = () => {
             premiumType: existingInvoice.premiumType || 'Annual',
             coverageStartDate: existingInvoice.coverageStartDate ? new Date(existingInvoice.coverageStartDate) : new Date(),
             coverageEndDate: existingInvoice.coverageEndDate ? new Date(existingInvoice.coverageEndDate) : new Date(),
-            commissionRate: existingInvoice.commissionRate || '',
-            commissionAmount: existingInvoice.commissionAmount || '',
-            brokerageDetails: existingInvoice.brokerageDetails || '',
             policyType: existingInvoice.policyType || '',
             sumInsured: existingInvoice.sumInsured || '',
             deductible: existingInvoice.deductible || '',
@@ -188,13 +182,11 @@ const InvoiceForm = () => {
   const handleClientChange = (clientId) => {
     form.setValue('clientId', clientId);
     
-    // Find client's policies
     if (clientId && policies.length > 0) {
       const clientPolicies = policies.filter(policy => 
         policy.client && policy.client.id.toString() === clientId.toString()
       );
       
-      // If client has only one policy, set it automatically
       if (clientPolicies.length === 1) {
         form.setValue('policyId', clientPolicies[0].id.toString());
       }
@@ -209,7 +201,6 @@ const InvoiceForm = () => {
       const selectedPolicy = policies.find(policy => policy.id.toString() === policyId.toString());
       
       if (selectedPolicy) {
-        // Auto-fill invoice items based on policy
         const newItem = {
           id: `item_${Date.now()}`,
           description: `${selectedPolicy.type} Premium - ${selectedPolicy.planName || ''}`,
@@ -318,9 +309,6 @@ const InvoiceForm = () => {
       premiumType: data.premiumType,
       coverageStartDate: format(data.coverageStartDate, 'yyyy-MM-dd'),
       coverageEndDate: format(data.coverageEndDate, 'yyyy-MM-dd'),
-      commissionRate: data.commissionRate,
-      commissionAmount: data.commissionAmount,
-      brokerageDetails: data.brokerageDetails,
       policyType: data.policyType,
       sumInsured: data.sumInsured,
       deductible: data.deductible,
@@ -341,6 +329,11 @@ const InvoiceForm = () => {
         }
       ]
     };
+    
+    // Handle commission calculation in background (for back-office)
+    if (selectedAgent && !isEditing) {
+      calculateAndStoreCommission(invoiceData, selectedAgent, selectedPolicy);
+    }
     
     // Update or add invoice
     let updatedInvoices;
@@ -368,6 +361,41 @@ const InvoiceForm = () => {
     
     toast.success(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
     navigate(`/invoices/${invoiceData.id}`);
+  };
+  
+  // Commission calculation function (back-office only)
+  const calculateAndStoreCommission = (invoice, agent, policy) => {
+    try {
+      // Get commission rates from agent or policy
+      const commissionRate = agent.defaultCommissionRate || 0.15; // Default 15%
+      const premiumAmount = invoice.subtotal;
+      const commissionAmount = premiumAmount * commissionRate;
+
+      const commissionRecord = {
+        id: `COM_${Date.now()}`,
+        invoiceId: invoice.id,
+        agentId: agent.id,
+        policyId: policy?.id,
+        commissionType: 'percentage',
+        baseAmount: premiumAmount,
+        commissionRate: commissionRate * 100, // Store as percentage
+        commissionAmount: commissionAmount,
+        status: 'pending',
+        calculatedDate: new Date().toISOString().split('T')[0],
+        notes: `Auto-calculated commission for invoice ${invoice.invoiceNumber}`,
+        createdBy: 'System',
+        createdAt: new Date().toISOString()
+      };
+
+      // Store commission data separately
+      const existingCommissions = JSON.parse(localStorage.getItem('commissionsData') || '[]');
+      existingCommissions.push(commissionRecord);
+      localStorage.setItem('commissionsData', JSON.stringify(existingCommissions));
+
+      console.log('Commission calculated and stored:', commissionRecord);
+    } catch (error) {
+      console.error('Error calculating commission:', error);
+    }
   };
   
   // Show professional loading skeleton
@@ -567,7 +595,6 @@ const InvoiceForm = () => {
             </CardContent>
           </Card>
 
-          {/* Insurance Specific Fields */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4">Insurance Details</h3>
@@ -697,36 +724,6 @@ const InvoiceForm = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <FormField
-                    control={form.control}
-                    name="commissionRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Commission Rate (%)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" placeholder="Enter commission rate" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="commissionAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Commission Amount (₹)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" placeholder="Enter commission amount" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -760,7 +757,6 @@ const InvoiceForm = () => {
             </CardContent>
           </Card>
           
-          {/* Invoice Items - keep existing code */}
           <Card className="mb-6">
             <CardContent className="p-6">
               <h3 className="text-lg font-semibold mb-4">Invoice Items</h3>
@@ -870,7 +866,6 @@ const InvoiceForm = () => {
             </CardContent>
           </Card>
           
-          {/* Notes Section */}
           <Card>
             <CardContent className="p-6">
               <Form {...form}>
