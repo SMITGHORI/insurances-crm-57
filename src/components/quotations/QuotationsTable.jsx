@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock, ArrowUpDown, Download } from 'lucide-react';
+import { Copy, Send, EyeIcon, CheckCircle, XCircle, Clock, ArrowUpDown, Download, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
@@ -129,7 +129,14 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
   };
 
   const handleRowClick = (id) => {
+    console.log('Navigating to quotation detail:', id);
     navigate(`/quotations/${id}`);
+  };
+
+  const handleEditQuotation = (e, quoteId) => {
+    e.stopPropagation();
+    console.log('Navigating to edit quotation:', quoteId);
+    navigate(`/quotations/edit/${quoteId}`);
   };
 
   const handleSendQuote = async (e, quoteId) => {
@@ -172,6 +179,11 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
         </div>
       ),
     };
+  };
+
+  // Check if quotation can be edited (only draft and sent status)
+  const canEditQuotation = (status) => {
+    return ['draft', 'sent'].includes(status);
   };
 
   // Show loading state
@@ -316,17 +328,17 @@ const QuotationsTable = ({ filterParams, sortConfig, handleSort, handleExport })
                           <XCircle size={14} />
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/quotations/edit/${quote.id}`);
-                        }}
-                        title="Edit Quote"
-                      >
-                        Edit
-                      </Button>
+                      {canEditQuotation(quote.status) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleEditQuotation(e, quote.id)}
+                          title="Edit Quote"
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        >
+                          <Edit size={14} />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
