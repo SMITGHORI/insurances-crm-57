@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, X, Plus, Trash } from 'lucide-react';
@@ -30,86 +31,78 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useQuotation, useUpdateQuotation } from '@/hooks/useQuotations';
 
 const QuotationEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [quotation, setQuotation] = useState(null);
   const [validUntilDate, setValidUntilDate] = useState(null);
-  
-  useEffect(() => {
-    // In a real app, this would fetch the quotation from an API
-    const fetchQuotation = async () => {
-      try {
-        // Simulate API call
-        setTimeout(() => {
-          // Sample data for editing
-          setQuotation({
-            id: parseInt(id),
-            quoteId: `QT-2025-000${id}`,
-            clientName: 'Vivek Patel',
-            clientId: 'CLI-2025-0001',
-            clientEmail: 'vivek.patel@example.com',
-            clientPhone: '+91 98765 43210',
-            clientAge: 35,
-            clientGender: 'Male',
-            insuranceType: 'Health Insurance',
-            insuranceCompany: 'Star Health',
-            products: [
-              {
-                name: 'Family Floater Plan',
-                description: 'Comprehensive health coverage for the entire family',
-                sumInsured: 500000,
-                premium: 22000
-              },
-              {
-                name: 'Critical Illness Add-on',
-                description: 'Additional coverage for 20 critical illnesses',
-                sumInsured: 500000,
-                premium: 3000
-              }
-            ],
-            sumInsured: 500000,
-            premium: 25000,
-            agentName: 'Rajiv Kumar',
-            agentId: 'agent1',
-            createdDate: '18 May 2025',
-            validUntil: '18 Jun 2025',
-            status: 'draft',
-            notes: 'Client requested quotes for family of 4 with no pre-existing conditions'
-          });
-          
-          // Set valid until date from the fetched quotation
-          setValidUntilDate(new Date('2025-06-18'));
-          
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error('Error fetching quotation:', error);
-        toast.error('Failed to load quotation data');
-        setLoading(false);
-      }
-    };
+  const [formData, setFormData] = useState({
+    clientName: '',
+    insuranceType: '',
+    insuranceCompany: '',
+    products: [],
+    sumInsured: 0,
+    premium: 0,
+    validUntil: '',
+    notes: ''
+  });
 
-    fetchQuotation();
-  }, [id]);
+  // Use the existing quotation hooks
+  const { data: quotation, isLoading, isError } = useQuotation(id);
+  const { mutate: updateQuotation, isPending: isSaving } = useUpdateQuotation();
+
+  useEffect(() => {
+    if (quotation) {
+      // Populate form with existing quotation data
+      setFormData({
+        clientName: quotation.clientName || '',
+        insuranceType: quotation.insuranceType || '',
+        insuranceCompany: quotation.insuranceCompany || '',
+        products: quotation.products || [{ name: '', description: '', sumInsured: 0, premium: 0 }],
+        sumInsured: quotation.sumInsured || 0,
+        premium: quotation.premium || 0,
+        validUntil: quotation.validUntil || '',
+        notes: quotation.notes || ''
+      });
+
+      // Set valid until date if available
+      if (quotation.validUntil) {
+        try {
+          const date = new Date(quotation.validUntil);
+          setValidUntilDate(date);
+        } catch (error) {
+          console.error('Error parsing date:', error);
+        }
+      }
+    }
+  }, [quotation]);
 
   const handleSave = async () => {
-    setSaving(true);
-    
     try {
-      // In a real app, this would send the updated quotation to an API
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API call
+      // Calculate total premium from products
+      const totalPremium = formData.products.reduce((sum, product) => sum + Number(product.premium || 0), 0);
       
-      toast.success('Quotation updated successfully');
-      navigate(`/quotations/${id}`);
+      const updateData = {
+        ...formData,
+        premium: totalPremium,
+        validUntil: validUntilDate ? validUntilDate.toISOString() : formData.validUntil
+      };
+
+      updateQuotation(
+        { id, quotationData: updateData },
+        {
+          onSuccess: () => {
+            navigate(`/quotations/${id}`);
+          },
+          onError: (error) => {
+            console.error('Error updating quotation:', error);
+          }
+        }
+      );
     } catch (error) {
-      console.error('Error updating quotation:', error);
+      console.error('Error preparing update:', error);
       toast.error('Failed to update quotation');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -117,17 +110,17 @@ const QuotationEdit = () => {
     navigate(`/quotations/${id}`);
   };
   
-  const updateQuotationField = (field, value) => {
-    setQuotation(prev => ({ ...prev, [field]: value }));
+  const updateFormField = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
   
   const updateProduct = (index, field, value) => {
-    setQuotation(prev => {
+    setFormData(prev => {
       const updatedProducts = [...prev.products];
       updatedProducts[index] = { ...updatedProducts[index], [field]: value };
       
       // Calculate new premium total
-      const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium), 0);
+      const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium || 0), 0);
       
       return {
         ...prev, 
@@ -138,14 +131,14 @@ const QuotationEdit = () => {
   };
   
   const addProduct = () => {
-    setQuotation(prev => ({
+    setFormData(prev => ({
       ...prev,
       products: [
         ...prev.products, 
         {
           name: '',
           description: '',
-          sumInsured: prev.sumInsured,
+          sumInsured: prev.sumInsured || 0,
           premium: 0
         }
       ]
@@ -153,11 +146,11 @@ const QuotationEdit = () => {
   };
   
   const removeProduct = (index) => {
-    setQuotation(prev => {
+    setFormData(prev => {
       const updatedProducts = prev.products.filter((_, i) => i !== index);
       
       // Calculate new premium total
-      const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium), 0);
+      const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium || 0), 0);
       
       return {
         ...prev, 
@@ -171,15 +164,46 @@ const QuotationEdit = () => {
   
   const handleDateChange = (date) => {
     setValidUntilDate(date);
-    
-    if (date) {
-      updateQuotationField('validUntil', format(date, 'dd MMM yyyy'));
-    }
   };
 
-  // Show professional loading skeleton
-  if (loading) {
-    return <PageSkeleton isMobile={isMobile} />;
+  // Show loading skeleton while fetching data
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
+
+  // Show error if quotation not found
+  if (isError || !quotation) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Quotation Not Found</h1>
+          <p className="text-muted-foreground mb-4">
+            The quotation you're trying to edit could not be found.
+          </p>
+          <Button onClick={() => navigate('/quotations')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Quotations
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if quotation can be edited (only draft and sent status)
+  const canEdit = ['draft', 'sent'].includes(quotation.status);
+  if (!canEdit) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Cannot Edit Quotation</h1>
+          <p className="text-muted-foreground mb-4">
+            This quotation cannot be edited because it has been {quotation.status}.
+          </p>
+          <Button onClick={() => navigate(`/quotations/${id}`)}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> View Quotation
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -192,10 +216,10 @@ const QuotationEdit = () => {
               <ArrowLeft className="h-4 w-4 mr-2" /> Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">
+              <h1 className="text-2xl font-bold">
                 Edit Quotation {quotation.quoteId}
               </h1>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-muted-foreground">
                 Created on {quotation.createdDate}
               </div>
             </div>
@@ -208,15 +232,15 @@ const QuotationEdit = () => {
             <Button 
               onClick={handleSave} 
               className="w-full sm:w-auto"
-              disabled={saving}
+              disabled={isSaving}
             >
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Saving...' : 'Save Changes'}
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Client Information */}
           <Card>
             <CardHeader>
@@ -228,39 +252,21 @@ const QuotationEdit = () => {
                 <Label htmlFor="clientName">Client Name</Label>
                 <Input
                   id="clientName"
-                  value={quotation.clientName}
-                  onChange={(e) => updateQuotationField('clientName', e.target.value)}
-                  disabled
+                  value={formData.clientName}
+                  onChange={(e) => updateFormField('clientName', e.target.value)}
+                  placeholder="Enter client name"
                 />
-                <div className="text-xs text-muted-foreground">
-                  Client details are linked to client profile. To edit, please update the client record.
-                </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientEmail">Email</Label>
-                  <Input
-                    id="clientEmail"
-                    type="email"
-                    value={quotation.clientEmail}
-                    disabled
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="clientPhone">Phone</Label>
-                  <Input
-                    id="clientPhone"
-                    value={quotation.clientPhone}
-                    disabled
-                  />
-                </div>
+              <div className="text-xs text-muted-foreground">
+                Note: Updating client name here only affects this quotation. 
+                To update client profile, visit the Clients section.
               </div>
             </CardContent>
           </Card>
 
           {/* Quote Details */}
-          <Card className="md:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Quote Details</CardTitle>
               <CardDescription>Insurance and policy information</CardDescription>
@@ -270,18 +276,19 @@ const QuotationEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="insuranceType">Insurance Type</Label>
                   <Select
-                    value={quotation.insuranceType}
-                    onValueChange={(value) => updateQuotationField('insuranceType', value)}
+                    value={formData.insuranceType}
+                    onValueChange={(value) => updateFormField('insuranceType', value)}
                   >
                     <SelectTrigger id="insuranceType">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Health Insurance">Health Insurance</SelectItem>
-                      <SelectItem value="Term Insurance">Term Insurance</SelectItem>
+                      <SelectItem value="Life Insurance">Life Insurance</SelectItem>
                       <SelectItem value="Motor Insurance">Motor Insurance</SelectItem>
+                      <SelectItem value="Home Insurance">Home Insurance</SelectItem>
                       <SelectItem value="Travel Insurance">Travel Insurance</SelectItem>
-                      <SelectItem value="Property Insurance">Property Insurance</SelectItem>
+                      <SelectItem value="Business Insurance">Business Insurance</SelectItem>
                       <SelectItem value="Group Health Insurance">Group Health Insurance</SelectItem>
                     </SelectContent>
                   </Select>
@@ -290,8 +297,8 @@ const QuotationEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="insuranceCompany">Insurance Company</Label>
                   <Select
-                    value={quotation.insuranceCompany}
-                    onValueChange={(value) => updateQuotationField('insuranceCompany', value)}
+                    value={formData.insuranceCompany}
+                    onValueChange={(value) => updateFormField('insuranceCompany', value)}
                   >
                     <SelectTrigger id="insuranceCompany">
                       <SelectValue placeholder="Select company" />
@@ -308,12 +315,14 @@ const QuotationEdit = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="sumInsured">Sum Insured</Label>
+                  <Label htmlFor="sumInsured">Sum Insured (₹)</Label>
                   <Input
                     id="sumInsured"
                     type="number"
-                    value={quotation.sumInsured}
-                    onChange={(e) => updateQuotationField('sumInsured', Number(e.target.value))}
+                    value={formData.sumInsured}
+                    onChange={(e) => updateFormField('sumInsured', Number(e.target.value))}
+                    placeholder="Enter sum insured"
+                    min="0"
                   />
                 </div>
                 
@@ -338,7 +347,6 @@ const QuotationEdit = () => {
                         selected={validUntilDate}
                         onSelect={handleDateChange}
                         initialFocus
-                        className="p-3 pointer-events-auto"
                         disabled={(date) => date < new Date()}
                       />
                     </PopoverContent>
@@ -346,6 +354,7 @@ const QuotationEdit = () => {
                 </div>
               </div>
 
+              {/* Products Section */}
               <div className="space-y-4 mt-6">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium text-lg">Products</h3>
@@ -359,20 +368,22 @@ const QuotationEdit = () => {
                   </Button>
                 </div>
 
-                {quotation.products.map((product, index) => (
+                {formData.products.map((product, index) => (
                   <Card key={index}>
                     <CardHeader className="py-3 px-4">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base">Product {index + 1}</CardTitle>
-                        <Button 
-                          type="button" 
-                          size="sm" 
-                          variant="ghost"
-                          className="text-red-500 h-8 px-2"
-                          onClick={() => removeProduct(index)}
-                        >
-                          <Trash size={16} />
-                        </Button>
+                        {formData.products.length > 1 && (
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-destructive h-8 px-2"
+                            onClick={() => removeProduct(index)}
+                          >
+                            <Trash size={16} />
+                          </Button>
+                        )}
                       </div>
                     </CardHeader>
                     <CardContent className="py-3 px-4 space-y-3">
@@ -382,6 +393,8 @@ const QuotationEdit = () => {
                           id={`product-name-${index}`}
                           value={product.name}
                           onChange={(e) => updateProduct(index, 'name', e.target.value)}
+                          placeholder="e.g., Family Floater Plan"
+                          required
                         />
                       </div>
                       
@@ -389,68 +402,66 @@ const QuotationEdit = () => {
                         <Label htmlFor={`product-description-${index}`}>Description</Label>
                         <Textarea
                           id={`product-description-${index}`}
-                          rows={2}
                           value={product.description}
                           onChange={(e) => updateProduct(index, 'description', e.target.value)}
+                          placeholder="Brief description of the product"
+                          className="min-h-16"
                         />
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor={`product-sum-insured-${index}`}>Sum Insured</Label>
+                          <Label htmlFor={`product-sum-${index}`}>Sum Insured (₹)</Label>
                           <Input
-                            id={`product-sum-insured-${index}`}
+                            id={`product-sum-${index}`}
                             type="number"
                             value={product.sumInsured}
                             onChange={(e) => updateProduct(index, 'sumInsured', Number(e.target.value))}
+                            placeholder="0"
+                            min="0"
                           />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor={`product-premium-${index}`}>Premium</Label>
+                          <Label htmlFor={`product-premium-${index}`}>Premium (₹)</Label>
                           <Input
                             id={`product-premium-${index}`}
                             type="number"
                             value={product.premium}
                             onChange={(e) => updateProduct(index, 'premium', Number(e.target.value))}
+                            placeholder="0"
+                            min="0"
+                            required
                           />
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
+
+                {/* Total Premium Display */}
+                <Card className="bg-muted/50">
+                  <CardContent className="py-4 px-4">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Total Premium:</span>
+                      <span className="text-lg font-bold">₹{formData.premium.toLocaleString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
+              {/* Notes Section */}
               <div className="space-y-2 mt-6">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
-                  rows={4}
-                  placeholder="Add any additional notes for this quotation"
-                  value={quotation.notes}
-                  onChange={(e) => updateQuotationField('notes', e.target.value)}
+                  value={formData.notes}
+                  onChange={(e) => updateFormField('notes', e.target.value)}
+                  placeholder="Add any additional notes or comments about this quotation"
+                  className="min-h-24"
                 />
               </div>
             </CardContent>
-
-            <CardFooter className="flex justify-between border-t pt-4">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Total Premium:
-                  <span className="ml-1 font-semibold text-base text-foreground">
-                    {new Intl.NumberFormat('en-IN', {
-                      style: 'currency',
-                      currency: 'INR'
-                    }).format(quotation.premium)}
-                  </span>
-                </p>
-              </div>
-              
-              <Button onClick={handleSave} disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </div>
