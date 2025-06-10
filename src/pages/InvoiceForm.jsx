@@ -51,10 +51,12 @@ import {
   calculateInvoiceTotals 
 } from '@/utils/invoiceUtils';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const InvoiceForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [clients, setClients] = useState([]);
   const [policies, setPolicies] = useState([]);
