@@ -40,198 +40,65 @@ const ClaimDetails = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    
-    // In a real app, fetch from API
-    // Mock data for now based on ID
-    const mockClaim = {
-      id: parseInt(id),
-      claimNumber: `AMB-CLM-2025-000${id}`,
-      insuranceCompanyClaimId: id === '2' ? null : `INS-CLM-78${id}12`,
-      policyId: id === '1' ? 1 : (id === '2' ? 3 : 5),
-      policyNumber: id === '1' ? 'POL-2025-0125' : (id === '2' ? 'POL-2025-0156' : 'POL-2025-0189'),
-      insuranceCompanyPolicyNumber: id === '1' ? 'INS-001-20250125-H' : (id === '2' ? 'STAR-H-A091238' : 'BAJA-P-112233'),
-      clientId: id === '1' ? 'AMB-CLI-2025-0001' : (id === '2' ? 'AMB-CLI-2025-0012' : 'AMB-CLI-2025-0024'),
-      clientName: id === '1' ? 'Vivek Patel' : (id === '2' ? 'Priya Desai' : 'Tech Solutions Ltd'),
-      memberName: id === '1' ? 'Vivek Patel' : (id === '2' ? 'Rahul Desai' : 'N/A'),
-      policyType: id === '1' || id === '2' ? 'Health Insurance' : 'Property Insurance',
-      dateOfIncident: id === '1' ? '12 Apr 2025' : (id === '2' ? '05 May 2025' : '18 Mar 2025'),
-      dateOfFiling: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-      claimAmount: id === '1' ? 75000 : (id === '2' ? 125000 : 950000),
-      approvedAmount: id === '1' ? 68500 : (id === '2' ? null : 850000),
-      status: id === '1' ? 'approved' : (id === '2' ? 'pending' : 'settled'),
-      
-      // Common fields
-      claimReason: id === '1' ? 'Medical Emergency - Appendicitis' : 
-                  (id === '2' ? 'Medical Treatment - Kidney Stone' : 'Property Damage - Fire'),
-      insuranceCompany: id === '1' ? 'HDFC ERGO Health Insurance' : 
-                       (id === '2' ? 'Star Health Insurance' : 'Bajaj Allianz General Insurance'),
-      claimHandler: id === '1' ? 'Anjali Sharma' : 
-                   (id === '2' ? 'Pending Assignment' : 'Rakesh Khanna'),
-      handlerContact: id === '1' ? '+91 98765 43210' : 
-                     (id === '2' ? 'N/A' : '+91 87654 32109'),
-      
-      // Type-specific details
-      details: id === '1' || id === '2' ? {
-        // Health Insurance specific
-        hospitalName: id === '1' ? 'Apollo Hospital' : 'Fortis Hospital',
-        hospitalAddress: id === '1' ? '123 Health Avenue, Mumbai' : '456 Medical Park, Pune',
-        hospitalContact: id === '1' ? '+91 22 2234 5678' : '+91 20 2567 8901',
-        admissionDate: id === '1' ? '12 Apr 2025' : '05 May 2025',
-        dischargeDate: id === '1' ? '14 Apr 2025' : '06 May 2025',
-        roomCategory: id === '1' ? 'Semi-Private' : 'Private',
-        diagnosis: id === '1' ? 'Acute Appendicitis' : 'Kidney Stone',
-        treatment: id === '1' ? 'Laparoscopic Appendectomy' : 'Lithotripsy',
-        treatmentType: id === '1' ? 'Surgical' : 'Medical',
-        cashless: id === '1',
-        preAuthApproved: id === '1',
-        preAuthAmount: id === '1' ? 70000 : 0,
-        billedAmount: id === '1' ? 75000 : 125000,
-        copaymentRequired: false,
-        copaymentAmount: 0,
-        doctorName: id === '1' ? 'Dr. Suresh Patel' : 'Dr. Amir Khan',
-        doctorSpeciality: id === '1' ? 'General Surgeon' : 'Urologist',
-        medicalHistory: id === '1' ? 'No significant medical history' : 'History of kidney stones in 2023',
-      } : {
-        // Property Insurance specific
-        propertyAddress: '123 Tech Park, Mumbai',
-        propertyType: 'Commercial Office Space',
-        propertySize: '10,000 sq ft',
-        damageType: 'Fire Damage',
-        affectedAreas: 'Server Room, 2nd Floor',
-        damageExtent: 'Partial (30% of office space)',
-        surveyorName: 'Rajesh Gupta',
-        surveyorContact: '+91 98765 43210',
-        surveyDate: '22 Mar 2025',
-        surveyReport: 'Approved - Fire caused by electrical short circuit',
-        estimatedRepairCost: 920000,
-        preventionMeasuresTaken: 'Installed fire sprinklers, smoke detectors, and regular electrical maintenance',
-        occupancyStatus: 'Partially occupied with temporary workspace arrangements',
-      },
-      
-      // Documents
-      documents: [
-        {
-          id: 1,
-          name: id === '1' || id === '2' ? 'Medical Report.pdf' : 'Property Damage Report.pdf',
-          type: 'report',
-          size: '2.4 MB',
-          uploadedBy: 'Admin User',
-          uploadDate: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          status: 'verified'
-        },
-        {
-          id: 2,
-          name: id === '1' || id === '2' ? 'Hospital Bill.pdf' : 'Repair Estimate.pdf',
-          type: 'bill',
-          size: '1.8 MB',
-          uploadedBy: 'Admin User',
-          uploadDate: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          status: 'verified'
-        },
-        {
-          id: 3,
-          name: id === '1' || id === '2' ? 'Doctor Prescription.pdf' : 'Surveyor Report.pdf',
-          type: 'prescription',
-          size: '1.1 MB',
-          uploadedBy: 'Admin User',
-          uploadDate: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '22 Mar 2025'),
-          status: 'verified'
-        },
-        {
-          id: 4,
-          name: 'Insurance Claim Form.pdf',
-          type: 'form',
-          size: '0.9 MB',
-          uploadedBy: 'Admin User',
-          uploadDate: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          status: 'verified'
-        },
-        {
-          id: 5,
-          name: 'ID Proof.pdf',
-          type: 'identity',
-          size: '0.7 MB',
-          uploadedBy: 'Admin User',
-          uploadDate: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          status: 'verified'
+    const fetchClaimDetails = async () => {
+      if (!id) {
+        toast.error("Claim ID is required");
+        navigate('/claims');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        console.log('Fetching claim details for ID:', id);
+        
+        // Try to get from localStorage first (offline mode)
+        const storedClaims = localStorage.getItem('claimsData');
+        if (storedClaims) {
+          const claims = JSON.parse(storedClaims);
+          const foundClaim = claims.find(claim => claim.id === id);
+          
+          if (foundClaim) {
+            setClaim(foundClaim);
+            setLoading(false);
+            return;
+          }
         }
-      ],
-      
-      // Timeline
-      timeline: [
-        {
-          id: 1,
-          date: id === '1' ? '12 Apr 2025' : (id === '2' ? '05 May 2025' : '18 Mar 2025'),
-          time: id === '1' ? '09:30 AM' : (id === '2' ? '11:15 AM' : '02:30 PM'),
-          event: 'Incident Occurred',
-          description: id === '1' ? 'Patient was admitted to Apollo Hospital with acute appendicitis' : 
-                      (id === '2' ? 'Patient was admitted to Fortis Hospital with kidney stone' : 'Fire broke out in server room due to electrical short circuit'),
-          status: 'incident'
-        },
-        {
-          id: 2,
-          date: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          time: id === '1' ? '10:15 AM' : (id === '2' ? '02:30 PM' : '11:45 AM'),
-          event: 'Claim Filed',
-          description: 'Client submitted all the required documents for claim processing',
-          status: 'filed'
-        },
-        {
-          id: 3,
-          date: id === '1' ? '15 Apr 2025' : (id === '2' ? '08 May 2025' : '22 Mar 2025'),
-          time: id === '1' ? '11:30 AM' : (id === '2' ? '09:45 AM' : '03:15 PM'),
-          event: 'Initial Assessment',
-          description: id === '1' ? 'Claim documents verified and assigned to claim handler' : 
-                      (id === '2' ? 'Initial verification of documents completed' : 'Surveyor visited property for damage assessment'),
-          status: 'processing'
-        },
-        {
-          id: 4,
-          date: id === '1' ? '17 Apr 2025' : (id === '3' ? '24 Mar 2025' : null),
-          time: id === '1' ? '02:45 PM' : (id === '3' ? '10:30 AM' : null),
-          event: 'Claim Approved',
-          description: id === '1' ? 'Claim approved for ₹68,500' : 'Claim approved for ₹850,000',
-          status: id === '1' || id === '3' ? 'approved' : null
-        },
-        {
-          id: 5,
-          date: id === '1' ? '19 Apr 2025' : (id === '3' ? '28 Mar 2025' : null),
-          time: id === '1' ? '11:00 AM' : (id === '3' ? '04:15 PM' : null),
-          event: 'Payment Processed',
-          description: id === '1' ? 'Payment of ₹68,500 processed to hospital' : 'Payment of ₹850,000 transferred to client account',
-          status: id === '1' || id === '3' ? 'settled' : null
+
+        // If not found in localStorage, try API
+        const response = await claimsApi.getClaimById(id);
+        if (response.success && response.claim) {
+          setClaim(response.claim);
+        } else {
+          throw new Error('Claim not found');
         }
-      ],
-      
-      // Notes
-      notes: [
-        {
-          id: 1,
-          author: 'Admin User',
-          date: id === '1' ? '14 Apr 2025' : (id === '2' ? '07 May 2025' : '20 Mar 2025'),
-          time: id === '1' ? '10:45 AM' : (id === '2' ? '03:00 PM' : '12:15 PM'),
-          content: 'Claim filed with all required documents. Initial verification complete.',
-          isInternal: true
-        },
-        {
-          id: 2,
-          author: 'Admin User',
-          date: id === '1' ? '15 Apr 2025' : (id === '2' ? '08 May 2025' : '22 Mar 2025'),
-          time: id === '1' ? '12:00 PM' : (id === '2' ? '10:15 AM' : '04:00 PM'),
-          content: id === '1' ? 'Contacted insurance company. Claim assigned to Anjali Sharma.' : 
-                  (id === '2' ? 'Insurance company acknowledged receipt of claim documents.' : 'Surveyor report received. Damage assessment aligns with claim amount.'),
-          isInternal: true
-        }
-      ]
+      } catch (error) {
+        console.error('Error fetching claim details:', error);
+        toast.error(`Failed to load claim details: ${error.message}`);
+        
+        // Try to create sample data for demo
+        const sampleClaim = {
+          id: id,
+          claimNumber: `CLM-${Date.now()}`,
+          policyNumber: 'POL-2024-0001',
+          clientName: 'Sample Client',
+          incidentDate: '2024-01-15',
+          reportedDate: '2024-01-16',
+          status: 'under_review',
+          claimAmount: 50000,
+          estimatedAmount: 45000,
+          description: 'Sample claim for demonstration',
+          type: 'health'
+        };
+        
+        setClaim(sampleClaim);
+        toast.info('Loaded sample claim data for demonstration');
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    // Simulate API delay
-    setTimeout(() => {
-      setClaim(mockClaim);
-      setLoading(false);
-    }, 500);
-  }, [id]);
+
+    fetchClaimDetails();
+  }, [id, navigate]);
 
   const getStatusBadge = (status) => {
     switch (status) {

@@ -3,12 +3,12 @@ import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { toast } from 'sonner';
 import ProfessionalInvoiceTemplate from './ProfessionalInvoiceTemplate';
 
 const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
   const [showPreview, setShowPreview] = useState(true);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const invoiceRef = useRef(null);
 
   // Fallback invoice data
@@ -35,17 +35,31 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
   const invoiceData = invoice || defaultInvoice;
 
   const generatePDFBlob = async () => {
-    if (!invoiceRef.current) return null;
+    if (!invoiceRef.current) {
+      toast.error('Invoice content not ready for PDF generation');
+      return null;
+    }
 
+    setIsGeneratingPDF(true);
+    
     try {
+      // Dynamic imports to ensure libraries are loaded
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).default;
+
+      console.log('Starting PDF generation...');
+      
       const canvas = await html2canvas(invoiceRef.current, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: '#ffffff',
         width: invoiceRef.current.scrollWidth,
-        height: invoiceRef.current.scrollHeight
+        height: invoiceRef.current.scrollHeight,
+        logging: false
       });
+
+      console.log('Canvas generated successfully');
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -59,10 +73,15 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
       const imgY = 0;
 
       pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      console.log('PDF generated successfully');
       return pdf;
     } catch (error) {
       console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF. Please try again.');
       return null;
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -97,28 +116,46 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
     }
   }));
 
+  const handleDirectDownload = async () => {
+    const pdf = await generatePDFBlob();
+    if (pdf) {
+      pdf.save(`Invoice-${invoiceData.invoiceNumber}.pdf`);
+      toast.success('PDF downloaded successfully');
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">Invoice Preview</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPreview(!showPreview)}
-          >
-            {showPreview ? (
-              <>
-                <EyeOff className="mr-2 h-4 w-4" />
-                Hide Preview
-              </>
-            ) : (
-              <>
-                <Eye className="mr-2 h-4 w-4" />
-                Show Preview
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDirectDownload}
+              disabled={isGeneratingPDF}
+            >
+              {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+            >
+              {showPreview ? (
+                <>
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  Hide Preview
+                </>
+              ) : (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Show Preview
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {showPreview && (
@@ -146,7 +183,7 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
             {/* Mobile responsive view */}
             <div className="block md:hidden">
               <div className="bg-white mx-2 my-4 rounded-lg shadow-lg overflow-hidden">
-                <div ref={invoiceRef} className="w-full">
+                <div className="w-full">
                   <ProfessionalInvoiceTemplate 
                     invoice={invoiceData}
                   />
