@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,14 @@ import InvoicePreview from '@/components/invoices/InvoicePreview';
 import InvoiceHistory from '@/components/invoices/InvoiceHistory';
 import { getSampleInvoices } from '@/utils/invoiceUtils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const InvoiceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSharePopup, setShowSharePopup] = useState(false);
