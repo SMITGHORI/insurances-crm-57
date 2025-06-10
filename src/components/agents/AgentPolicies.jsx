@@ -158,6 +158,11 @@ const AgentPolicies = ({ agentId }) => {
     navigate(`/policies/${policyId}`);
   };
 
+  const handleClientClick = (e, clientId) => {
+    e.stopPropagation(); // Prevent row click
+    navigate(`/clients/${clientId}`);
+  };
+
   // Function to copy insurance policy number to clipboard
   const handleCopyPolicyNumber = (e, policyNumber) => {
     e.stopPropagation(); // Prevent row click
@@ -282,7 +287,13 @@ const AgentPolicies = ({ agentId }) => {
                     </td>
                     <td className="py-3 px-4 text-gray-500">{policy.policyType}</td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{policy.clientName}</div>
+                      <div 
+                        className="font-medium text-blue-700 hover:text-blue-900 cursor-pointer hover:underline"
+                        onClick={(e) => handleClientClick(e, policy.clientId)}
+                        title="View client details"
+                      >
+                        {policy.clientName}
+                      </div>
                       <div className="text-xs text-gray-500">{policy.clientId}</div>
                     </td>
                     <td className="py-3 px-4">

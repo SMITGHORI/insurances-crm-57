@@ -111,8 +111,9 @@ const AgentDetails = () => {
     const storedAgents = localStorage.getItem('agentsData');
     if (storedAgents) {
       const agents = JSON.parse(storedAgents);
+      const agentId = agent._id || agent.id;
       const updatedAgents = agents.map(a => 
-        a.id === agent.id ? { ...a, status: newStatus } : a
+        (a._id === agentId || a.id === agentId) ? { ...a, status: newStatus } : a
       );
       
       localStorage.setItem('agentsData', JSON.stringify(updatedAgents));
@@ -127,7 +128,8 @@ const AgentDetails = () => {
   };
 
   const handleEditAgent = () => {
-    navigate(`/agents/edit/${agent.id}`);
+    const agentId = agent._id || agent.id;
+    navigate(`/agents/edit/${agentId}`);
   };
 
   const handleDeleteAgent = () => {
@@ -139,7 +141,8 @@ const AgentDetails = () => {
     const storedAgents = localStorage.getItem('agentsData');
     if (storedAgents && agent) {
       const agents = JSON.parse(storedAgents);
-      const updatedAgents = agents.filter(a => a.id !== agent.id);
+      const agentId = agent._id || agent.id;
+      const updatedAgents = agents.filter(a => (a._id !== agentId && a.id !== agentId));
       
       // Update localStorage
       localStorage.setItem('agentsData', JSON.stringify(updatedAgents));
@@ -175,6 +178,88 @@ const AgentDetails = () => {
     );
   }
 
+  // Show limited view for inactive agents
+  if (agent.status !== 'active') {
+    return (
+      <div className="space-y-6">
+        {/* Header with back button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center">
+            <Link to="/agents" className="mr-4 text-gray-600 hover:text-amba-blue">
+              <ArrowLeft size={20} />
+            </Link>
+            <h1 className="text-2xl font-bold text-gray-800">Agent Details</h1>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="border-gray-300" onClick={handleEditAgent}>
+              <Edit size={16} className="mr-2" />
+              Edit Agent
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleStatusToggle}>
+              <UserCheck size={16} className="mr-2" />
+              Activate
+            </Button>
+          </div>
+        </div>
+
+        {/* Agent Profile Summary Card */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-shrink-0">
+              <img 
+                src={agent.avatar} 
+                alt={agent.name} 
+                className="h-24 w-24 rounded-full object-cover border-4 border-gray-100"
+              />
+            </div>
+            
+            <div className="flex-grow">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">{agent.name}</h2>
+                  <div className="flex items-center mt-1">
+                    {getStatusBadge(agent.status)}
+                    <span className="ml-2 text-gray-500">{agent.specialization}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="flex items-center">
+                  <Mail size={18} className="text-gray-500 mr-2" />
+                  <span className="text-sm">{agent.email}</span>
+                </div>
+                <div className="flex items-center">
+                  <Phone size={18} className="text-gray-500 mr-2" />
+                  <span className="text-sm">{agent.phone}</span>
+                </div>
+                <div className="flex items-center">
+                  <Calendar size={18} className="text-gray-500 mr-2" />
+                  <span className="text-sm">Joined: {agent.joinDate}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Inactive Notice */}
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+              <div>
+                <h3 className="font-medium text-yellow-800">Agent Inactive</h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  This agent is currently inactive. Activate the agent to access full management features including clients, policies, and commission details.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -190,17 +275,10 @@ const AgentDetails = () => {
             <Edit size={16} className="mr-2" />
             Edit Agent
           </Button>
-          {agent.status === 'active' ? (
-            <Button variant="destructive" onClick={handleStatusToggle}>
-              <UserCheck size={16} className="mr-2" />
-              Deactivate
-            </Button>
-          ) : (
-            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleStatusToggle}>
-              <UserCheck size={16} className="mr-2" />
-              Activate
-            </Button>
-          )}
+          <Button variant="destructive" onClick={handleStatusToggle}>
+            <UserCheck size={16} className="mr-2" />
+            Deactivate
+          </Button>
           <Button variant="outline" className="border-gray-300 text-red-600 hover:bg-red-50" onClick={handleDeleteAgent}>
             <Trash2 size={16} className="mr-2" />
             Delete
@@ -335,19 +413,19 @@ const AgentDetails = () => {
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">
-          <AgentPerformance agentId={agent.id} />
+          <AgentPerformance agentId={agent._id || agent.id} />
         </TabsContent>
         
         <TabsContent value="clients" className="mt-6">
-          <AgentClients agentId={agent.id} />
+          <AgentClients agentId={agent._id || agent.id} />
         </TabsContent>
         
         <TabsContent value="policies" className="mt-6">
-          <AgentPolicies agentId={agent.id} />
+          <AgentPolicies agentId={agent._id || agent.id} />
         </TabsContent>
         
         <TabsContent value="commissions" className="mt-6">
-          <AgentCommissions agentId={agent.id} />
+          <AgentCommissions agentId={agent._id || agent.id} />
         </TabsContent>
       </Tabs>
 
