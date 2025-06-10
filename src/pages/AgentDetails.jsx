@@ -12,7 +12,8 @@ import {
   FileText,
   Users,
   Receipt,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
@@ -56,35 +57,90 @@ const AgentDetails = () => {
       return;
     }
 
-    // Load agent data from localStorage or API in production
-    const storedAgents = localStorage.getItem('agentsData');
-    if (storedAgents) {
-      const agents = JSON.parse(storedAgents);
-      console.log('AgentDetails: Available agents:', agents);
+    // Load agent data from localStorage or create sample data if none exists
+    let storedAgents = localStorage.getItem('agentsData');
+    let agents = [];
+    
+    if (!storedAgents) {
+      // Create sample agent data if none exists
+      agents = [
+        {
+          _id: '1',
+          id: '1',
+          name: 'Rajesh Kumar',
+          email: 'rajesh.kumar@example.com',
+          phone: '+91 98765 43210',
+          status: 'active',
+          specialization: 'Health & Life Insurance',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+          joinDate: '15 Jan 2023',
+          licenseNumber: 'IRDAI-AG-25896-12/14',
+          licenseExpiry: '14 Dec 2025',
+          performanceMetrics: {
+            leadsConverted: 68,
+            targetAchieved: 85,
+            customerRating: 4.7,
+            retentionRate: 94
+          }
+        },
+        {
+          _id: '2',
+          id: '2',
+          name: 'Priya Sharma',
+          email: 'priya.sharma@example.com',
+          phone: '+91 87654 32109',
+          status: 'active',
+          specialization: 'Vehicle & Property Insurance',
+          avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+          joinDate: '22 Mar 2023',
+          licenseNumber: 'IRDAI-AG-25897-03/15',
+          licenseExpiry: '22 Mar 2026',
+          performanceMetrics: {
+            leadsConverted: 72,
+            targetAchieved: 91,
+            customerRating: 4.8,
+            retentionRate: 96
+          }
+        },
+        {
+          _id: '3',
+          id: '3',
+          name: 'Amit Patel',
+          email: 'amit.patel@example.com',
+          phone: '+91 76543 21098',
+          status: 'inactive',
+          specialization: 'Corporate Insurance',
+          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+          joinDate: '10 Aug 2022',
+          licenseNumber: 'IRDAI-AG-25898-08/16',
+          licenseExpiry: '10 Aug 2025'
+        }
+      ];
       
-      // Look for agent by both _id (backend) and id (frontend)
-      const foundAgent = agents.find(agent => 
-        agent._id === id || agent.id === id || agent._id === parseInt(id) || agent.id === parseInt(id)
-      );
-      
-      console.log('AgentDetails: Found agent:', foundAgent);
-      
-      if (foundAgent) {
-        setAgent(foundAgent);
-      } else {
-        console.error('AgentDetails: Agent not found for ID:', id);
-        toast.error("Agent Not Found", {
-          description: "The requested agent could not be found."
-        });
-        navigate('/agents');
-      }
+      localStorage.setItem('agentsData', JSON.stringify(agents));
+      console.log('AgentDetails: Created sample agent data');
     } else {
-      console.error('AgentDetails: No agents data found in localStorage');
-      toast.error("No Data Available", {
-        description: "No agent data is available."
+      agents = JSON.parse(storedAgents);
+      console.log('AgentDetails: Loaded agents from localStorage:', agents);
+    }
+    
+    // Look for agent by both _id (backend) and id (frontend)
+    const foundAgent = agents.find(agent => 
+      agent._id === id || agent.id === id || agent._id === parseInt(id) || agent.id === parseInt(id)
+    );
+    
+    console.log('AgentDetails: Found agent:', foundAgent);
+    
+    if (foundAgent) {
+      setAgent(foundAgent);
+    } else {
+      console.error('AgentDetails: Agent not found for ID:', id);
+      toast.error("Agent Not Found", {
+        description: "The requested agent could not be found."
       });
       navigate('/agents');
     }
+    
     setLoading(false);
   }, [id, navigate]);
 
@@ -260,6 +316,7 @@ const AgentDetails = () => {
     );
   }
 
+  // Full view for active agents
   return (
     <div className="space-y-6">
       {/* Header with back button */}
@@ -268,7 +325,7 @@ const AgentDetails = () => {
           <Link to="/agents" className="mr-4 text-gray-600 hover:text-amba-blue">
             <ArrowLeft size={20} />
           </Link>
-          <h1 className="text-2xl font-bold text-gray-800">Agent Details</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Agent Management</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-gray-300" onClick={handleEditAgent}>
@@ -365,17 +422,6 @@ const AgentDetails = () => {
                   <path d="M10 15.27L16.18 19L14.54 11.97L20 7.24L12.81 6.63L10 0L7.19 6.63L0 7.24L5.46 11.97L3.82 19L10 15.27Z" />
                 </svg>
               ))}
-              {(agent.performanceMetrics?.customerRating || 4.7) % 1 !== 0 && (
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M10 15.27L16.18 19L14.54 11.97L20 7.24L12.81 6.63L10 0L7.19 6.63L0 7.24L5.46 11.97L3.82 19L10 15.27Z" fill="url(#half-star)" />
-                  <defs>
-                    <linearGradient id="half-star" x1="0" x2="100%" y1="0" y2="0">
-                      <stop offset="50%" stopColor="currentColor" />
-                      <stop offset="50%" stopColor="#d1d5db" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              )}
             </div>
           </CardContent>
         </Card>
