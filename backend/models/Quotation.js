@@ -1,6 +1,29 @@
 
 const mongoose = require('mongoose');
 
+const productSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    maxlength: 100
+  },
+  description: {
+    type: String,
+    maxlength: 500
+  },
+  sumInsured: {
+    type: Number,
+    min: 0,
+    max: 100000000
+  },
+  premium: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 10000000
+  }
+});
+
 const quotationSchema = new mongoose.Schema({
   quoteId: {
     type: String,
@@ -28,11 +51,16 @@ const quotationSchema = new mongoose.Schema({
     required: true,
     maxlength: 100
   },
-  products: [{
-    type: String,
+  products: {
+    type: [productSchema],
     required: true,
-    maxlength: 100
-  }],
+    validate: {
+      validator: function(products) {
+        return products && products.length > 0;
+      },
+      message: 'At least one product is required'
+    }
+  },
   sumInsured: {
     type: Number,
     required: true,

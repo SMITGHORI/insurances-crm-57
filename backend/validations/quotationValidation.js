@@ -1,6 +1,45 @@
 
 const Joi = require('joi');
 
+// Product validation schema
+const productSchema = Joi.object({
+  name: Joi.string()
+    .trim()
+    .max(100)
+    .required()
+    .messages({
+      'string.max': 'Product name cannot exceed 100 characters',
+      'any.required': 'Product name is required'
+    }),
+  
+  description: Joi.string()
+    .max(500)
+    .optional()
+    .allow('')
+    .messages({
+      'string.max': 'Product description cannot exceed 500 characters'
+    }),
+  
+  sumInsured: Joi.number()
+    .min(0)
+    .max(100000000)
+    .optional()
+    .messages({
+      'number.min': 'Sum insured cannot be negative',
+      'number.max': 'Sum insured cannot exceed 100,000,000'
+    }),
+  
+  premium: Joi.number()
+    .min(0)
+    .max(10000000)
+    .required()
+    .messages({
+      'number.min': 'Premium cannot be negative',
+      'number.max': 'Premium cannot exceed 10,000,000',
+      'any.required': 'Premium is required'
+    })
+});
+
 // Create quotation validation schema
 const createQuotationSchema = Joi.object({
   clientId: Joi.string()
@@ -38,7 +77,7 @@ const createQuotationSchema = Joi.object({
     }),
   
   products: Joi.array()
-    .items(Joi.string().max(100))
+    .items(productSchema)
     .min(1)
     .required()
     .messages({
@@ -124,7 +163,7 @@ const updateQuotationSchema = Joi.object({
     .optional(),
   
   products: Joi.array()
-    .items(Joi.string().max(100))
+    .items(productSchema)
     .min(1)
     .optional(),
   

@@ -41,7 +41,7 @@ const QuotationEdit = () => {
     clientName: '',
     insuranceType: '',
     insuranceCompany: '',
-    products: [],
+    products: [{ name: '', description: '', sumInsured: 0, premium: 0 }],
     sumInsured: 0,
     premium: 0,
     validUntil: '',
@@ -54,12 +54,39 @@ const QuotationEdit = () => {
 
   useEffect(() => {
     if (quotation) {
+      console.log('Loaded quotation data:', quotation);
+      
+      // Handle products - convert to proper format
+      let products = [];
+      if (quotation.products && Array.isArray(quotation.products)) {
+        if (quotation.products.length > 0 && typeof quotation.products[0] === 'object') {
+          // Already in object format
+          products = quotation.products;
+        } else {
+          // Convert string array to object format
+          products = quotation.products.map((productName, index) => ({
+            name: productName,
+            description: '',
+            sumInsured: quotation.sumInsured || 0,
+            premium: index === 0 ? quotation.premium : 0
+          }));
+        }
+      } else {
+        // Default single product
+        products = [{
+          name: quotation.insuranceType || '',
+          description: '',
+          sumInsured: quotation.sumInsured || 0,
+          premium: quotation.premium || 0
+        }];
+      }
+
       // Populate form with existing quotation data
       setFormData({
         clientName: quotation.clientName || '',
         insuranceType: quotation.insuranceType || '',
         insuranceCompany: quotation.insuranceCompany || '',
-        products: quotation.products || [{ name: '', description: '', sumInsured: 0, premium: 0 }],
+        products: products,
         sumInsured: quotation.sumInsured || 0,
         premium: quotation.premium || 0,
         validUntil: quotation.validUntil || '',
@@ -82,21 +109,27 @@ const QuotationEdit = () => {
     try {
       // Calculate total premium from products
       const totalPremium = formData.products.reduce((sum, product) => sum + Number(product.premium || 0), 0);
+      const totalSumInsured = formData.products.reduce((sum, product) => sum + Number(product.sumInsured || 0), 0);
       
       const updateData = {
         ...formData,
         premium: totalPremium,
+        sumInsured: totalSumInsured,
         validUntil: validUntilDate ? validUntilDate.toISOString() : formData.validUntil
       };
+
+      console.log('Updating quotation with data:', updateData);
 
       updateQuotation(
         { id, quotationData: updateData },
         {
           onSuccess: () => {
+            toast.success('Quotation updated successfully');
             navigate(`/quotations/${id}`);
           },
           onError: (error) => {
             console.error('Error updating quotation:', error);
+            toast.error('Failed to update quotation');
           }
         }
       );
@@ -119,13 +152,15 @@ const QuotationEdit = () => {
       const updatedProducts = [...prev.products];
       updatedProducts[index] = { ...updatedProducts[index], [field]: value };
       
-      // Calculate new premium total
+      // Calculate new totals
       const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium || 0), 0);
+      const newSumInsured = updatedProducts.reduce((sum, product) => sum + Number(product.sumInsured || 0), 0);
       
       return {
         ...prev, 
         products: updatedProducts,
-        premium: newPremium
+        premium: newPremium,
+        sumInsured: newSumInsured
       };
     });
   };
@@ -138,7 +173,7 @@ const QuotationEdit = () => {
         {
           name: '',
           description: '',
-          sumInsured: prev.sumInsured || 0,
+          sumInsured: 0,
           premium: 0
         }
       ]
@@ -146,16 +181,23 @@ const QuotationEdit = () => {
   };
   
   const removeProduct = (index) => {
+    if (formData.products.length <= 1) {
+      toast.error('At least one product is required');
+      return;
+    }
+
     setFormData(prev => {
       const updatedProducts = prev.products.filter((_, i) => i !== index);
       
-      // Calculate new premium total
+      // Calculate new totals
       const newPremium = updatedProducts.reduce((sum, product) => sum + Number(product.premium || 0), 0);
+      const newSumInsured = updatedProducts.reduce((sum, product) => sum + Number(product.sumInsured || 0), 0);
       
       return {
         ...prev, 
         products: updatedProducts,
-        premium: newPremium
+        premium: newPremium,
+        sumInsured: newSumInsured
       };
     });
     
@@ -315,18 +357,6 @@ const QuotationEdit = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="sumInsured">Sum Insured (₹)</Label>
-                  <Input
-                    id="sumInsured"
-                    type="number"
-                    value={formData.sumInsured}
-                    onChange={(e) => updateFormField('sumInsured', Number(e.target.value))}
-                    placeholder="Enter sum insured"
-                    min="0"
-                  />
-                </div>
-                
-                <div className="space-y-2">
                   <Label htmlFor="validUntil">Valid Until</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -439,12 +469,16 @@ const QuotationEdit = () => {
                   </Card>
                 ))}
 
-                {/* Total Premium Display */}
+                {/* Total Summary */}
                 <Card className="bg-muted/50">
-                  <CardContent className="py-4 px-4">
+                  <CardContent className="py-4 px-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Total Sum Insured:</span>
+                      <span className="text-lg font-bold">₹{formData.sumInsured.toLocaleString()}</span>
+                    </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Total Premium:</span>
-                      <span className="text-lg font-bold">₹{formData.premium.toLocaleString()}</span>
+                      <span className="text-lg font-bold text-primary">₹{formData.premium.toLocaleString()}</span>
                     </div>
                   </CardContent>
                 </Card>
