@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,117 +48,80 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
 
       console.log('Starting PDF generation...');
       
-      // Create a temporary container for PDF generation with A4 dimensions
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.top = '-9999px';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.width = '210mm';
-      tempContainer.style.minHeight = '297mm';
-      tempContainer.style.backgroundColor = '#ffffff';
-      tempContainer.style.fontFamily = 'Arial, sans-serif';
-      tempContainer.style.fontSize = '12px';
-      tempContainer.style.lineHeight = '1.4';
-      tempContainer.style.color = '#000000';
+      // Create a dedicated PDF container with exact A4 dimensions
+      const pdfContainer = document.createElement('div');
+      pdfContainer.style.position = 'fixed';
+      pdfContainer.style.top = '-10000px';
+      pdfContainer.style.left = '-10000px';
+      pdfContainer.style.width = '794px'; // A4 width at 96 DPI
+      pdfContainer.style.minHeight = '1123px'; // A4 height at 96 DPI
+      pdfContainer.style.backgroundColor = '#ffffff';
+      pdfContainer.style.fontFamily = 'Arial, sans-serif';
+      pdfContainer.style.fontSize = '14px';
+      pdfContainer.style.lineHeight = '1.4';
+      pdfContainer.style.color = '#000000';
+      pdfContainer.style.padding = '40px';
+      pdfContainer.style.boxSizing = 'border-box';
       
-      // Clone the invoice content
-      const clonedContent = invoiceRef.current.cloneNode(true);
+      // Create the invoice template specifically for PDF
+      const pdfInvoiceElement = document.createElement('div');
+      pdfInvoiceElement.innerHTML = `
+        <div style="background: white; width: 100%; height: auto; font-family: Arial, sans-serif; color: #000;">
+          <div id="pdf-invoice-content"></div>
+        </div>
+      `;
       
-      // Ensure proper styling for PDF
-      clonedContent.style.width = '100%';
-      clonedContent.style.height = 'auto';
-      clonedContent.style.padding = '20mm';
-      clonedContent.style.boxSizing = 'border-box';
-      clonedContent.style.backgroundColor = '#ffffff';
-      clonedContent.style.color = '#000000';
+      pdfContainer.appendChild(pdfInvoiceElement);
+      document.body.appendChild(pdfContainer);
       
-      // Override any problematic styles for PDF
-      const allElements = clonedContent.querySelectorAll('*');
-      allElements.forEach(el => {
-        // Ensure text is black and backgrounds are white
-        if (el.style) {
-          if (el.style.color && el.style.color !== '#000000') {
-            el.style.color = '#000000';
-          }
-          if (el.style.backgroundColor && el.style.backgroundColor.includes('gray')) {
-            el.style.backgroundColor = '#f8f9fa';
-          }
-        }
+      // Render React component into the PDF container
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(pdfInvoiceElement.querySelector('#pdf-invoice-content'));
+      
+      // Render the invoice template with PDF-specific props
+      await new Promise((resolve) => {
+        root.render(
+          React.createElement(ProfessionalInvoiceTemplate, {
+            invoice: invoiceData,
+            isPDF: true
+          })
+        );
         
-        // Override specific class-based styles
-        if (el.classList) {
-          if (el.classList.contains('text-white')) {
-            el.style.color = '#000000';
-          }
-          if (el.classList.contains('bg-blue-600') || el.classList.contains('bg-blue-700')) {
-            el.style.backgroundColor = '#1e40af';
-            el.style.color = '#ffffff';
-          }
-        }
+        // Wait for rendering to complete
+        setTimeout(resolve, 1000);
       });
       
-      tempContainer.appendChild(clonedContent);
-      document.body.appendChild(tempContainer);
+      console.log('Invoice rendered for PDF generation');
       
-      // Generate canvas with higher quality settings
-      const canvas = await html2canvas(tempContainer, {
+      // Generate canvas with optimized settings for A4
+      const canvas = await html2canvas(pdfContainer, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         backgroundColor: '#ffffff',
-        width: tempContainer.scrollWidth,
-        height: tempContainer.scrollHeight,
+        width: 794,
+        height: 1123,
         logging: false,
         letterRendering: true,
-        dpi: 300,
-        foreignObjectRendering: true
+        foreignObjectRendering: true,
+        removeContainer: false
       });
 
-      console.log('Canvas generated successfully');
+      console.log('Canvas generated successfully', { width: canvas.width, height: canvas.height });
 
-      // Create PDF with exact A4 dimensions
+      // Create PDF with A4 dimensions
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = 210; // A4 width in mm
       const pdfHeight = 297; // A4 height in mm
       
       const imgData = canvas.toDataURL('image/png', 1.0);
       
-      // Calculate proper scaling to fit A4
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      // Convert pixels to mm (assuming 96 DPI)
-      const mmPerPx = 25.4 / 96;
-      const imgWidthMM = imgWidth * mmPerPx / 2; // Divide by 2 because of scale: 2
-      const imgHeightMM = imgHeight * mmPerPx / 2;
-      
-      // Scale to fit within A4 margins (leaving 10mm margin on each side)
-      const maxWidth = pdfWidth - 20;
-      const maxHeight = pdfHeight - 20;
-      
-      let finalWidth = imgWidthMM;
-      let finalHeight = imgHeightMM;
-      
-      if (imgWidthMM > maxWidth) {
-        const ratio = maxWidth / imgWidthMM;
-        finalWidth = maxWidth;
-        finalHeight = imgHeightMM * ratio;
-      }
-      
-      if (finalHeight > maxHeight) {
-        const ratio = maxHeight / finalHeight;
-        finalHeight = maxHeight;
-        finalWidth = finalWidth * ratio;
-      }
-      
-      // Center the image on the page
-      const x = (pdfWidth - finalWidth) / 2;
-      const y = 10; // 10mm from top
-      
-      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight, undefined, 'FAST');
+      // Add the image to PDF, fitting it to A4 size
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
       
       // Clean up
-      document.body.removeChild(tempContainer);
+      root.unmount();
+      document.body.removeChild(pdfContainer);
       
       console.log('PDF generated successfully');
       return pdf;
@@ -247,14 +209,14 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
 
         {showPreview && (
           <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
-            {/* A4 Container with proper scaling */}
-            <div className="w-full overflow-x-auto">
+            {/* Desktop Preview - A4 Container with proper scaling */}
+            <div className="hidden md:block w-full overflow-x-auto">
               <div 
                 className="bg-white shadow-lg mx-auto"
                 style={{ 
                   width: '210mm',
                   minHeight: '297mm',
-                  transform: 'scale(0.7)',
+                  transform: 'scale(0.6)',
                   transformOrigin: 'top center',
                   margin: '0 auto'
                 }}
@@ -271,7 +233,7 @@ const InvoicePreview = ({ invoice, onDownload, onPrint, onShare }) => {
             {/* Mobile responsive view */}
             <div className="block md:hidden">
               <div className="bg-white mx-2 my-4 rounded-lg shadow-lg overflow-hidden">
-                <div className="w-full">
+                <div className="w-full" ref={invoiceRef}>
                   <ProfessionalInvoiceTemplate 
                     invoice={invoiceData}
                     isPDF={false}
