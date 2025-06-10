@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
@@ -333,6 +332,29 @@ const clientSchema = new Schema({
   updatedBy: {
     type: Schema.Types.ObjectId,
     ref: 'User'
+  },
+  communicationPreferences: {
+    email: {
+      offers: { type: Boolean, default: true },
+      newsletters: { type: Boolean, default: true },
+      reminders: { type: Boolean, default: true },
+      birthday: { type: Boolean, default: true },
+      anniversary: { type: Boolean, default: true }
+    },
+    whatsapp: {
+      offers: { type: Boolean, default: true },
+      newsletters: { type: Boolean, default: true },
+      reminders: { type: Boolean, default: true },
+      birthday: { type: Boolean, default: true },
+      anniversary: { type: Boolean, default: true }
+    },
+    sms: {
+      offers: { type: Boolean, default: false },
+      newsletters: { type: Boolean, default: false },
+      reminders: { type: Boolean, default: true },
+      birthday: { type: Boolean, default: false },
+      anniversary: { type: Boolean, default: false }
+    }
   }
 }, {
   timestamps: true,
