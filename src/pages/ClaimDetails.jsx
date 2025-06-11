@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,8 @@ const ClaimDetails = () => {
             const claimWithDefaults = {
               ...foundClaim,
               documents: foundClaim.documents || [],
-              timeline: foundClaim.timeline || []
+              timeline: foundClaim.timeline || [],
+              notes: foundClaim.notes || []
             };
             setClaim(claimWithDefaults);
             setLoading(false);
@@ -80,7 +82,8 @@ const ClaimDetails = () => {
           const claimWithDefaults = {
             ...response.claim,
             documents: response.claim.documents || [],
-            timeline: response.claim.timeline || []
+            timeline: response.claim.timeline || [],
+            notes: response.claim.notes || []
           };
           setClaim(claimWithDefaults);
         } else {
@@ -133,6 +136,7 @@ const ClaimDetails = () => {
               time: '02:15 PM'
             }
           ],
+          notes: [], // Initialize empty notes array
           details: {
             hospitalName: 'Sample Hospital',
             hospitalAddress: 'Sample Address',
@@ -534,5 +538,3 @@ const ClaimDetails = () => {
 };
 
 export default ClaimDetails;
-
-}
