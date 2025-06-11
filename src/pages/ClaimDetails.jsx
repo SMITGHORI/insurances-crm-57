@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -62,7 +61,12 @@ const ClaimDetails = () => {
           const foundClaim = claims.find(claim => claim.id === id);
           
           if (foundClaim) {
-            setClaim(foundClaim);
+            // Ensure documents array exists
+            const claimWithDocuments = {
+              ...foundClaim,
+              documents: foundClaim.documents || []
+            };
+            setClaim(claimWithDocuments);
             setLoading(false);
             return;
           }
@@ -71,7 +75,12 @@ const ClaimDetails = () => {
         // If not found in localStorage, try API
         const response = await claimsApi.getClaimById(id);
         if (response.success && response.claim) {
-          setClaim(response.claim);
+          // Ensure documents array exists
+          const claimWithDocuments = {
+            ...response.claim,
+            documents: response.claim.documents || []
+          };
+          setClaim(claimWithDocuments);
         } else {
           throw new Error('Claim not found');
         }
@@ -103,6 +112,7 @@ const ClaimDetails = () => {
           insuranceCompanyClaimId: null,
           claimHandler: 'John Doe',
           handlerContact: '+91-9876543210',
+          documents: [], // Initialize empty documents array
           details: {
             hospitalName: 'Sample Hospital',
             hospitalAddress: 'Sample Address',

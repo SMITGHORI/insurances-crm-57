@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +15,9 @@ import { Badge } from '@/components/ui/badge';
 const ClaimDocuments = ({ claim, setClaim }) => {
   const [uploading, setUploading] = useState(false);
 
+  // Safely get documents array, defaulting to empty array if undefined
+  const documents = claim?.documents || [];
+
   const handleUpload = () => {
     setUploading(true);
     
@@ -23,7 +25,7 @@ const ClaimDocuments = ({ claim, setClaim }) => {
     setTimeout(() => {
       // Add a new document to the list
       const newDocument = {
-        id: claim.documents.length + 1,
+        id: documents.length + 1,
         name: `Document-${Math.floor(Math.random() * 1000)}.pdf`,
         type: 'other',
         size: '1.2 MB',
@@ -34,7 +36,7 @@ const ClaimDocuments = ({ claim, setClaim }) => {
       
       setClaim({
         ...claim,
-        documents: [...claim.documents, newDocument]
+        documents: [...documents, newDocument]
       });
       
       setUploading(false);
@@ -49,7 +51,7 @@ const ClaimDocuments = ({ claim, setClaim }) => {
 
   const handleDelete = (documentId) => {
     // Filter out the document with the given ID
-    const updatedDocuments = claim.documents.filter(doc => doc.id !== documentId);
+    const updatedDocuments = documents.filter(doc => doc.id !== documentId);
     
     setClaim({
       ...claim,
@@ -99,7 +101,7 @@ const ClaimDocuments = ({ claim, setClaim }) => {
         </Button>
       </div>
 
-      {claim.documents.length === 0 ? (
+      {documents.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No documents uploaded yet
         </div>
@@ -118,7 +120,7 @@ const ClaimDocuments = ({ claim, setClaim }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {claim.documents.map(document => (
+                {documents.map(document => (
                   <TableRow key={document.id}>
                     <TableCell>
                       <div className="flex items-center">
