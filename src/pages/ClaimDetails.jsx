@@ -32,6 +32,7 @@ import ClaimNotes from '@/components/claims/ClaimNotes';
 import { formatCurrency } from '@/lib/utils';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import * as claimsApi from '@/services/api/claimsApi';
 
 const ClaimDetails = () => {
   const { id } = useParams();
@@ -90,7 +91,37 @@ const ClaimDetails = () => {
           claimAmount: 50000,
           estimatedAmount: 45000,
           description: 'Sample claim for demonstration',
-          type: 'health'
+          type: 'health',
+          dateOfFiling: '2024-01-16',
+          policyType: 'Health Insurance',
+          memberName: 'Sample Member',
+          dateOfIncident: '2024-01-15',
+          approvedAmount: null,
+          insuranceCompanyPolicyNumber: 'INS-001-2024',
+          claimReason: 'Medical Treatment',
+          insuranceCompany: 'Sample Insurance Co.',
+          insuranceCompanyClaimId: null,
+          claimHandler: 'John Doe',
+          handlerContact: '+91-9876543210',
+          details: {
+            hospitalName: 'Sample Hospital',
+            hospitalAddress: 'Sample Address',
+            admissionDate: '2024-01-15',
+            dischargeDate: '2024-01-17',
+            roomCategory: 'Private',
+            treatmentType: 'Medical',
+            diagnosis: 'Sample Diagnosis',
+            treatment: 'Sample Treatment',
+            doctorName: 'Dr. Sample',
+            doctorSpeciality: 'General Medicine',
+            cashless: true,
+            preAuthApproved: true,
+            preAuthAmount: 50000,
+            billedAmount: 50000,
+            copaymentRequired: false,
+            copaymentAmount: 0,
+            medicalHistory: 'No significant medical history'
+          }
         };
         
         setClaim(sampleClaim);
@@ -160,10 +191,10 @@ const ClaimDetails = () => {
             </Button>
           </div>
           <h1 className="text-2xl font-bold text-gray-800">
-            {claim.claimNumber}
+            {claim?.claimNumber || 'Unknown Claim'}
           </h1>
           <div className="text-gray-500">
-            {claim.policyType} Claim - Filed on {claim.dateOfFiling}
+            {claim?.policyType || 'Unknown Type'} Claim - Filed on {claim?.dateOfFiling || 'Unknown Date'}
           </div>
         </div>
         <div className="flex gap-2">
@@ -182,7 +213,7 @@ const ClaimDetails = () => {
             <CardTitle className="text-sm font-medium text-gray-500">Claim Status</CardTitle>
           </CardHeader>
           <CardContent>
-            {getStatusBadge(claim.status)}
+            {getStatusBadge(claim?.status)}
           </CardContent>
         </Card>
         
@@ -191,10 +222,10 @@ const ClaimDetails = () => {
             <CardTitle className="text-sm font-medium text-gray-500">Claim Amount</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(claim.claimAmount)}</div>
-            {claim.approvedAmount !== null && (
+            <div className="text-2xl font-bold">{formatCurrency(claim?.claimAmount || 0)}</div>
+            {claim?.approvedAmount !== null && (
               <div className={`text-sm ${claim.approvedAmount === 0 ? 'text-red-500' : 'text-green-600'}`}>
-                Approved: {formatCurrency(claim.approvedAmount)}
+                Approved: {formatCurrency(claim.approvedAmount || 0)}
               </div>
             )}
           </CardContent>
@@ -211,10 +242,10 @@ const ClaimDetails = () => {
                 className="p-0 h-auto text-blue-600" 
                 onClick={handlePolicyClick}
               >
-                {claim.policyNumber}
+                {claim?.policyNumber || 'Unknown Policy'}
               </Button>
             </div>
-            <div className="text-sm text-gray-500 font-mono">{claim.insuranceCompanyPolicyNumber}</div>
+            <div className="text-sm text-gray-500 font-mono">{claim?.insuranceCompanyPolicyNumber || 'Unknown'}</div>
           </CardContent>
         </Card>
 
@@ -229,10 +260,10 @@ const ClaimDetails = () => {
                 className="p-0 h-auto text-blue-600" 
                 onClick={handleClientClick}
               >
-                {claim.clientName}
+                {claim?.clientName || 'Unknown Client'}
               </Button>
             </div>
-            {claim.memberName !== "N/A" && <div className="text-sm text-gray-500">Member: {claim.memberName}</div>}
+            {claim?.memberName && claim.memberName !== "N/A" && <div className="text-sm text-gray-500">Member: {claim.memberName}</div>}
           </CardContent>
         </Card>
       </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,9 +17,11 @@ import { Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClaimCreate = () => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
