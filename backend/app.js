@@ -1,84 +1,49 @@
-
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 const morgan = require('morgan');
-const path = require('path');
-
-// Import route handlers
-const authRoutes = require('./routes/auth');
-const clientRoutes = require('./routes/clients');
-const policyRoutes = require('./routes/policies');
-const claimRoutes = require('./routes/claims');
-const leadRoutes = require('./routes/leads');
-const quotationRoutes = require('./routes/quotations');
-const invoiceRoutes = require('./routes/invoices');
-const agentRoutes = require('./routes/agents');
-const activityRoutes = require('./routes/activities');
-const communicationRoutes = require('./routes/communication');
-
-// Import middleware
-const { errorHandler } = require('./middleware/errorHandler');
-const { authenticate } = require('./middleware/auth');
+const activityLogger = require('./middleware/activityLogger');
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+app.use(cors());
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  max: 100 // limit each IP to 100 requests per windowMs
 });
-app.use('/api/', limiter);
+app.use(limiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Compression middleware
+app.use(compression());
 
 // Logging middleware
 app.use(morgan('combined'));
 
-// Static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/clients', authenticate, clientRoutes);
-app.use('/api/policies', authenticate, policyRoutes);
-app.use('/api/claims', authenticate, claimRoutes);
-app.use('/api/leads', authenticate, leadRoutes);
-app.use('/api/quotations', authenticate, quotationRoutes);
-app.use('/api/invoices', authenticate, invoiceRoutes);
-app.use('/api/agents', authenticate, agentRoutes);
-app.use('/api/activities', authenticate, activityRoutes);
-app.use('/api/communication', authenticate, communicationRoutes);
+// Activity logging middleware (after auth but before routes)
+app.use(activityLogger.middleware());
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
+// Routes
+app.use('/api/activities', require('./routes/activities'));
+// ... other routes
 
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Error:', error);
+  res.status(error.status || 500).json({
     success: false,
-    message: 'API endpoint not found'
+    message: error.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 });
-
-// Error handling middleware (must be last)
-app.use(errorHandler);
 
 module.exports = app;

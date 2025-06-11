@@ -2,370 +2,130 @@
 const mongoose = require('mongoose');
 
 const settingsSchema = new mongoose.Schema({
-  settingsId: {
+  key: {
     type: String,
+    required: true,
     unique: true,
+    trim: true
+  },
+  value: {
+    type: mongoose.Schema.Types.Mixed,
     required: true
   },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    unique: true // One settings document per user
+  type: {
+    type: String,
+    enum: ['string', 'number', 'boolean', 'object', 'array'],
+    required: true
   },
-  userName: {
+  category: {
     type: String,
     required: true,
-    trim: true,
-    maxlength: 100
+    enum: ['activity', 'system', 'security', 'notification', 'general']
   },
-  profile: {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 2,
-      maxlength: 100
-    },
-    email: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true,
-      maxlength: 255,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-    },
-    phone: {
-      type: String,
-      trim: true,
-      maxlength: 20,
-      match: [/^(\+\d{1,3}\s?)?\d{10}$|^(\d{3}[-]\d{3}[-]\d{4})$/, 'Please enter a valid phone number']
-    },
-    jobTitle: {
-      type: String,
-      trim: true,
-      maxlength: 100
-    },
-    avatar: {
-      type: String,
-      trim: true,
-      maxlength: 500
-    },
-    bio: {
-      type: String,
-      trim: true,
-      maxlength: 500
-    }
+  description: {
+    type: String,
+    required: true
   },
-  notifications: {
-    emailNotifications: {
-      type: Boolean,
-      default: true
-    },
-    smsNotifications: {
-      type: Boolean,
-      default: false
-    },
-    pushNotifications: {
-      type: Boolean,
-      default: true
-    },
-    marketingEmails: {
-      type: Boolean,
-      default: false
-    },
-    activityNotifications: {
-      type: Boolean,
-      default: true
-    },
-    systemAlerts: {
-      type: Boolean,
-      default: true
-    },
-    weeklyReports: {
-      type: Boolean,
-      default: true
-    },
-    monthlyReports: {
-      type: Boolean,
-      default: false
-    }
-  },
-  security: {
-    twoFactorAuth: {
-      type: Boolean,
-      default: false
-    },
-    sessionTimeout: {
-      type: Number,
-      min: 5,
-      max: 120,
-      default: 30 // minutes
-    },
-    loginAlerts: {
-      type: Boolean,
-      default: true
-    },
-    passwordLastChanged: {
-      type: Date
-    },
-    lastPasswordChangeRequest: {
-      type: Date
-    }
-  },
-  preferences: {
-    theme: {
-      type: String,
-      enum: ['light', 'dark', 'system'],
-      default: 'system'
-    },
-    language: {
-      type: String,
-      enum: ['en', 'es', 'fr', 'de', 'it', 'pt', 'hi'],
-      default: 'en'
-    },
-    timezone: {
-      type: String,
-      default: 'UTC'
-    },
-    dateFormat: {
-      type: String,
-      enum: ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'],
-      default: 'MM/DD/YYYY'
-    },
-    timeFormat: {
-      type: String,
-      enum: ['12h', '24h'],
-      default: '12h'
-    },
-    currency: {
-      type: String,
-      enum: ['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD'],
-      default: 'USD'
-    },
-    dashboardLayout: {
-      type: String,
-      enum: ['compact', 'comfortable', 'spacious'],
-      default: 'comfortable'
-    },
-    itemsPerPage: {
-      type: Number,
-      min: 10,
-      max: 100,
-      default: 20
-    }
-  },
-  privacy: {
-    profileVisibility: {
-      type: String,
-      enum: ['public', 'team', 'private'],
-      default: 'team'
-    },
-    activityVisibility: {
-      type: String,
-      enum: ['public', 'team', 'private'],
-      default: 'team'
-    },
-    dataSharing: {
-      type: Boolean,
-      default: false
-    },
-    analytics: {
-      type: Boolean,
-      default: true
-    }
-  },
-  version: {
-    type: Number,
-    default: 1
-  },
-  lastSyncedAt: {
-    type: Date,
-    default: Date.now
-  },
-  isActive: {
+  isEditable: {
     type: Boolean,
     default: true
   },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  isVisible: {
+    type: Boolean,
+    default: true
   },
-  updatedBy: {
+  validationRules: {
+    min: Number,
+    max: Number,
+    options: [String], // For dropdown options
+    pattern: String, // For regex validation
+    required: Boolean
+  },
+  defaultValue: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  lastModifiedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   }
 }, {
-  timestamps: true,
-  versionKey: false
+  timestamps: true
 });
 
-// Indexes for better query performance
-settingsSchema.index({ settingsId: 1 });
-settingsSchema.index({ userId: 1 }, { unique: true });
-settingsSchema.index({ 'profile.email': 1 });
-settingsSchema.index({ isActive: 1 });
-settingsSchema.index({ createdAt: -1 });
-settingsSchema.index({ updatedAt: -1 });
+// Index for quick lookups
+settingsSchema.index({ key: 1 });
+settingsSchema.index({ category: 1 });
 
-// Compound indexes
-settingsSchema.index({ userId: 1, isActive: 1 });
-settingsSchema.index({ 'profile.name': 'text', 'profile.email': 'text' });
-
-// Pre-save middleware to generate settingsId
-settingsSchema.pre('save', async function(next) {
-  if (this.isNew && !this.settingsId) {
-    const count = await this.constructor.countDocuments();
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, '0');
-    this.settingsId = `SET-${year}${month}-${String(count + 1).padStart(6, '0')}`;
-  }
-  next();
-});
-
-// Virtual for checking if profile is complete
-settingsSchema.virtual('isProfileComplete').get(function() {
-  return !!(
-    this.profile.name &&
-    this.profile.email &&
-    this.profile.phone &&
-    this.profile.jobTitle
-  );
-});
-
-// Virtual for security score
-settingsSchema.virtual('securityScore').get(function() {
-  let score = 0;
-  if (this.security.twoFactorAuth) score += 30;
-  if (this.security.loginAlerts) score += 20;
-  if (this.security.sessionTimeout <= 30) score += 25;
-  if (this.security.passwordLastChanged && 
-      Date.now() - this.security.passwordLastChanged < 90 * 24 * 60 * 60 * 1000) score += 25;
-  return score;
-});
-
-// Methods
-settingsSchema.methods.updateProfile = function(profileData) {
-  Object.assign(this.profile, profileData);
-  this.updatedBy = this.userId;
-  return this.save();
+// Static method to get setting value
+settingsSchema.statics.getValue = async function(key, defaultValue = null) {
+  const setting = await this.findOne({ key });
+  return setting ? setting.value : defaultValue;
 };
 
-settingsSchema.methods.updateNotifications = function(notificationData) {
-  Object.assign(this.notifications, notificationData);
-  this.updatedBy = this.userId;
-  return this.save();
-};
-
-settingsSchema.methods.updateSecurity = function(securityData) {
-  Object.assign(this.security, securityData);
-  this.updatedBy = this.userId;
-  return this.save();
-};
-
-settingsSchema.methods.updatePreferences = function(preferencesData) {
-  Object.assign(this.preferences, preferencesData);
-  this.updatedBy = this.userId;
-  return this.save();
-};
-
-settingsSchema.methods.resetToDefaults = function() {
-  this.notifications = {
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    marketingEmails: false,
-    activityNotifications: true,
-    systemAlerts: true,
-    weeklyReports: true,
-    monthlyReports: false
-  };
-  
-  this.security = {
-    twoFactorAuth: false,
-    sessionTimeout: 30,
-    loginAlerts: true
-  };
-  
-  this.preferences = {
-    theme: 'system',
-    language: 'en',
-    timezone: 'UTC',
-    dateFormat: 'MM/DD/YYYY',
-    timeFormat: '12h',
-    currency: 'USD',
-    dashboardLayout: 'comfortable',
-    itemsPerPage: 20
-  };
-  
-  this.privacy = {
-    profileVisibility: 'team',
-    activityVisibility: 'team',
-    dataSharing: false,
-    analytics: true
-  };
-  
-  this.updatedBy = this.userId;
-  return this.save();
-};
-
-// Static methods
-settingsSchema.statics.findByUserId = function(userId) {
-  return this.findOne({ userId, isActive: true });
-};
-
-settingsSchema.statics.createDefaultSettings = function(userData) {
-  return this.create({
-    userId: userData.userId,
-    userName: userData.userName,
-    profile: {
-      name: userData.name,
-      email: userData.email,
-      phone: userData.phone || '',
-      jobTitle: userData.jobTitle || ''
+// Static method to set setting value
+settingsSchema.statics.setValue = async function(key, value, userId = null) {
+  const setting = await this.findOneAndUpdate(
+    { key },
+    { 
+      value, 
+      lastModifiedBy: userId,
+      updatedAt: new Date()
     },
-    createdBy: userData.userId,
-    updatedBy: userData.userId
-  });
+    { 
+      new: true, 
+      upsert: false 
+    }
+  );
+  
+  return setting;
 };
 
-settingsSchema.statics.getSettingsStats = function() {
-  return this.aggregate([
-    { $match: { isActive: true } },
+// Initialize default settings
+settingsSchema.statics.initializeDefaults = async function() {
+  const defaults = [
     {
-      $group: {
-        _id: null,
-        totalUsers: { $sum: 1 },
-        twoFactorEnabled: {
-          $sum: { $cond: ['$security.twoFactorAuth', 1, 0] }
-        },
-        emailNotificationsEnabled: {
-          $sum: { $cond: ['$notifications.emailNotifications', 1, 0] }
-        },
-        darkThemeUsers: {
-          $sum: { $cond: [{ $eq: ['$preferences.theme', 'dark'] }, 1, 0] }
-        },
-        completeProfiles: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $ne: ['$profile.name', ''] },
-                  { $ne: ['$profile.email', ''] },
-                  { $ne: ['$profile.phone', ''] },
-                  { $ne: ['$profile.jobTitle', ''] }
-                ]
-              },
-              1,
-              0
-            ]
-          }
-        }
-      }
+      key: 'activity_retention_days',
+      value: 7,
+      type: 'number',
+      category: 'activity',
+      description: 'Number of days to retain activity logs before archiving',
+      validationRules: {
+        min: 1,
+        max: 365,
+        options: ['1', '3', '7', '14', '30', '60', '90', '180', '365'],
+        required: true
+      },
+      defaultValue: 7
+    },
+    {
+      key: 'activity_auto_archive',
+      value: true,
+      type: 'boolean',
+      category: 'activity',
+      description: 'Automatically archive expired activity logs',
+      defaultValue: true
+    },
+    {
+      key: 'activity_log_level',
+      value: 'all',
+      type: 'string',
+      category: 'activity',
+      description: 'Level of activity logging',
+      validationRules: {
+        options: ['all', 'critical', 'high', 'medium'],
+        required: true
+      },
+      defaultValue: 'all'
     }
-  ]);
+  ];
+
+  for (const setting of defaults) {
+    await this.findOneAndUpdate(
+      { key: setting.key },
+      setting,
+      { upsert: true, new: true }
+    );
+  }
 };
 
 module.exports = mongoose.model('Settings', settingsSchema);
