@@ -61,12 +61,13 @@ const ClaimDetails = () => {
           const foundClaim = claims.find(claim => claim.id === id);
           
           if (foundClaim) {
-            // Ensure documents array exists
-            const claimWithDocuments = {
+            // Ensure documents and timeline arrays exist
+            const claimWithDefaults = {
               ...foundClaim,
-              documents: foundClaim.documents || []
+              documents: foundClaim.documents || [],
+              timeline: foundClaim.timeline || []
             };
-            setClaim(claimWithDocuments);
+            setClaim(claimWithDefaults);
             setLoading(false);
             return;
           }
@@ -75,12 +76,13 @@ const ClaimDetails = () => {
         // If not found in localStorage, try API
         const response = await claimsApi.getClaimById(id);
         if (response.success && response.claim) {
-          // Ensure documents array exists
-          const claimWithDocuments = {
+          // Ensure documents and timeline arrays exist
+          const claimWithDefaults = {
             ...response.claim,
-            documents: response.claim.documents || []
+            documents: response.claim.documents || [],
+            timeline: response.claim.timeline || []
           };
-          setClaim(claimWithDocuments);
+          setClaim(claimWithDefaults);
         } else {
           throw new Error('Claim not found');
         }
@@ -113,6 +115,24 @@ const ClaimDetails = () => {
           claimHandler: 'John Doe',
           handlerContact: '+91-9876543210',
           documents: [], // Initialize empty documents array
+          timeline: [ // Initialize sample timeline events
+            {
+              id: 1,
+              event: 'Claim Filed',
+              description: 'Claim was submitted for review',
+              status: 'filed',
+              date: '2024-01-16',
+              time: '10:30 AM'
+            },
+            {
+              id: 2,
+              event: 'Under Review',
+              description: 'Claim is being reviewed by our team',
+              status: 'processing',
+              date: '2024-01-17',
+              time: '02:15 PM'
+            }
+          ],
           details: {
             hospitalName: 'Sample Hospital',
             hospitalAddress: 'Sample Address',
@@ -514,3 +534,5 @@ const ClaimDetails = () => {
 };
 
 export default ClaimDetails;
+
+}

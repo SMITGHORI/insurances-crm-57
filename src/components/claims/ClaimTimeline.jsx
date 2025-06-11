@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 
 const ClaimTimeline = ({ claim }) => {
+  // Safely get timeline array, defaulting to empty array if undefined
+  const timeline = claim?.timeline || [];
+
   const getTimelineIcon = (status) => {
     switch (status) {
       case 'incident':
@@ -34,37 +37,43 @@ const ClaimTimeline = ({ claim }) => {
     }
   };
 
-  // Sort timeline events by date and time
-  const sortedTimeline = [...claim.timeline].sort((a, b) => {
+  // Sort timeline events by date and time if timeline exists
+  const sortedTimeline = timeline.length > 0 ? [...timeline].sort((a, b) => {
     const dateA = new Date(`${a.date} ${a.time}`);
     const dateB = new Date(`${b.date} ${b.time}`);
     return dateB - dateA; // Most recent first
-  });
+  }) : [];
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Claim Timeline</h2>
       
-      <div className="relative">
-        <div className="absolute left-[17px] top-6 bottom-5 w-0.5 bg-gray-200"></div>
-        {sortedTimeline.map((event, index) => (
-          <div key={event.id} className="relative pl-10 pb-6">
-            <div className="absolute left-0 mt-1">
-              {getTimelineIcon(event.status)}
-            </div>
-            <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex justify-between items-center mb-1">
-                <h3 className="font-medium">{event.event}</h3>
-                <div className="flex items-center text-sm text-gray-500">
-                  <Calendar className="h-3.5 w-3.5 mr-1" />
-                  <span>{event.date} {event.time}</span>
-                </div>
+      {sortedTimeline.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No timeline events yet
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-[17px] top-6 bottom-5 w-0.5 bg-gray-200"></div>
+          {sortedTimeline.map((event, index) => (
+            <div key={event.id || index} className="relative pl-10 pb-6">
+              <div className="absolute left-0 mt-1">
+                {getTimelineIcon(event.status)}
               </div>
-              <p className="text-gray-600 text-sm">{event.description}</p>
+              <div className="bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-100">
+                <div className="flex justify-between items-center mb-1">
+                  <h3 className="font-medium">{event.event}</h3>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Calendar className="h-3.5 w-3.5 mr-1" />
+                    <span>{event.date} {event.time}</span>
+                  </div>
+                </div>
+                <p className="text-gray-600 text-sm">{event.description}</p>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
