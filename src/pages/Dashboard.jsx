@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -47,41 +47,148 @@ import {
   Legend
 } from 'recharts';
 
+// Memoized chart components for better performance
+const MemoizedLineChart = React.memo(({ data, height, isMobile }) => (
+  <ResponsiveContainer width="100%" height={height}>
+    <RechartLineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+      <XAxis 
+        dataKey="name" 
+        stroke="#888888" 
+        fontSize={isMobile ? 10 : 12} 
+        tickLine={false} 
+        axisLine={false} 
+        interval={isMobile ? 1 : 0}
+      />
+      <YAxis
+        stroke="#888888"
+        fontSize={isMobile ? 10 : 12}
+        tickLine={false}
+        axisLine={false}
+        tickFormatter={(value) => `₹${value/1000}k`}
+        width={isMobile ? 40 : 60}
+      />
+      <Tooltip 
+        contentStyle={{ 
+          fontSize: isMobile ? '12px' : '14px',
+          padding: isMobile ? '8px' : '12px'
+        }}
+        formatter={(value) => [`₹${value.toLocaleString()}`, 'Premium']}
+      />
+      <Line
+        type="monotone"
+        dataKey="premium"
+        stroke="#1b365d"
+        strokeWidth={isMobile ? 2 : 3}
+        activeDot={{ r: isMobile ? 4 : 6, fill: "#1b365d" }}
+        dot={false}
+      />
+    </RechartLineChart>
+  </ResponsiveContainer>
+));
+
+const MemoizedPieChart = React.memo(({ data, height, radius, isMobile }) => (
+  <ResponsiveContainer width="100%" height={height}>
+    <RechartPieChart>
+      <Pie
+        data={data}
+        cx="50%"
+        cy="50%"
+        outerRadius={radius.outer}
+        dataKey="value"
+        labelLine={false}
+        label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+      >
+        {data.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.fill} />
+        ))}
+      </Pie>
+      <Tooltip 
+        contentStyle={{ 
+          fontSize: isMobile ? '12px' : '14px',
+          padding: isMobile ? '8px' : '12px'
+        }}
+      />
+      <Legend 
+        verticalAlign="bottom" 
+        height={36} 
+        wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
+      />
+    </RechartPieChart>
+  </ResponsiveContainer>
+));
+
+// Memoized activity item component
+const ActivityItem = React.memo(({ activity, getActivityIcon }) => (
+  <li className="p-3 md:p-4 hover:bg-gray-50 transition-colors">
+    <div className="flex items-start">
+      <div className="bg-gray-100 rounded-full p-1.5 md:p-2 mr-2 md:mr-3 flex-shrink-0">
+        {getActivityIcon(activity.type)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">
+          {activity.action}
+        </p>
+        <p className="text-xs text-gray-500 line-clamp-1">
+          Client: {activity.client} | Agent: {activity.agent}
+        </p>
+      </div>
+      <div className="text-[10px] md:text-xs text-gray-500 whitespace-nowrap ml-1">{activity.time}</div>
+    </div>
+  </li>
+));
+
+// Memoized renewal item for mobile
+const RenewalItemMobile = React.memo(({ renewal, onClick }) => (
+  <div className="p-3 hover:bg-gray-50 cursor-pointer" onClick={onClick}>
+    <div className="flex justify-between">
+      <p className="font-medium text-sm">{renewal.client}</p>
+      <p className="text-sm">{renewal.premium}</p>
+    </div>
+    <div className="mt-1">
+      <p className="text-xs text-gray-700">{renewal.policyType}</p>
+      <div className="flex justify-between mt-1">
+        <span className="text-xs text-gray-500">{renewal.policyNumber}</span>
+        <span className="text-xs text-gray-500">Due: {renewal.dueDate}</span>
+      </div>
+    </div>
+  </div>
+));
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [periodFilter, setPeriodFilter] = useState('month');
   const isMobile = useIsMobile();
 
-  // Sample data for charts - pre-loaded for better performance
-  const policyTypeData = [
-    { name: 'Health', value: 35, fill: '#1b365d' },
-    { name: 'Term', value: 25, fill: '#5086c1' },
-    { name: 'Vehicle', value: 40, fill: '#f15a22' },
-  ];
+  // Memoized data to prevent unnecessary recalculations
+  const chartData = useMemo(() => ({
+    policyType: [
+      { name: 'Health', value: 35, fill: '#1b365d' },
+      { name: 'Term', value: 25, fill: '#5086c1' },
+      { name: 'Vehicle', value: 40, fill: '#f15a22' },
+    ],
+    monthlyPremium: [
+      { name: 'Jan', premium: 150000 },
+      { name: 'Feb', premium: 180000 },
+      { name: 'Mar', premium: 210000 },
+      { name: 'Apr', premium: 190000 },
+      { name: 'May', premium: 240000 },
+      { name: 'Jun', premium: 260000 },
+      { name: 'Jul', premium: 290000 },
+      { name: 'Aug', premium: 270000 },
+      { name: 'Sep', premium: 300000 },
+      { name: 'Oct', premium: 320000 },
+      { name: 'Nov', premium: 330000 },
+      { name: 'Dec', premium: 350000 },
+    ],
+    claims: [
+      { name: 'Approved', value: 65, fill: '#4ade80' },
+      { name: 'Pending', value: 25, fill: '#facc15' },
+      { name: 'Rejected', value: 10, fill: '#f43f5e' },
+    ]
+  }), []);
 
-  const monthlyPremiumData = [
-    { name: 'Jan', premium: 150000 },
-    { name: 'Feb', premium: 180000 },
-    { name: 'Mar', premium: 210000 },
-    { name: 'Apr', premium: 190000 },
-    { name: 'May', premium: 240000 },
-    { name: 'Jun', premium: 260000 },
-    { name: 'Jul', premium: 290000 },
-    { name: 'Aug', premium: 270000 },
-    { name: 'Sep', premium: 300000 },
-    { name: 'Oct', premium: 320000 },
-    { name: 'Nov', premium: 330000 },
-    { name: 'Dec', premium: 350000 },
-  ];
-
-  const claimsData = [
-    { name: 'Approved', value: 65, fill: '#4ade80' },
-    { name: 'Pending', value: 25, fill: '#facc15' },
-    { name: 'Rejected', value: 10, fill: '#f43f5e' },
-  ];
-
-  // Stats cards data with navigation handlers
-  const statsCards = [
+  // Memoized stats cards
+  const statsCards = useMemo(() => [
     {
       title: 'Total Clients',
       value: '312',
@@ -114,10 +221,10 @@ const Dashboard = () => {
       icon: <Star className="h-6 w-6 text-yellow-500" />,
       onClick: () => navigate('/leads')
     },
-  ];
+  ], [navigate]);
 
-  // Recent activities
-  const recentActivities = [
+  // Memoized activity data
+  const recentActivities = useMemo(() => [
     {
       id: 1,
       action: 'New client registered',
@@ -158,10 +265,10 @@ const Dashboard = () => {
       type: 'quotation',
       agent: 'Vikram Malhotra',
     },
-  ];
+  ], []);
 
-  // Upcoming renewals
-  const upcomingRenewals = [
+  // Memoized renewal data
+  const upcomingRenewals = useMemo(() => [
     {
       id: 1,
       client: 'Anjali Mehta',
@@ -194,10 +301,10 @@ const Dashboard = () => {
       dueDate: '24/06/2025',
       premium: '₹18,000',
     },
-  ];
+  ], []);
 
-  // Agent performance data
-  const topAgents = [
+  // Memoized agent data
+  const topAgents = useMemo(() => [
     {
       name: 'Neha Gupta',
       policies: 45,
@@ -222,10 +329,10 @@ const Dashboard = () => {
       premium: '₹3,90,000',
       conversion: '60%',
     },
-  ];
+  ], []);
 
-  // Performance metrics data
-  const performanceMetrics = {
+  // Memoized performance metrics
+  const performanceMetrics = useMemo(() => ({
     thisMonth: {
       newClients: 32,
       newPolicies: 48,
@@ -244,9 +351,24 @@ const Dashboard = () => {
       revenue: '+15.7%',
       claims: '+16.6%'
     }
-  };
+  }), []);
 
-  const getActivityIcon = (type) => {
+  // Memoized chart dimensions
+  const chartDimensions = useMemo(() => ({
+    height: isMobile ? 180 : 300,
+    pieRadius: isMobile ? { inner: 30, outer: 50 } : { inner: 60, outer: 90 }
+  }), [isMobile]);
+
+  // Memoized filtered data for charts
+  const filteredChartData = useMemo(() => {
+    if (isMobile) {
+      return chartData.monthlyPremium.slice(-6);
+    }
+    return chartData.monthlyPremium;
+  }, [chartData.monthlyPremium, isMobile]);
+
+  // Memoized callback functions
+  const getActivityIcon = useCallback((type) => {
     switch (type) {
       case 'client':
         return <Users className="h-5 w-5 text-blue-600" />;
@@ -261,28 +383,19 @@ const Dashboard = () => {
       default:
         return <AlertCircle className="h-5 w-5 text-gray-500" />;
     }
-  };
+  }, []);
 
-  // Navigation handler for View All Renewals button
-  const handleViewAllRenewals = () => {
+  const handleViewAllRenewals = useCallback(() => {
     navigate('/policies?tab=renewal');
-  };
+  }, [navigate]);
 
-  // Navigation handler for View All Activities button
-  const handleViewAllActivities = () => {
+  const handleViewAllActivities = useCallback(() => {
     navigate('/activities');
-  };
+  }, [navigate]);
 
-  // Responsive chart dimensions
-  const getChartHeight = () => {
-    if (isMobile) return 180;
-    return 300;
-  };
-
-  const getPieChartRadius = () => {
-    if (isMobile) return { inner: 30, outer: 50 };
-    return { inner: 60, outer: 90 };
-  };
+  const handleNavigateToPolicies = useCallback(() => {
+    navigate('/policies');
+  }, [navigate]);
 
   return (
     <div className="space-y-4 md:space-y-6 px-2 py-2 md:px-4 md:py-4 overflow-x-hidden">
@@ -405,47 +518,17 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="p-2 md:p-6">
             <div className="w-full overflow-hidden">
-              <ResponsiveContainer width="100%" height={getChartHeight()}>
-                <RechartLineChart data={isMobile ? monthlyPremiumData.slice(-6) : monthlyPremiumData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#888888" 
-                    fontSize={isMobile ? 10 : 12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    interval={isMobile ? 1 : 0}
-                  />
-                  <YAxis
-                    stroke="#888888"
-                    fontSize={isMobile ? 10 : 12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => isMobile ? `₹${value/1000}k` : `₹${value/1000}k`}
-                    width={isMobile ? 40 : 60}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      fontSize: isMobile ? '12px' : '14px',
-                      padding: isMobile ? '8px' : '12px'
-                    }}
-                    formatter={(value) => [`₹${value.toLocaleString()}`, 'Premium']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="premium"
-                    stroke="#1b365d"
-                    strokeWidth={isMobile ? 2 : 3}
-                    activeDot={{ r: isMobile ? 4 : 6, fill: "#1b365d" }}
-                    dot={false}
-                  />
-                </RechartLineChart>
-              </ResponsiveContainer>
+              <MemoizedLineChart 
+                data={filteredChartData}
+                height={chartDimensions.height}
+                isMobile={isMobile}
+              />
             </div>
           </CardContent>
         </Card>
 
         {/* Policy Distribution */}
-        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/policies')}>
+        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={handleNavigateToPolicies}>
           <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
             <CardTitle className="flex items-center text-base md:text-lg">
               <PieChart className="h-4 w-4 md:h-5 md:w-5 mr-2" />
@@ -455,34 +538,12 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="p-2 md:p-6">
             <div className="w-full overflow-hidden">
-              <ResponsiveContainer width="100%" height={getChartHeight()}>
-                <RechartPieChart>
-                  <Pie
-                    data={policyTypeData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={getPieChartRadius().outer}
-                    dataKey="value"
-                    labelLine={false}
-                    label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {policyTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      fontSize: isMobile ? '12px' : '14px',
-                      padding: isMobile ? '8px' : '12px'
-                    }}
-                  />
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36} 
-                    wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                  />
-                </RechartPieChart>
-              </ResponsiveContainer>
+              <MemoizedPieChart 
+                data={chartData.policyType}
+                height={chartDimensions.height}
+                radius={chartDimensions.pieRadius}
+                isMobile={isMobile}
+              />
             </div>
           </CardContent>
         </Card>
@@ -500,22 +561,11 @@ const Dashboard = () => {
         <CardContent className="p-0 max-h-[300px] overflow-y-auto">
           <ul className="divide-y divide-gray-200">
             {recentActivities.map((activity) => (
-              <li key={activity.id} className="p-3 md:p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 rounded-full p-1.5 md:p-2 mr-2 md:mr-3 flex-shrink-0">
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">
-                      {activity.action}
-                    </p>
-                    <p className="text-xs text-gray-500 line-clamp-1">
-                      Client: {activity.client} | Agent: {activity.agent}
-                    </p>
-                  </div>
-                  <div className="text-[10px] md:text-xs text-gray-500 whitespace-nowrap ml-1">{activity.time}</div>
-                </div>
-              </li>
+              <ActivityItem 
+                key={activity.id} 
+                activity={activity} 
+                getActivityIcon={getActivityIcon}
+              />
             ))}
           </ul>
         </CardContent>
@@ -543,19 +593,11 @@ const Dashboard = () => {
           {isMobile ? (
             <div className="divide-y divide-gray-200">
               {upcomingRenewals.map((renewal) => (
-                <div key={renewal.id} className="p-3 hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/policies')}>
-                  <div className="flex justify-between">
-                    <p className="font-medium text-sm">{renewal.client}</p>
-                    <p className="text-sm">{renewal.premium}</p>
-                  </div>
-                  <div className="mt-1">
-                    <p className="text-xs text-gray-700">{renewal.policyType}</p>
-                    <div className="flex justify-between mt-1">
-                      <span className="text-xs text-gray-500">{renewal.policyNumber}</span>
-                      <span className="text-xs text-gray-500">Due: {renewal.dueDate}</span>
-                    </div>
-                  </div>
-                </div>
+                <RenewalItemMobile 
+                  key={renewal.id} 
+                  renewal={renewal} 
+                  onClick={handleNavigateToPolicies}
+                />
               ))}
             </div>
           ) : (
@@ -570,7 +612,7 @@ const Dashboard = () => {
               </TableHeader>
               <TableBody>
                 {upcomingRenewals.map((renewal) => (
-                  <TableRow key={renewal.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate('/policies')}>
+                  <TableRow key={renewal.id} className="hover:bg-gray-50 cursor-pointer" onClick={handleNavigateToPolicies}>
                     <TableCell className="font-medium">{renewal.client}</TableCell>
                     <TableCell>
                       <div>{renewal.policyType}</div>
@@ -688,35 +730,12 @@ const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-hidden">
-            <ResponsiveContainer width="100%" height={getChartHeight()}>
-              <RechartPieChart>
-                <Pie
-                  data={claimsData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={getPieChartRadius().inner}
-                  outerRadius={getPieChartRadius().outer}
-                  dataKey="value"
-                  paddingAngle={2}
-                >
-                  {claimsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value, name) => [`${value}%`, name]} 
-                  contentStyle={{ 
-                    fontSize: isMobile ? '12px' : '14px',
-                    padding: isMobile ? '8px' : '12px'
-                  }}
-                />
-                <Legend 
-                  verticalAlign="bottom" 
-                  height={36}
-                  wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-                />
-              </RechartPieChart>
-            </ResponsiveContainer>
+            <MemoizedPieChart 
+              data={chartData.claims}
+              height={chartDimensions.height}
+              radius={chartDimensions.pieRadius}
+              isMobile={isMobile}
+            />
           </div>
           <div className="mt-1 md:mt-2 space-y-2 px-2 md:px-0">
             <div className="flex items-center justify-between">
@@ -756,4 +775,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default React.memo(Dashboard);
