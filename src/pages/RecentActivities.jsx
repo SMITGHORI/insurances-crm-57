@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -15,8 +15,11 @@ import ActivityFilters from '@/components/activities/ActivityFilters';
 import ActivityTabs from '@/components/activities/ActivityTabs';
 import ActivitiesMobileView from '@/components/activities/ActivitiesMobileView';
 import ActivitiesDesktopView from '@/components/activities/ActivitiesDesktopView';
-import { useActivities } from '@/hooks/useRecentActivities';
+import { useOptimizedQuery } from '@/hooks/useOptimizedQuery';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { useDebouncedValue } from '@/hooks/useDebouncedSearch';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { recentActivitiesApi } from '@/services/api/recentActivitiesApi';
 
 const RecentActivities = () => {
   const navigate = useNavigate();
@@ -27,53 +30,69 @@ const RecentActivities = () => {
   const [agentFilter, setAgentFilter] = useState('all');
   const isMobile = useIsMobile();
 
-  // Prepare query parameters for API call
-  const queryParams = {
-    search: searchQuery,
+  // Performance monitoring
+  const { renderTime } = usePerformanceMonitor('RecentActivities');
+
+  // Debounced search for better performance
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+
+  // Memoized query parameters
+  const queryParams = useMemo(() => ({
+    search: debouncedSearchQuery,
     type: activeTab !== 'all' ? activeTab : typeFilter,
     dateFilter,
     agentId: agentFilter !== 'all' ? agentFilter : undefined,
     page: 1,
     limit: 100
-  };
+  }), [debouncedSearchQuery, activeTab, typeFilter, dateFilter, agentFilter]);
 
-  // Use React Query to fetch activities
-  const { data: activitiesData, isLoading, error } = useActivities(queryParams);
-  const activities = activitiesData?.activities || [];
-
-  // Filter activities based on search query and active tab
-  const filteredActivities = activities.filter(activity => {
-    const matchesSearch = 
-      searchQuery === '' ||
-      (activity.action?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
-      (activity.client?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
-      (activity.agent?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
-      (activity.details?.toLowerCase().includes(searchQuery.toLowerCase()) || '');
-    
-    // Filter by type tab
-    let matchesTab = true;
-    if (activeTab !== 'all') {
-      matchesTab = activity.type === activeTab;
-    }
-    
-    return matchesSearch && matchesTab;
+  // Use optimized React Query for better performance
+  const { data: activitiesData, isLoading, error } = useOptimizedQuery({
+    queryKey: ['activities', queryParams],
+    queryFn: () => recentActivitiesApi.getActivities(queryParams),
+    staleTime: 30 * 1000, // 30 seconds
+    enabled: true,
   });
 
-  // Reset filters
-  const handleResetFilters = () => {
+  // Memoized activities data
+  const activities = useMemo(() => activitiesData?.activities || [], [activitiesData]);
+
+  // Memoized filtered activities
+  const filteredActivities = useMemo(() => {
+    return activities.filter(activity => {
+      const matchesSearch = 
+        debouncedSearchQuery === '' ||
+        (activity.action?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
+        (activity.client?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
+        (activity.agent?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
+        (activity.details?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '');
+      
+      let matchesTab = true;
+      if (activeTab !== 'all') {
+        matchesTab = activity.type === activeTab;
+      }
+      
+      return matchesSearch && matchesTab;
+    });
+  }, [activities, debouncedSearchQuery, activeTab]);
+
+  // Memoized unique agents
+  const uniqueAgents = useMemo(() => 
+    [...new Set(activities.map(activity => activity.agent))].filter(Boolean).sort(),
+    [activities]
+  );
+
+  // Memoized callback functions
+  const handleResetFilters = useCallback(() => {
     setSearchQuery('');
     setActiveTab('all');
     setDateFilter('all');
     setTypeFilter('all');
     setAgentFilter('all');
     toast.success('Filters have been reset');
-  };
+  }, []);
 
-  // Get unique agents for filter
-  const uniqueAgents = [...new Set(activities.map(activity => activity.agent))].filter(Boolean).sort();
-  
-  // Get activity icon by type
-  const getActivityIcon = (type) => {
+  const getActivityIcon = useCallback((type) => {
     switch (type) {
       case 'client':
         return <Users className="h-5 w-5 text-amba-blue" />;
@@ -96,10 +115,9 @@ const RecentActivities = () => {
       default:
         return <AlertCircle className="h-5 w-5 text-gray-500" />;
     }
-  };
+  }, []);
 
-  // Format date for display
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     try {
       const date = new Date(dateString);
       return date.toLocaleString('en-IN', {
@@ -113,7 +131,7 @@ const RecentActivities = () => {
       console.error("Date formatting error:", e);
       return dateString;
     }
-  };
+  }, []);
 
   // Show professional loading skeleton
   if (isLoading) {
@@ -124,6 +142,9 @@ const RecentActivities = () => {
     <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
       <div className="flex justify-between items-center mb-4 md:mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Recent Activities</h1>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-gray-500">Render time: {renderTime}ms</div>
+        )}
       </div>
 
       <ActivityFilters 
@@ -164,4 +185,4 @@ const RecentActivities = () => {
   );
 };
 
-export default RecentActivities;
+export default React.memo(RecentActivities);
