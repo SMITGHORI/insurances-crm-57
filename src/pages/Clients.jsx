@@ -10,16 +10,18 @@ import ClientTable from '../components/clients/ClientTable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useClients, useDeleteClient, useCreateClient } from '../hooks/useClients';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import RouteGuard from '../components/RouteGuard';
 
 /**
- * Clients page with backend integration
- * Uses React Query for data fetching and state management
+ * Clients page with role-based permissions
  */
 const Clients = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  const { hasPermission, isAgent, isSuperAdmin } = usePermissions();
   
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -89,8 +91,16 @@ const Clients = () => {
     }
   };
 
-  // Handle edit client
+  // Handle edit client with permission check
   const handleEditClient = (id) => {
+    if (isAgent()) {
+      // Agents can only edit assigned clients
+      const client = clients.find(c => c._id === id);
+      if (client?.assignedAgentId !== user.id) {
+        toast.error('You can only edit clients assigned to you');
+        return;
+      }
+    }
     navigate(`/clients/edit/${id}`);
   };
 
@@ -99,8 +109,13 @@ const Clients = () => {
     navigate(`/clients/${id}`);
   };
 
-  // Handle delete client
+  // Handle delete client with permission check
   const handleDeleteClient = async (id) => {
+    if (!hasPermission('deleteClient')) {
+      toast.error('You do not have permission to delete clients');
+      return;
+    }
+
     const client = clients.find(c => c._id === id);
     const clientName = client?.name || `Client ID: ${id}`;
     
@@ -108,7 +123,6 @@ const Clients = () => {
       try {
         await deleteClientMutation.mutateAsync(id);
       } catch (error) {
-        // Error is already handled in the mutation
         console.error('Failed to delete client:', error);
       }
     }
@@ -157,47 +171,61 @@ const Clients = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Client Management</h1>
-        <Button
-          onClick={handleAddClient}
-          className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
-          disabled={createClientMutation.isLoading}
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          {createClientMutation.isLoading ? 'Adding...' : 'Add Client'}
-        </Button>
-      </div>
+    <RouteGuard route="/clients">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-800">Client Management</h1>
+          {hasPermission('createClient') && (
+            <Button
+              onClick={handleAddClient}
+              className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
+              disabled={createClientMutation.isLoading}
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              {createClientMutation.isLoading ? 'Adding...' : 'Add Client'}
+            </Button>
+          )}
+        </div>
 
-      {/* Filters and Search */}
-      <ClientFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedFilter={selectedFilter}
-        setSelectedFilter={setSelectedFilter}
-        filterOptions={filterOptions}
-        handleExport={handleExport}
-        onSearchChange={(term) => {
-          setSearchTerm(term);
-          setCurrentPage(1); // Reset to first page when searching
-        }}
-        onFilterChange={(filter) => {
-          setSelectedFilter(filter);
-          setCurrentPage(1); // Reset to first page when filtering
-        }}
-      />
+        {/* Role-based info banner for agents */}
+        {isAgent() && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="text-sm text-blue-800">
+              <strong>Agent View:</strong> You can only view and manage clients assigned to you. 
+              Some fields may be read-only based on your permissions.
+            </div>
+          </div>
+        )}
 
-      {/* Enhanced Client Tabs */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <Tabs 
-          value={clientTypeFilter} 
-          onValueChange={(value) => {
-            setClientTypeFilter(value);
-            setCurrentPage(1); // Reset to first page when changing tabs
+        {/* Filters and Search */}
+        <ClientFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedFilter={selectedFilter}
+          setSelectedFilter={setSelectedFilter}
+          filterOptions={filterOptions}
+          handleExport={handleExport}
+          onSearchChange={(term) => {
+            setSearchTerm(term);
+            setCurrentPage(1);
           }}
-          className="w-full"
-        >
+          onFilterChange={(filter) => {
+            setSelectedFilter(filter);
+            setCurrentPage(1);
+          }}
+          showExport={hasPermission('viewAllClients')}
+        />
+
+        {/* Enhanced Client Tabs */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <Tabs 
+            value={clientTypeFilter} 
+            onValueChange={(value) => {
+              setClientTypeFilter(value);
+              setCurrentPage(1);
+            }}
+            className="w-full"
+          >
           <div className="border-b border-gray-200">
             <TabsList className="h-auto w-full bg-transparent p-0 flex justify-around">
               <TabsTrigger 
@@ -231,66 +259,72 @@ const Clients = () => {
             </TabsList>
           </div>
 
-          {/* All client types tabs show the same data with server-side filtering */}
-          {['all', 'individual', 'corporate', 'group'].map((tabValue) => (
-            <TabsContent key={tabValue} value={tabValue} className="p-0 mt-0 animate-fade-in">
-              <ClientTable 
-                clients={getFilteredClients(tabValue)}
-                onViewClient={handleViewClient}
-                onEditClient={handleEditClient}
-                onDeleteClient={handleDeleteClient}
-                sortField={sortField}
-                sortDirection={sortDirection}
-                onSort={handleSort}
-                isMobile={isMobile}
-                isLoading={isLoading}
-                isEmpty={clients.length === 0}
-                // Pagination props
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalClients}
-                onPageChange={handlePageChange}
-                isDeleting={deleteClientMutation.isLoading}
-              />
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-
-      {/* Add Client Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
-                  <button
-                    type="button"
-                    className="text-gray-400 hover:text-gray-500"
-                    onClick={() => setShowAddModal(false)}
-                  >
-                    <span className="sr-only">Close</span>
-                    <span className="text-xl font-medium">&times;</span>
-                  </button>
-                </div>
-                <ClientForm 
-                  onClose={() => setShowAddModal(false)}
-                  onSuccess={handleClientFormSuccess}
-                  isLoading={createClientMutation.isLoading}
+            {['all', 'individual', 'corporate', 'group'].map((tabValue) => (
+              <TabsContent key={tabValue} value={tabValue} className="p-0 mt-0 animate-fade-in">
+                <ClientTable 
+                  clients={getFilteredClients(tabValue)}
+                  onViewClient={handleViewClient}
+                  onEditClient={handleEditClient}
+                  onDeleteClient={handleDeleteClient}
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                  isMobile={isMobile}
+                  isLoading={isLoading}
+                  isEmpty={clients.length === 0}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalClients}
+                  onPageChange={handlePageChange}
+                  isDeleting={deleteClientMutation.isLoading}
+                  // Role-based permissions
+                  canEdit={hasPermission('editAnyClient') || isAgent()}
+                  canDelete={hasPermission('deleteClient')}
+                  userRole={user?.role}
+                  userId={user?.id}
                 />
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+
+        {/* Add Client Modal */}
+        {showAddModal && hasPermission('createClient') && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+              </div>
+
+              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
+                    <button
+                      type="button"
+                      className="text-gray-400 hover:text-gray-500"
+                      onClick={() => setShowAddModal(false)}
+                    >
+                      <span className="sr-only">Close</span>
+                      <span className="text-xl font-medium">&times;</span>
+                    </button>
+                  </div>
+                  <ClientForm 
+                    onClose={() => setShowAddModal(false)}
+                    onSuccess={handleClientFormSuccess}
+                    isLoading={createClientMutation.isLoading}
+                    userRole={user?.role}
+                    userId={user?.id}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </RouteGuard>
   );
 };
 

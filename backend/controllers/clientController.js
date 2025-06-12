@@ -1,4 +1,3 @@
-
 const Client = require('../models/Client');
 const { AppError } = require('../utils/errorHandler');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
@@ -21,12 +20,12 @@ class ClientController {
         sortDirection = 'desc'
       } = req.query;
 
-      // Build filter object
+      // Build filter object with role-based access
       const filter = {};
       
-      // Role-based filtering
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       // Type filter
@@ -101,9 +100,9 @@ class ClientController {
 
       const filter = { _id: id };
       
-      // Role-based access control
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const client = await Client.findOne(filter)
@@ -128,9 +127,17 @@ class ClientController {
     try {
       const clientData = {
         ...req.body,
-        createdBy: req.user._id,
-        assignedAgentId: req.body.assignedAgentId || req.user._id
+        createdBy: req.user._id
       };
+
+      // Role-based assignment logic
+      if (req.user.role === 'agent') {
+        // Agents can only assign clients to themselves
+        clientData.assignedAgentId = req.user._id;
+      } else {
+        // Super admin and managers can assign to any agent
+        clientData.assignedAgentId = req.body.assignedAgentId || req.user._id;
+      }
 
       // Move type-specific data to appropriate sub-document
       if (clientData.clientType === 'individual') {
@@ -194,7 +201,7 @@ class ClientController {
   }
 
   /**
-   * Update client
+   * Update client with role-based field restrictions
    */
   async updateClient(req, res, next) {
     try {
@@ -206,9 +213,9 @@ class ClientController {
 
       const filter = { _id: id };
       
-      // Role-based access control
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const client = await Client.findOne(filter);
@@ -217,10 +224,43 @@ class ClientController {
         throw new AppError('Client not found or access denied', 404);
       }
 
+      // Define allowed fields for agents (restricted access)
+      const agentAllowedFields = [
+        'phone', 'altPhone', 'address', 'city', 'state', 'pincode',
+        'notes', 'source', 'occupation', 'annualIncome', 'maritalStatus'
+      ];
+
+      // Define restricted fields for agents
+      const agentRestrictedFields = [
+        'clientType', 'status', 'assignedAgentId', 'email',
+        'panNumber', 'aadharNumber', 'registrationNo', 'gstNumber'
+      ];
+
+      // Filter update data based on user role
+      let updateData = { ...req.body };
+      
+      if (req.user.role === 'agent') {
+        // Remove restricted fields for agents
+        agentRestrictedFields.forEach(field => {
+          if (updateData[field] && updateData[field] !== client[field]) {
+            throw new AppError(`Agents cannot modify ${field}`, 403);
+          }
+          delete updateData[field];
+        });
+
+        // Only allow specific fields for agents
+        updateData = Object.keys(updateData)
+          .filter(key => agentAllowedFields.includes(key) || key.startsWith('individualData.') || key.startsWith('corporateData.') || key.startsWith('groupData.'))
+          .reduce((obj, key) => {
+            obj[key] = updateData[key];
+            return obj;
+          }, {});
+      }
+
       // Update fields
-      Object.keys(req.body).forEach(key => {
+      Object.keys(updateData).forEach(key => {
         if (key !== '_id' && key !== 'clientId') {
-          client[key] = req.body[key];
+          client[key] = updateData[key];
         }
       });
 
@@ -295,9 +335,9 @@ class ClientController {
 
       const filter = { _id: id };
       
-      // Role-based access control
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const client = await Client.findOne(filter);
@@ -342,9 +382,9 @@ class ClientController {
 
       const filter = { _id: id };
       
-      // Role-based access control
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const client = await Client.findOne(filter, 'documents')
@@ -375,9 +415,9 @@ class ClientController {
 
       const filter = { _id: id };
       
-      // Role-based access control
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const client = await Client.findOne(filter);
@@ -416,9 +456,9 @@ class ClientController {
 
       const filter = {};
       
-      // Role-based filtering
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const clients = await Client.searchClients(query, filter)
@@ -435,7 +475,7 @@ class ClientController {
   }
 
   /**
-   * Get clients by agent
+   * Get clients by agent with role-based access control
    */
   async getClientsByAgent(req, res, next) {
     try {
@@ -447,7 +487,7 @@ class ClientController {
 
       // Role-based access control
       if (req.user.role === 'agent' && req.user._id.toString() !== agentId) {
-        throw new AppError('Access denied', 403);
+        throw new AppError('Agents can only view their own assigned clients', 403);
       }
 
       const clients = await Client.findByAgent(agentId)
@@ -500,9 +540,9 @@ class ClientController {
     try {
       const filter = {};
       
-      // Role-based filtering
-      if (req.user.role === 'agent') {
-        filter.assignedAgentId = req.user._id;
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
       }
 
       const stats = await Client.aggregate([
