@@ -18,7 +18,8 @@ import {
   Building,
   Users,
   Activity,
-  Check
+  Check,
+  Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -169,6 +170,16 @@ const ClientDetailsView = () => {
     } else {
       toast.error("Client data not available for editing");
     }
+  };
+
+  // Handle policy view - redirect to policies module
+  const handleViewPolicy = (policyId) => {
+    navigate(`/policies/${policyId}`);
+  };
+
+  // Handle policy edit - redirect to policies module with edit mode
+  const handleEditPolicy = (policyId) => {
+    navigate(`/policies/edit/${policyId}`);
   };
 
   // Dummy client data - in a real app, this would be fetched from API
@@ -597,6 +608,7 @@ const ClientDetailsView = () => {
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Premium</th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -611,6 +623,28 @@ const ClientDetailsView = () => {
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                               {policy.status}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewPolicy(policy.id)}
+                                className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditPolicy(policy.id)}
+                                className="flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -662,8 +696,24 @@ const ClientDetailsView = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           <div className="flex justify-end space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">View</button>
-                            <button className="text-yellow-600 hover:text-yellow-900">Edit</button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewPolicy(policy.id)}
+                              className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditPolicy(policy.id)}
+                              className="flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
                           </div>
                         </td>
                       </tr>
