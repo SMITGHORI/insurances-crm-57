@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,10 +17,12 @@ import { Calendar, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClaimEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [claim, setClaim] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({});
