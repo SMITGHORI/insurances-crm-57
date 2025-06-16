@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateClientId } from '../utils/idGenerator';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import AnniversaryManager from '@/components/clients/AnniversaryManager';
+import DocumentUpload from '@/components/clients/DocumentUpload';
 
 const ClientDetailsView = () => {
   const { id } = useParams();
@@ -819,79 +820,71 @@ const ClientDetailsView = () => {
           </TabsContent>
 
           <TabsContent value="documents" className="p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-medium">KYC Documents</h3>
-              <Button onClick={() => navigate(`/clients/edit/${client.id}`)}>Upload Documents</Button>
             </div>
             
-            <div className="overflow-x-auto bg-white rounded-lg border">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document Type</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">File Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Upload Date</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {documentList.map((document) => (
-                    <tr key={document.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            {document.icon}
-                          </div>
-                          <div className="ml-4 text-sm font-medium text-gray-900">{document.type}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {document.data ? document.data.name : 'Not uploaded'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {document.data ? new Date(document.data.uploadDate).toLocaleString() : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                        {document.data ? formatFileSize(document.data.size) : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        <div className="flex justify-end space-x-2">
-                          {document.data ? (
-                            <>
-                              <button 
-                                className="text-blue-600 hover:text-blue-900"
-                                onClick={() => handleViewDocument(document.data)}
-                              >
-                                View
-                              </button>
-                              <button 
-                                className="text-green-600 hover:text-green-900"
-                                onClick={() => {
-                                  if (document.data.url) {
-                                    window.open(document.data.url, '_blank');
-                                    toast.success(`Downloading ${document.type}`);
-                                  }
-                                }}
-                              >
-                                Download
-                              </button>
-                            </>
-                          ) : (
-                            <button 
-                              className="text-amber-600 hover:text-amber-900"
-                              onClick={() => navigate(`/clients/edit/${client.id}`)}
-                            >
-                              Upload
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DocumentUpload 
+              documentUploads={client.documents || {}}
+              onDocumentUpload={(documentType, file) => {
+                if (file) {
+                  // Create document data
+                  const documentData = {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    uploadDate: new Date().toISOString(),
+                    url: URL.createObjectURL(file)
+                  };
+
+                  // Update client with new document
+                  const updatedClient = {
+                    ...client,
+                    documents: {
+                      ...client.documents,
+                      [documentType]: documentData
+                    }
+                  };
+
+                  // Update localStorage
+                  const storedClientsData = localStorage.getItem('clientsData');
+                  if (storedClientsData) {
+                    const clientsList = JSON.parse(storedClientsData);
+                    const clientIndex = clientsList.findIndex(c => c.id === client.id);
+                    if (clientIndex !== -1) {
+                      clientsList[clientIndex] = updatedClient;
+                      localStorage.setItem('clientsData', JSON.stringify(clientsList));
+                    }
+                  }
+
+                  setClient(updatedClient);
+                  toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
+                } else {
+                  // Remove document
+                  const updatedClient = {
+                    ...client,
+                    documents: {
+                      ...client.documents,
+                      [documentType]: null
+                    }
+                  };
+
+                  // Update localStorage
+                  const storedClientsData = localStorage.getItem('clientsData');
+                  if (storedClientsData) {
+                    const clientsList = JSON.parse(storedClientsData);
+                    const clientIndex = clientsList.findIndex(c => c.id === client.id);
+                    if (clientIndex !== -1) {
+                      clientsList[clientIndex] = updatedClient;
+                      localStorage.setItem('clientsData', JSON.stringify(clientsList));
+                    }
+                  }
+
+                  setClient(updatedClient);
+                  toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document removed successfully`);
+                }
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="activity" className="p-6">
