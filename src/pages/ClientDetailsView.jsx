@@ -182,6 +182,16 @@ const ClientDetailsView = () => {
     navigate(`/policies/edit/${policyId}`);
   };
 
+  // Handle claim view - redirect to claims module
+  const handleViewClaim = (claimId) => {
+    navigate(`/claims/${claimId}`);
+  };
+
+  // Handle claim edit - redirect to claims module with edit mode
+  const handleEditClaim = (claimId) => {
+    navigate(`/claims/edit/${claimId}`);
+  };
+
   // Dummy client data - in a real app, this would be fetched from API
   const clients = [
     {
@@ -769,8 +779,24 @@ const ClientDetailsView = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                           <div className="flex justify-end space-x-2">
-                            <button className="text-blue-600 hover:text-blue-900">View</button>
-                            <button className="text-yellow-600 hover:text-yellow-900">Track</button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewClaim(claim.id)}
+                              className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditClaim(claim.id)}
+                              className="flex items-center text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
                           </div>
                         </td>
                       </tr>
