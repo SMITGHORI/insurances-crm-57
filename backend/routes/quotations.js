@@ -15,6 +15,7 @@ const {
   statusUpdateSchema,
   queryParamsSchema
 } = require('../validations/quotationValidation');
+const { quotationExportValidation } = require('../validations/exportValidation');
 
 // Import controllers
 const {
@@ -26,7 +27,8 @@ const {
   sendQuotation,
   updateQuotationStatus,
   getQuotationsStats,
-  searchQuotations
+  searchQuotations,
+  exportQuotations
 } = require('../controllers/quotationController');
 
 // Apply authentication middleware to all routes
@@ -41,6 +43,17 @@ router.use(authMiddleware);
 router.get('/',
   validationMiddleware(queryParamsSchema, 'query'),
   getQuotations
+);
+
+/**
+ * @route   POST /api/quotations/export
+ * @desc    Export quotations data
+ * @access  Private (All roles with role-based filtering)
+ */
+router.post('/export',
+  roleMiddleware(['super_admin', 'manager', 'agent']),
+  validationMiddleware(quotationExportValidation),
+  exportQuotations
 );
 
 /**

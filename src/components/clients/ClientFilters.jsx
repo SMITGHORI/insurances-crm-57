@@ -1,9 +1,16 @@
 
-import React from 'react';
-import { Search, Filter, Download, SortAsc, SortDesc, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, Download, SortAsc, SortDesc, X, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 const ClientFilters = ({ 
   searchTerm, 
@@ -18,8 +25,13 @@ const ClientFilters = ({
   setSortDirection,
   activeFilters,
   removeFilter,
-  placeholderText = "Search clients..."
+  placeholderText = "Search clients...",
+  selectedClients = [],
+  filteredData = [],
+  allData = []
 }) => {
+  const [isExporting, setIsExporting] = useState(false);
+
   const toggleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -28,6 +40,134 @@ const ClientFilters = ({
       setSortDirection('asc');
     }
   };
+
+  const handleExportAction = async (format, type) => {
+    setIsExporting(true);
+    
+    try {
+      let exportData = {
+        format,
+        type
+      };
+
+      // Add specific data based on export type
+      switch (type) {
+        case 'selected':
+          if (selectedClients.length === 0) {
+            toast.error('Please select clients to export');
+            return;
+          }
+          exportData.selectedIds = selectedClients.map(client => client._id);
+          break;
+          
+        case 'filtered':
+          exportData.filters = {
+            search: searchTerm,
+            type: selectedFilter !== 'All' ? selectedFilter : undefined,
+            // Add other active filters
+            ...activeFilters
+          };
+          break;
+          
+        case 'dateRange':
+          // You can add date range picker here
+          const startDate = prompt('Enter start date (YYYY-MM-DD):');
+          const endDate = prompt('Enter end date (YYYY-MM-DD):');
+          if (!startDate || !endDate) {
+            toast.error('Please provide valid date range');
+            return;
+          }
+          exportData.filters = { startDate, endDate };
+          break;
+          
+        case 'all':
+        default:
+          // No additional data needed
+          break;
+      }
+
+      // Call the export function
+      if (handleExport) {
+        await handleExport(exportData);
+        toast.success(`Export completed successfully`);
+      }
+    } catch (error) {
+      toast.error('Export failed. Please try again.');
+      console.error('Export error:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const ExportDropdown = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="inline-flex items-center"
+          disabled={isExporting}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          {isExporting ? 'Exporting...' : 'Export'}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <div className="px-2 py-1.5 text-sm font-medium text-gray-900">Export Format</div>
+        
+        {/* All Data */}
+        <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">All Data ({allData.length} items)</div>
+        <DropdownMenuItem onClick={() => handleExportAction('csv', 'all')}>
+          <FileDown className="h-4 w-4 mr-2" />
+          Export All as CSV
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExportAction('excel', 'all')}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Export All as Excel
+        </DropdownMenuItem>
+        
+        {/* Filtered Data */}
+        {(searchTerm || selectedFilter !== 'All' || Object.keys(activeFilters || {}).length > 0) && (
+          <>
+            <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Filtered Data ({filteredData.length} items)</div>
+            <DropdownMenuItem onClick={() => handleExportAction('csv', 'filtered')}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Export Filtered as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportAction('excel', 'filtered')}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export Filtered as Excel
+            </DropdownMenuItem>
+          </>
+        )}
+        
+        {/* Selected Data */}
+        {selectedClients.length > 0 && (
+          <>
+            <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Selected Data ({selectedClients.length} items)</div>
+            <DropdownMenuItem onClick={() => handleExportAction('csv', 'selected')}>
+              <FileDown className="h-4 w-4 mr-2" />
+              Export Selected as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExportAction('excel', 'selected')}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export Selected as Excel
+            </DropdownMenuItem>
+          </>
+        )}
+        
+        {/* Date Range */}
+        <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Date Range</div>
+        <DropdownMenuItem onClick={() => handleExportAction('csv', 'dateRange')}>
+          <FileDown className="h-4 w-4 mr-2" />
+          Export Date Range as CSV
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExportAction('excel', 'dateRange')}>
+          <FileSpreadsheet className="h-4 w-4 mr-2" />
+          Export Date Range as Excel
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
@@ -93,14 +233,7 @@ const ClientFilters = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button
-            onClick={handleExport}
-            variant="outline"
-            className="inline-flex items-center"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
+          <ExportDropdown />
         </div>
       </div>
       

@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const clientController = require('../controllers/clientController');
@@ -7,6 +6,7 @@ const { roleMiddleware, clientAccessMiddleware } = require('../middleware/roleMi
 const uploadMiddleware = require('../middleware/upload');
 const validationMiddleware = require('../middleware/validation');
 const { clientValidation, updateClientValidation, documentValidation } = require('../validations/clientValidation');
+const { clientExportValidation } = require('../validations/exportValidation');
 
 // Apply authentication to all routes
 router.use(authMiddleware);
@@ -20,6 +20,18 @@ router.get('/',
   roleMiddleware(['super_admin', 'manager', 'agent']),
   clientAccessMiddleware,
   clientController.getAllClients
+);
+
+/**
+ * @route POST /api/clients/export
+ * @desc Export clients data
+ * @access Private (All roles with role-based filtering)
+ */
+router.post('/export',
+  roleMiddleware(['super_admin', 'manager', 'agent']),
+  clientAccessMiddleware,
+  validationMiddleware(clientExportValidation),
+  clientController.exportClients
 );
 
 /**

@@ -2,6 +2,7 @@ const Client = require('../models/Client');
 const { AppError } = require('../utils/errorHandler');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
 const { uploadFile, deleteFile } = require('../utils/fileHandler');
+const exportService = require('../utils/exportService');
 const mongoose = require('mongoose');
 
 class ClientController {
@@ -84,6 +85,132 @@ class ClientController {
       });
     } catch (error) {
       next(error);
+    }
+  }
+
+  /**
+   * Export clients data
+   */
+  async exportClients(req, res, next) {
+    try {
+      const { format, type, filters, selectedIds, fields } = req.body;
+      
+      // Build filter object with role-based access
+      const filter = {};
+      
+      // Apply agent filter from middleware
+      if (req.agentFilter) {
+        Object.assign(filter, req.agentFilter);
+      }
+
+      // Handle different export types
+      switch (type) {
+        case 'selected':
+          if (!selectedIds || selectedIds.length === 0) {
+            throw new AppError('No clients selected for export', 400);
+          }
+          filter._id = { $in: selectedIds.map(id => mongoose.Types.ObjectId(id)) };
+          break;
+          
+        case 'filtered':
+          if (filters) {
+            if (filters.search) {
+              filter.$or = [
+                { clientId: { $regex: filters.search, $options: 'i' } },
+                { email: { $regex: filters.search, $options: 'i' } },
+                { 'individualData.firstName': { $regex: filters.search, $options: 'i' } },
+                { 'individualData.lastName': { $regex: filters.search, $options: 'i' } },
+                { 'corporateData.companyName': { $regex: filters.search, $options: 'i' } },
+                { 'groupData.groupName': { $regex: filters.search, $options: 'i' } }
+              ];
+            }
+            if (filters.type && filters.type !== 'all') {
+              filter.clientType = filters.type;
+            }
+            if (filters.status && filters.status !== 'All') {
+              filter.status = filters.status;
+            }
+            if (filters.agentId) {
+              filter.assignedAgentId = filters.agentId;
+            }
+          }
+          break;
+          
+        case 'dateRange':
+          if (filters && filters.startDate && filters.endDate) {
+            filter.createdAt = {
+              $gte: new Date(filters.startDate),
+              $lte: new Date(filters.endDate)
+            };
+          }
+          break;
+          
+        case 'all':
+        default:
+          // No additional filters needed
+          break;
+      }
+
+      // Fetch clients data
+      const clients = await Client.find(filter)
+        .populate('assignedAgentId', 'name email')
+        .lean();
+
+      if (clients.length === 0) {
+        throw new AppError('No clients found for export', 404);
+      }
+
+      // Add display names for better export
+      const clientsWithDisplayNames = clients.map(client => ({
+        ...client,
+        displayName: client.displayName || this.getClientDisplayName(client),
+        assignedAgentName: client.assignedAgentId?.name || 'Unassigned'
+      }));
+
+      // Format data for export
+      const formattedData = exportService.formatDataForExport(clientsWithDisplayNames, 'clients');
+      
+      // Generate filename
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `clients_export_${timestamp}_${Date.now()}`;
+
+      let result;
+      if (format === 'excel') {
+        result = await exportService.generateExcel(formattedData, fields, filename, 'Clients');
+      } else {
+        result = await exportService.generateCSV(formattedData, fields, filename);
+      }
+
+      // Set response headers for file download
+      res.setHeader('Content-Type', result.contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+      
+      // Send file
+      res.sendFile(result.filePath, (err) => {
+        if (err) {
+          console.error('Error sending file:', err);
+        }
+        // Clean up file after sending
+        setTimeout(() => {
+          exportService.cleanupFile(result.filePath);
+        }, 5000);
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  getClientDisplayName(client) {
+    switch (client.clientType) {
+      case 'individual':
+        return `${client.individualData?.firstName || ''} ${client.individualData?.lastName || ''}`.trim();
+      case 'corporate':
+        return client.corporateData?.companyName || 'Corporate Client';
+      case 'group':
+        return client.groupData?.groupName || 'Group Client';
+      default:
+        return 'Unknown Client';
     }
   }
 
