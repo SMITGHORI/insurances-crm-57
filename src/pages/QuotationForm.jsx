@@ -33,6 +33,7 @@ const QuotationForm = () => {
   const isEditMode = Boolean(id);
   
   const [activeTab, setActiveTab] = useState('client');
+  
   const [formData, setFormData] = useState({
     // Client details
     clientId: isEditMode ? 'CLI-2025-0001' : '',
