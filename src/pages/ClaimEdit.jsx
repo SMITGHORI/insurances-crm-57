@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import DynamicClaimForm from '@/components/claims/DynamicClaimForm';
 
 const ClaimEdit = () => {
   const { id } = useParams();
@@ -162,249 +162,6 @@ const ClaimEdit = () => {
     navigate(`/claims/${id}`);
   };
 
-  // Render health insurance form
-  const renderHealthForm = () => {
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Medical Details</CardTitle>
-          <CardDescription>Update hospital and treatment information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="hospitalName">Hospital Name *</Label>
-              <Input
-                id="hospitalName"
-                name="hospitalName"
-                value={typeSpecificData.hospitalName || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter hospital name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hospitalAddress">Hospital Address</Label>
-              <Input
-                id="hospitalAddress"
-                name="hospitalAddress"
-                value={typeSpecificData.hospitalAddress || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter hospital address"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="doctorName">Doctor Name *</Label>
-              <Input
-                id="doctorName"
-                name="doctorName"
-                value={typeSpecificData.doctorName || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter doctor name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="doctorSpeciality">Doctor Speciality</Label>
-              <Input
-                id="doctorSpeciality"
-                name="doctorSpeciality"
-                value={typeSpecificData.doctorSpeciality || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter doctor speciality"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="diagnosis">Diagnosis *</Label>
-              <Input
-                id="diagnosis"
-                name="diagnosis"
-                value={typeSpecificData.diagnosis || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter diagnosis"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="treatment">Treatment *</Label>
-              <Input
-                id="treatment"
-                name="treatment"
-                value={typeSpecificData.treatment || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter treatment details"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="admissionDate">Admission Date *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="admissionDate"
-                  name="admissionDate"
-                  type="date"
-                  value={typeSpecificData.admissionDate || ''}
-                  onChange={handleTypeSpecificChange}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dischargeDate">Discharge Date</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                <Input
-                  id="dischargeDate"
-                  name="dischargeDate"
-                  type="date"
-                  value={typeSpecificData.dischargeDate || ''}
-                  onChange={handleTypeSpecificChange}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="roomCategory">Room Category</Label>
-              <Select 
-                name="roomCategory" 
-                value={typeSpecificData.roomCategory || ''} 
-                onValueChange={(value) => setTypeSpecificData({...typeSpecificData, roomCategory: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select room category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="General Ward">General Ward</SelectItem>
-                  <SelectItem value="Semi-Private">Semi-Private</SelectItem>
-                  <SelectItem value="Private">Private</SelectItem>
-                  <SelectItem value="Deluxe">Deluxe</SelectItem>
-                  <SelectItem value="ICU">ICU</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="billedAmount">Billed Amount *</Label>
-              <Input
-                id="billedAmount"
-                name="billedAmount"
-                type="number"
-                value={typeSpecificData.billedAmount || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter billed amount"
-              />
-            </div>
-            <div className="flex items-center space-x-2 pt-6">
-              <Checkbox 
-                id="isCashless"
-                name="isCashless"
-                checked={formData.isCashless || false}
-                onCheckedChange={(checked) => setFormData({...formData, isCashless: checked})}
-              />
-              <Label htmlFor="isCashless">This is a cashless claim</Label>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="medicalHistory">Medical History</Label>
-            <Textarea
-              id="medicalHistory"
-              name="medicalHistory"
-              value={typeSpecificData.medicalHistory || ''}
-              onChange={handleTypeSpecificChange}
-              placeholder="Enter relevant medical history"
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Render property insurance form
-  const renderPropertyForm = () => {
-    return (
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Property Damage Details</CardTitle>
-          <CardDescription>Update information about the property and damage</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="propertyAddress">Property Address *</Label>
-              <Input
-                id="propertyAddress"
-                name="propertyAddress"
-                value={typeSpecificData.propertyAddress || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter property address"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="damageType">Damage Type *</Label>
-              <Select 
-                name="damageType" 
-                value={typeSpecificData.damageType || ''} 
-                onValueChange={(value) => setTypeSpecificData({...typeSpecificData, damageType: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type of damage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Fire Damage">Fire Damage</SelectItem>
-                  <SelectItem value="Water Damage">Water Damage</SelectItem>
-                  <SelectItem value="Storm Damage">Storm Damage</SelectItem>
-                  <SelectItem value="Theft">Theft</SelectItem>
-                  <SelectItem value="Vandalism">Vandalism</SelectItem>
-                  <SelectItem value="Earthquake">Earthquake</SelectItem>
-                  <SelectItem value="Electrical">Electrical Damage</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="affectedAreas">Affected Areas *</Label>
-              <Input
-                id="affectedAreas"
-                name="affectedAreas"
-                value={typeSpecificData.affectedAreas || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Which areas are affected"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="damageExtent">Damage Extent *</Label>
-              <Input
-                id="damageExtent"
-                name="damageExtent"
-                value={typeSpecificData.damageExtent || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter extent of damage"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="estimatedRepairCost">Estimated Repair Cost *</Label>
-              <Input
-                id="estimatedRepairCost"
-                name="estimatedRepairCost"
-                type="number"
-                value={typeSpecificData.estimatedRepairCost || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter estimated repair cost"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="occupancyStatus">Occupancy Status</Label>
-              <Input
-                id="occupancyStatus"
-                name="occupancyStatus"
-                value={typeSpecificData.occupancyStatus || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Current occupancy status"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   // Show professional loading skeleton
   if (loading) {
     return <PageSkeleton isMobile={isMobile} />;
@@ -530,8 +287,13 @@ const ClaimEdit = () => {
           </CardContent>
         </Card>
         
-        {claim.policyType === 'Health Insurance' && renderHealthForm()}
-        {claim.policyType === 'Property Insurance' && renderPropertyForm()}
+        <DynamicClaimForm 
+          policyType={claim.policyType}
+          typeSpecificData={typeSpecificData}
+          setTypeSpecificData={setTypeSpecificData}
+          formData={formData}
+          setFormData={setFormData}
+        />
         
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={handleCancel}>

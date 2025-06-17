@@ -1,169 +1,248 @@
+
 import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { FileText, Download, Trash, Upload, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Upload, FileText, Download, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { getDocumentTypes } from '@/config/insuranceTypes';
 
 const ClaimDocuments = ({ claim, setClaim }) => {
-  const [uploading, setUploading] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [documentType, setDocumentType] = useState('');
+  const [documentName, setDocumentName] = useState('');
 
-  // Safely get documents array, defaulting to empty array if undefined
-  const documents = claim?.documents || [];
+  const documentTypes = getDocumentTypes(claim.policyType);
 
-  const handleUpload = () => {
-    setUploading(true);
-    
-    // Simulate upload delay
-    setTimeout(() => {
-      // Add a new document to the list
-      const newDocument = {
-        id: documents.length + 1,
-        name: `Document-${Math.floor(Math.random() * 1000)}.pdf`,
-        type: 'other',
-        size: '1.2 MB',
-        uploadedBy: 'Admin User',
-        uploadDate: new Date().toLocaleDateString(),
-        status: 'pending'
-      };
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
       
-      setClaim({
-        ...claim,
-        documents: [...documents, newDocument]
-      });
+      // Check file type
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
       
-      setUploading(false);
-      toast.success('Document uploaded successfully!');
-    }, 1500);
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please upload PDF, DOC, DOCX, or image files only');
+        return;
+      }
+      
+      setSelectedFile(file);
+      setDocumentName(file.name);
+    }
   };
 
-  const handleDownload = (documentName) => {
-    // In a real app, this would download the actual file
-    toast.success(`Downloading ${documentName}`);
+  const handleUpload = () => {
+    if (!selectedFile || !documentType) {
+      toast.error('Please select a file and document type');
+      return;
+    }
+
+    // In a real app, this would upload to server
+    const newDocument = {
+      id: Date.now(),
+      name: documentName || selectedFile.name,
+      type: documentType,
+      size: selectedFile.size,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: 'Current User'
+    };
+
+    setClaim(prev => ({
+      ...prev,
+      documents: [...(prev.documents || []), newDocument]
+    }));
+
+    toast.success('Document uploaded successfully');
+    setUploadDialogOpen(false);
+    setSelectedFile(null);
+    setDocumentType('');
+    setDocumentName('');
   };
 
   const handleDelete = (documentId) => {
-    // Filter out the document with the given ID
-    const updatedDocuments = documents.filter(doc => doc.id !== documentId);
-    
-    setClaim({
-      ...claim,
-      documents: updatedDocuments
-    });
-    
-    toast.success('Document deleted successfully!');
+    setClaim(prev => ({
+      ...prev,
+      documents: prev.documents.filter(doc => doc.id !== documentId)
+    }));
+    toast.success('Document deleted successfully');
   };
 
-  const getDocumentTypeIcon = (type) => {
-    switch (type) {
-      case 'bill':
-        return <FileText className="h-4 w-4 text-amber-600" />;
-      case 'report':
-        return <FileText className="h-4 w-4 text-blue-600" />;
-      case 'prescription':
-        return <FileText className="h-4 w-4 text-green-600" />;
-      case 'form':
-        return <FileText className="h-4 w-4 text-purple-600" />;
-      case 'identity':
-        return <FileText className="h-4 w-4 text-red-600" />;
-      default:
-        return <FileText className="h-4 w-4 text-gray-600" />;
+  const getFileIcon = (fileName) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+      return '📷';
+    } else if (['pdf'].includes(extension)) {
+      return '📄';
+    } else if (['doc', 'docx'].includes(extension)) {
+      return '📝';
     }
+    return '📎';
   };
 
-  const getDocumentStatusBadge = (status) => {
-    switch (status) {
-      case 'verified':
-        return <Badge className="bg-green-100 text-green-800 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Verified</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-100 text-red-800 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Rejected</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
-    }
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getDocumentTypeLabel = (type) => {
+    const docType = documentTypes.find(dt => dt.value === type);
+    return docType ? docType.label : type;
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Claim Documents</h2>
-        <Button onClick={handleUpload} disabled={uploading}>
-          <Upload className="mr-2 h-4 w-4" />
-          {uploading ? 'Uploading...' : 'Upload Document'}
-        </Button>
-      </div>
-
-      {documents.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No documents uploaded yet
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Document Name</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Uploaded By</TableHead>
-                  <TableHead>Upload Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {documents.map(document => (
-                  <TableRow key={document.id}>
-                    <TableCell>
-                      <div className="flex items-center">
-                        {getDocumentTypeIcon(document.type)}
-                        <span className="ml-2">{document.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{document.size}</TableCell>
-                    <TableCell>{document.uploadedBy}</TableCell>
-                    <TableCell>{document.uploadDate}</TableCell>
-                    <TableCell>
-                      {getDocumentStatusBadge(document.status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          title="Download document"
-                          onClick={() => handleDownload(document.name)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          title="Delete document"
-                          onClick={() => handleDelete(document.id)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Documents ({claim.documents?.length || 0})</CardTitle>
+        <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Document
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+              <DialogDescription>
+                Upload a document for this {claim.policyType?.toLowerCase()} claim
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="documentType">Document Type *</Label>
+                <Select value={documentType} onValueChange={setDocumentType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select document type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documentTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="documentName">Document Name</Label>
+                <Input
+                  id="documentName"
+                  value={documentName}
+                  onChange={(e) => setDocumentName(e.target.value)}
+                  placeholder="Enter document name (optional)"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="file">Select File *</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleFileSelect}
+                />
+                <p className="text-sm text-gray-500">
+                  Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 10MB)
+                </p>
+              </div>
+              
+              {selectedFile && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm">
+                    <strong>Selected:</strong> {selectedFile.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Size: {formatFileSize(selectedFile.size)}
+                  </p>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpload}>Upload</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {!claim.documents || claim.documents.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <FileText className="mx-auto h-12 w-12 mb-4 opacity-50" />
+            <p>No documents uploaded yet</p>
+            <p className="text-sm">Upload documents to support your claim</p>
           </div>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className="space-y-3">
+            {claim.documents.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{getFileIcon(doc.name)}</span>
+                  <div>
+                    <p className="font-medium">{doc.name}</p>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <span>{getDocumentTypeLabel(doc.type)}</span>
+                      <span>•</span>
+                      <span>{formatFileSize(doc.size)}</span>
+                      <span>•</span>
+                      <span>
+                        {formatDistanceToNow(new Date(doc.uploadedAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDelete(doc.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
