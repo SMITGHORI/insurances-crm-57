@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const claimController = require('../controllers/claimController');
@@ -17,6 +16,37 @@ const {
 
 // Apply authentication to all routes
 router.use(authMiddleware);
+
+/**
+ * @route GET /api/claims/form-data/policies
+ * @desc Get policies for claim form (role-based filtering)
+ * @access Private (Super Admin: all policies, Manager: team policies, Agent: assigned policies)
+ */
+router.get('/form-data/policies', 
+  roleMiddleware(['super_admin', 'manager', 'agent']),
+  claimController.getPoliciesForClaim
+);
+
+/**
+ * @route GET /api/claims/form-data/clients
+ * @desc Get clients for claim form (role-based filtering)
+ * @access Private (Super Admin: all clients, Manager: team clients, Agent: assigned clients)
+ */
+router.get('/form-data/clients', 
+  roleMiddleware(['super_admin', 'manager', 'agent']),
+  claimController.getClientsForClaim
+);
+
+/**
+ * @route GET /api/claims/form-data/policy/:policyId
+ * @desc Get specific policy details for claim form
+ * @access Private (Super Admin, Manager, assigned Agent)
+ */
+router.get('/form-data/policy/:policyId', 
+  roleMiddleware(['super_admin', 'manager', 'agent']),
+  resourceOwnershipMiddleware('policyId', 'assignedAgentId'),
+  claimController.getPolicyDetails
+);
 
 /**
  * @route GET /api/claims
