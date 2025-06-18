@@ -1,778 +1,202 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { 
   Users, 
   FileText, 
-  ShieldCheck, 
-  Star, 
+  AlertTriangle, 
   TrendingUp, 
-  Clock,
-  ArrowUp,
-  ArrowDown,
-  BarChart4,
-  PieChart,
-  LineChart,
-  Settings,
-  Bell,
+  Quote, 
+  RefreshCw,
   Calendar,
-  FileCheck,
-  AlertCircle
+  DollarSign
 } from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChartContainer } from "@/components/ui/chart";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart as RechartPieChart,
-  Pie,
-  LineChart as RechartLineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-  Legend
-} from 'recharts';
-
-// Memoized chart components for better performance
-const MemoizedLineChart = React.memo(({ data, height, isMobile }) => (
-  <ResponsiveContainer width="100%" height={height}>
-    <RechartLineChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-      <XAxis 
-        dataKey="name" 
-        stroke="#888888" 
-        fontSize={isMobile ? 10 : 12} 
-        tickLine={false} 
-        axisLine={false} 
-        interval={isMobile ? 1 : 0}
-      />
-      <YAxis
-        stroke="#888888"
-        fontSize={isMobile ? 10 : 12}
-        tickLine={false}
-        axisLine={false}
-        tickFormatter={(value) => `₹${value/1000}k`}
-        width={isMobile ? 40 : 60}
-      />
-      <Tooltip 
-        contentStyle={{ 
-          fontSize: isMobile ? '12px' : '14px',
-          padding: isMobile ? '8px' : '12px'
-        }}
-        formatter={(value) => [`₹${value.toLocaleString()}`, 'Premium']}
-      />
-      <Line
-        type="monotone"
-        dataKey="premium"
-        stroke="#1b365d"
-        strokeWidth={isMobile ? 2 : 3}
-        activeDot={{ r: isMobile ? 4 : 6, fill: "#1b365d" }}
-        dot={false}
-      />
-    </RechartLineChart>
-  </ResponsiveContainer>
-));
-
-const MemoizedPieChart = React.memo(({ data, height, radius, isMobile }) => (
-  <ResponsiveContainer width="100%" height={height}>
-    <RechartPieChart>
-      <Pie
-        data={data}
-        cx="50%"
-        cy="50%"
-        outerRadius={radius.outer}
-        dataKey="value"
-        labelLine={false}
-        label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-      >
-        {data.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={entry.fill} />
-        ))}
-      </Pie>
-      <Tooltip 
-        contentStyle={{ 
-          fontSize: isMobile ? '12px' : '14px',
-          padding: isMobile ? '8px' : '12px'
-        }}
-      />
-      <Legend 
-        verticalAlign="bottom" 
-        height={36} 
-        wrapperStyle={{ fontSize: isMobile ? '12px' : '14px' }}
-      />
-    </RechartPieChart>
-  </ResponsiveContainer>
-));
-
-// Memoized activity item component
-const ActivityItem = React.memo(({ activity, getActivityIcon }) => (
-  <li className="p-3 md:p-4 hover:bg-gray-50 transition-colors">
-    <div className="flex items-start">
-      <div className="bg-gray-100 rounded-full p-1.5 md:p-2 mr-2 md:mr-3 flex-shrink-0">
-        {getActivityIcon(activity.type)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">
-          {activity.action}
-        </p>
-        <p className="text-xs text-gray-500 line-clamp-1">
-          Client: {activity.client} | Agent: {activity.agent}
-        </p>
-      </div>
-      <div className="text-[10px] md:text-xs text-gray-500 whitespace-nowrap ml-1">{activity.time}</div>
-    </div>
-  </li>
-));
-
-// Memoized renewal item for mobile
-const RenewalItemMobile = React.memo(({ renewal, onClick }) => (
-  <div className="p-3 hover:bg-gray-50 cursor-pointer" onClick={onClick}>
-    <div className="flex justify-between">
-      <p className="font-medium text-sm">{renewal.client}</p>
-      <p className="text-sm">{renewal.premium}</p>
-    </div>
-    <div className="mt-1">
-      <p className="text-xs text-gray-700">{renewal.policyType}</p>
-      <div className="flex justify-between mt-1">
-        <span className="text-xs text-gray-500">{renewal.policyNumber}</span>
-        <span className="text-xs text-gray-500">Due: {renewal.dueDate}</span>
-      </div>
-    </div>
-  </div>
-));
+import { 
+  useDashboardOverview, 
+  useRecentActivities, 
+  usePerformanceMetrics,
+  useChartsData,
+  useQuickActions,
+  useRefreshDashboard 
+} from '@/hooks/useDashboard';
+import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import QuickActions from '@/components/dashboard/QuickActions';
+import RecentActivities from '@/components/dashboard/RecentActivities';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [periodFilter, setPeriodFilter] = useState('month');
+  const [refreshing, setRefreshing] = useState(false);
   const isMobile = useIsMobile();
+  
+  // Real-time data hooks
+  const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
+  const { data: activities, isLoading: activitiesLoading } = useRecentActivities(10);
+  const { data: metrics, isLoading: metricsLoading } = usePerformanceMetrics('30d');
+  const { data: charts, isLoading: chartsLoading } = useChartsData('all');
+  const { data: quickActions, isLoading: quickActionsLoading } = useQuickActions();
+  const { refreshDashboard } = useRefreshDashboard();
 
-  // Memoized data to prevent unnecessary recalculations
-  const chartData = useMemo(() => ({
-    policyType: [
-      { name: 'Health', value: 35, fill: '#1b365d' },
-      { name: 'Term', value: 25, fill: '#5086c1' },
-      { name: 'Vehicle', value: 40, fill: '#f15a22' },
-    ],
-    monthlyPremium: [
-      { name: 'Jan', premium: 150000 },
-      { name: 'Feb', premium: 180000 },
-      { name: 'Mar', premium: 210000 },
-      { name: 'Apr', premium: 190000 },
-      { name: 'May', premium: 240000 },
-      { name: 'Jun', premium: 260000 },
-      { name: 'Jul', premium: 290000 },
-      { name: 'Aug', premium: 270000 },
-      { name: 'Sep', premium: 300000 },
-      { name: 'Oct', premium: 320000 },
-      { name: 'Nov', premium: 330000 },
-      { name: 'Dec', premium: 350000 },
-    ],
-    claims: [
-      { name: 'Approved', value: 65, fill: '#4ade80' },
-      { name: 'Pending', value: 25, fill: '#facc15' },
-      { name: 'Rejected', value: 10, fill: '#f43f5e' },
-    ]
-  }), []);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshDashboard();
+    } catch (error) {
+      console.error('Failed to refresh dashboard:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
-  // Memoized stats cards
-  const statsCards = useMemo(() => [
+  const statsCards = [
     {
       title: 'Total Clients',
-      value: '312',
-      change: '+8%',
-      isPositive: true,
-      icon: <Users className="h-6 w-6 text-blue-600" />,
-      onClick: () => navigate('/clients')
+      value: overview?.clients?.total || 0,
+      active: overview?.clients?.active || 0,
+      trend: overview?.clients?.trend || '0',
+      icon: <Users className="h-5 w-5 text-blue-600" />,
+      color: 'blue'
     },
     {
       title: 'Active Policies',
-      value: '548',
-      change: '+12%',
-      isPositive: true,
-      icon: <FileText className="h-6 w-6 text-orange-500" />,
-      onClick: () => navigate('/policies')
+      value: overview?.policies?.total || 0,
+      active: overview?.policies?.active || 0,
+      trend: overview?.policies?.trend || '0',
+      icon: <FileText className="h-5 w-5 text-green-600" />,
+      color: 'green'
     },
     {
-      title: 'Total Claims',
-      value: '94',
-      change: '+5%',
-      isPositive: true,
-      icon: <ShieldCheck className="h-6 w-6 text-green-600" />,
-      onClick: () => navigate('/claims')
+      title: 'Pending Claims',
+      value: overview?.claims?.total || 0,
+      active: overview?.claims?.pending || 0,
+      trend: overview?.claims?.trend || '0',
+      icon: <AlertTriangle className="h-5 w-5 text-orange-600" />,
+      color: 'orange'
     },
     {
-      title: 'New Leads',
-      value: '53',
-      change: '-3%',
-      isPositive: false,
-      icon: <Star className="h-6 w-6 text-yellow-500" />,
-      onClick: () => navigate('/leads')
-    },
-  ], [navigate]);
-
-  // Memoized activity data
-  const recentActivities = useMemo(() => [
-    {
-      id: 1,
-      action: 'New client registered',
-      client: 'Vivek Patel',
-      time: '2 hours ago',
-      type: 'client',
-      agent: 'Rahul Sharma',
+      title: 'Active Leads',
+      value: overview?.leads?.total || 0,
+      active: overview?.leads?.active || 0,
+      trend: overview?.leads?.trend || '0',
+      conversion: overview?.leads?.conversionRate || '0',
+      icon: <TrendingUp className="h-5 w-5 text-purple-600" />,
+      color: 'purple'
     },
     {
-      id: 2,
-      action: 'Policy issued',
-      client: 'Priya Desai',
-      time: '4 hours ago',
-      type: 'policy',
-      agent: 'Neha Gupta',
-    },
-    {
-      id: 3,
-      action: 'Claim approved',
-      client: 'Arjun Singh',
-      time: '5 hours ago',
-      type: 'claim',
-      agent: 'Rahul Sharma',
-    },
-    {
-      id: 4,
-      action: 'Premium reminder sent',
-      client: 'Tech Solutions Ltd',
-      time: '8 hours ago',
-      type: 'reminder',
-      agent: 'Ananya Patel',
-    },
-    {
-      id: 5,
-      action: 'Quotation generated',
-      client: 'Meera Joshi',
-      time: '10 hours ago',
-      type: 'quotation',
-      agent: 'Vikram Malhotra',
-    },
-  ], []);
-
-  // Memoized renewal data
-  const upcomingRenewals = useMemo(() => [
-    {
-      id: 1,
-      client: 'Anjali Mehta',
-      policyType: 'Health Insurance',
-      policyNumber: 'HL29384756',
-      dueDate: '05/06/2025',
-      premium: '₹25,000',
-    },
-    {
-      id: 2,
-      client: 'Rajesh Kumar',
-      policyType: 'Term Insurance',
-      policyNumber: 'TL83746592',
-      dueDate: '12/06/2025',
-      premium: '₹12,500',
-    },
-    {
-      id: 3,
-      client: 'InfoTech Solutions',
-      policyType: 'Vehicle Insurance',
-      policyNumber: 'VH47382910',
-      dueDate: '18/06/2025',
-      premium: '₹35,000',
-    },
-    {
-      id: 4,
-      client: 'Sanjay Verma',
-      policyType: 'Health Insurance',
-      policyNumber: 'HL74628301',
-      dueDate: '24/06/2025',
-      premium: '₹18,000',
-    },
-  ], []);
-
-  // Memoized agent data
-  const topAgents = useMemo(() => [
-    {
-      name: 'Neha Gupta',
-      policies: 45,
-      premium: '₹5,40,000',
-      conversion: '68%',
-    },
-    {
-      name: 'Vikram Malhotra',
-      policies: 42,
-      premium: '₹4,85,000',
-      conversion: '65%',
-    },
-    {
-      name: 'Ananya Patel',
-      policies: 38,
-      premium: '₹4,10,000',
-      conversion: '62%',
-    },
-    {
-      name: 'Rajiv Kapoor',
-      policies: 36,
-      premium: '₹3,90,000',
-      conversion: '60%',
-    },
-  ], []);
-
-  // Memoized performance metrics
-  const performanceMetrics = useMemo(() => ({
-    thisMonth: {
-      newClients: 32,
-      newPolicies: 48,
-      revenue: '₹12,50,000',
-      claims: 14
-    },
-    lastMonth: {
-      newClients: 28,
-      newPolicies: 42,
-      revenue: '₹10,80,000',
-      claims: 12
-    },
-    growth: {
-      newClients: '+14.3%',
-      newPolicies: '+14.2%',
-      revenue: '+15.7%',
-      claims: '+16.6%'
+      title: 'Quotations',
+      value: overview?.quotations?.total || 0,
+      active: overview?.quotations?.pending || 0,
+      trend: overview?.quotations?.trend || '0',
+      conversion: overview?.quotations?.conversionRate || '0',
+      icon: <Quote className="h-5 w-5 text-indigo-600" />,
+      color: 'indigo'
     }
-  }), []);
-
-  // Memoized chart dimensions
-  const chartDimensions = useMemo(() => ({
-    height: isMobile ? 180 : 300,
-    pieRadius: isMobile ? { inner: 30, outer: 50 } : { inner: 60, outer: 90 }
-  }), [isMobile]);
-
-  // Memoized filtered data for charts
-  const filteredChartData = useMemo(() => {
-    if (isMobile) {
-      return chartData.monthlyPremium.slice(-6);
-    }
-    return chartData.monthlyPremium;
-  }, [chartData.monthlyPremium, isMobile]);
-
-  // Memoized callback functions
-  const getActivityIcon = useCallback((type) => {
-    switch (type) {
-      case 'client':
-        return <Users className="h-5 w-5 text-blue-600" />;
-      case 'policy':
-        return <FileCheck className="h-5 w-5 text-orange-500" />;
-      case 'claim':
-        return <ShieldCheck className="h-5 w-5 text-green-500" />;
-      case 'reminder':
-        return <Clock className="h-5 w-5 text-yellow-500" />;
-      case 'quotation':
-        return <FileText className="h-5 w-5 text-purple-500" />;
-      default:
-        return <AlertCircle className="h-5 w-5 text-gray-500" />;
-    }
-  }, []);
-
-  const handleViewAllRenewals = useCallback(() => {
-    navigate('/policies?tab=renewal');
-  }, [navigate]);
-
-  const handleViewAllActivities = useCallback(() => {
-    navigate('/activities');
-  }, [navigate]);
-
-  const handleNavigateToPolicies = useCallback(() => {
-    navigate('/policies');
-  }, [navigate]);
+  ];
 
   return (
-    <div className="space-y-4 md:space-y-6 px-2 py-2 md:px-4 md:py-4 overflow-x-hidden">
+    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-1">Welcome back! Here's what's happening with your business today.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 text-sm md:text-base">
+            Real-time overview of your insurance business
+          </p>
         </div>
-        <div className="w-full md:w-auto mt-2 md:mt-0">
-          <Tabs defaultValue={periodFilter} onValueChange={setPeriodFilter} className="w-full md:w-[300px]">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
-              <TabsTrigger value="year">Year</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        <Button 
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="bg-blue-600 hover:bg-blue-700"
+          size={isMobile ? "sm" : "default"}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
+      {/* Performance Metrics */}
+      {metrics && !metricsLoading && (
+        <Card className="border-none shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Performance Overview (Last 30 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{metrics.newClients}</div>
+                <div className="text-sm text-gray-500">New Clients</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{metrics.newPolicies}</div>
+                <div className="text-sm text-gray-500">New Policies</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">${metrics.totalRevenue}</div>
+                <div className="text-sm text-gray-500">Total Revenue</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-orange-600">${metrics.averageDealSize}</div>
+                <div className="text-sm text-gray-500">Avg Deal Size</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {statsCards.map((card, index) => (
-          <Card 
-            key={index} 
-            className="border-none shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105"
-            onClick={card.onClick}
-          >
-            <CardContent className="p-3 md:p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-500 font-medium">{card.title}</p>
-                  <h3 className="text-lg md:text-2xl font-bold mt-1">{card.value}</h3>
-                  <div className="flex items-center mt-1">
-                    {card.isPositive ? (
-                      <ArrowUp className="h-3 w-3 md:h-4 md:w-4 text-green-500 mr-1" />
-                    ) : (
-                      <ArrowDown className="h-3 w-3 md:h-4 md:w-4 text-red-500 mr-1" />
+          <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-500">{card.title}</p>
+                  <div className="flex items-center mt-2">
+                    <h3 className="text-2xl font-bold">{card.value}</h3>
+                    {card.trend !== '0' && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        {card.trend}
+                      </Badge>
                     )}
-                    <span 
-                      className={`text-xs font-medium ${
-                        card.isPositive ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {card.change}
-                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    Active: {card.active}
+                    {card.conversion && (
+                      <span className="ml-2">• Conv: {card.conversion}%</span>
+                    )}
                   </div>
                 </div>
-                <div className="bg-gray-100 rounded-full p-2 md:p-3">{card.icon}</div>
+                <div className="ml-4">{card.icon}</div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Performance Overview */}
-      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/dashboard')}>
-        <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
-          <CardTitle className="text-base md:text-lg">Performance Overview</CardTitle>
-          <CardDescription className="text-xs md:text-sm">Compare current month with previous month</CardDescription>
-        </CardHeader>
-        <CardContent className="p-3 md:p-6 pt-0">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
-            <div className="p-2 md:p-4 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/clients'); }}>
-              <p className="text-xs text-gray-500 font-medium">New Clients</p>
-              <div className="flex items-baseline mt-1">
-                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newClients}</h4>
-                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.newClients}</span>
-              </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newClients} last month</p>
-            </div>
-            
-            <div className="p-2 md:p-4 bg-orange-50 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/policies'); }}>
-              <p className="text-xs text-gray-500 font-medium">New Policies</p>
-              <div className="flex items-baseline mt-1">
-                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.newPolicies}</h4>
-                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.newPolicies}</span>
-              </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.newPolicies} last month</p>
-            </div>
-            
-            <div className="p-2 md:p-4 bg-green-50 rounded-lg cursor-pointer hover:bg-green-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/invoices'); }}>
-              <p className="text-xs text-gray-500 font-medium">Premium Revenue</p>
-              <div className="flex items-baseline mt-1">
-                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.revenue}</h4>
-                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.revenue}</span>
-              </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.revenue} last month</p>
-            </div>
-            
-            <div className="p-2 md:p-4 bg-yellow-50 rounded-lg cursor-pointer hover:bg-yellow-100 transition-colors" onClick={(e) => { e.stopPropagation(); navigate('/claims'); }}>
-              <p className="text-xs text-gray-500 font-medium">Claims Processed</p>
-              <div className="flex items-baseline mt-1">
-                <h4 className="text-base md:text-lg font-bold">{performanceMetrics.thisMonth.claims}</h4>
-                <span className="ml-1 text-[10px] md:text-xs text-green-600">{performanceMetrics.growth.claims}</span>
-              </div>
-              <p className="text-[10px] md:text-xs text-gray-500 mt-1">vs {performanceMetrics.lastMonth.claims} last month</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Monthly Premium */}
-        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/invoices')}>
-          <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center text-base md:text-lg">
-                  <BarChart4 className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-                  Monthly Premium Collection
-                </CardTitle>
-                <CardDescription className="text-xs md:text-sm">Monthly revenue from premium collections</CardDescription>
-              </div>
-              <select className="text-xs md:text-sm border rounded p-1">
-                <option>This Year</option>
-                <option>Last Year</option>
-              </select>
-            </div>
-          </CardHeader>
-          <CardContent className="p-2 md:p-6">
-            <div className="w-full overflow-hidden">
-              <MemoizedLineChart 
-                data={filteredChartData}
-                height={chartDimensions.height}
-                isMobile={isMobile}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Policy Distribution */}
-        <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={handleNavigateToPolicies}>
-          <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
-            <CardTitle className="flex items-center text-base md:text-lg">
-              <PieChart className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-              Policy Distribution
-            </CardTitle>
-            <CardDescription className="text-xs md:text-sm">Breakdown by insurance type</CardDescription>
-          </CardHeader>
-          <CardContent className="p-2 md:p-6">
-            <div className="w-full overflow-hidden">
-              <MemoizedPieChart 
-                data={chartData.policyType}
-                height={chartDimensions.height}
-                radius={chartDimensions.pieRadius}
-                isMobile={isMobile}
-              />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Charts and Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="lg:col-span-2">
+          <DashboardCharts 
+            data={charts} 
+            isLoading={chartsLoading}
+          />
+        </div>
+        <div>
+          <QuickActions 
+            data={quickActions} 
+            isLoading={quickActionsLoading}
+          />
+        </div>
       </div>
 
       {/* Recent Activities */}
-      <Card className="border-none shadow-md">
-        <CardHeader className="p-4 md:p-6 pb-2">
-          <CardTitle className="flex items-center text-base md:text-lg">
-            <Clock className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-            Recent Activities
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm">Latest updates from across your business</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 max-h-[300px] overflow-y-auto">
-          <ul className="divide-y divide-gray-200">
-            {recentActivities.map((activity) => (
-              <ActivityItem 
-                key={activity.id} 
-                activity={activity} 
-                getActivityIcon={getActivityIcon}
-              />
-            ))}
-          </ul>
-        </CardContent>
-        <CardFooter className="border-t p-3 md:p-4 text-center">
-          <Button 
-            variant="ghost"
-            onClick={handleViewAllActivities}
-            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
-          >
-            View All Activities
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Upcoming Renewals */}
-      <Card className="border-none shadow-md">
-        <CardHeader className="p-4 md:p-6 pb-2">
-          <CardTitle className="flex items-center text-base md:text-lg">
-            <Calendar className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-            Upcoming Renewals
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm">Policies due for renewal in the next 30 days</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {isMobile ? (
-            <div className="divide-y divide-gray-200">
-              {upcomingRenewals.map((renewal) => (
-                <RenewalItemMobile 
-                  key={renewal.id} 
-                  renewal={renewal} 
-                  onClick={handleNavigateToPolicies}
-                />
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Policy</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Premium</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {upcomingRenewals.map((renewal) => (
-                  <TableRow key={renewal.id} className="hover:bg-gray-50 cursor-pointer" onClick={handleNavigateToPolicies}>
-                    <TableCell className="font-medium">{renewal.client}</TableCell>
-                    <TableCell>
-                      <div>{renewal.policyType}</div>
-                      <div className="text-xs text-gray-400">{renewal.policyNumber}</div>
-                    </TableCell>
-                    <TableCell>{renewal.dueDate}</TableCell>
-                    <TableCell>{renewal.premium}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-        <CardFooter className="border-t p-3 md:p-4 text-center">
-          <Button 
-            variant="ghost"
-            onClick={handleViewAllRenewals}
-            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
-          >
-            View All Renewals
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Top Performing Agents */}
-      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/agents')}>
-        <CardHeader className="p-4 md:p-6 pb-2">
-          <CardTitle className="flex items-center text-base md:text-lg">
-            <Users className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-            Top Performing Agents
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm">Based on policies sold and premium generated</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {isMobile ? (
-            <div className="divide-y divide-gray-200">
-              {topAgents.map((agent, index) => (
-                <div key={index} className="p-3 hover:bg-gray-50">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                      {agent.name.charAt(0)}
-                    </div>
-                    <div className="ml-3">
-                      <p className="font-medium text-sm">{agent.name}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs mt-2">
-                    <div>
-                      <span className="text-gray-500 block">Policies</span>
-                      <span className="font-medium">{agent.policies}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block">Premium</span>
-                      <span className="font-medium">{agent.premium}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block">Conversion</span>
-                      <span className="font-medium">{agent.conversion}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-gray-50">
-                <TableRow>
-                  <TableHead>Agent Name</TableHead>
-                  <TableHead>Policies Sold</TableHead>
-                  <TableHead>Premium Generated</TableHead>
-                  <TableHead>Conversion Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topAgents.map((agent, index) => (
-                  <TableRow key={index} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                          {agent.name.charAt(0)}
-                        </div>
-                        <div className="ml-3 font-medium">
-                          {agent.name}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{agent.policies}</TableCell>
-                    <TableCell>{agent.premium}</TableCell>
-                    <TableCell>{agent.conversion}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-        <CardFooter className="border-t p-3 md:p-4 text-center">
-          <Button 
-            variant="ghost" 
-            onClick={(e) => { e.stopPropagation(); navigate('/agents'); }}
-            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
-          >
-            View All Agents
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {/* Claims Status */}
-      <Card className="border-none shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => navigate('/claims')}>
-        <CardHeader className="p-4 md:p-6 pb-2">
-          <CardTitle className="flex items-center text-base md:text-lg">
-            <ShieldCheck className="h-4 w-4 md:h-5 md:w-5 mr-2" />
-            Claims Status
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm">Summary of all claims</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="w-full overflow-hidden">
-            <MemoizedPieChart 
-              data={chartData.claims}
-              height={chartDimensions.height}
-              radius={chartDimensions.pieRadius}
-              isMobile={isMobile}
-            />
-          </div>
-          <div className="mt-1 md:mt-2 space-y-2 px-2 md:px-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                <span className="text-xs md:text-sm">Approved</span>
-              </div>
-              <span className="text-xs md:text-sm font-medium">65%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-yellow-400 mr-2"></div>
-                <span className="text-xs md:text-sm">Pending</span>
-              </div>
-              <span className="text-xs md:text-sm font-medium">25%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                <span className="text-xs md:text-sm">Rejected</span>
-              </div>
-              <span className="text-xs md:text-sm font-medium">10%</span>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="border-t p-3 md:p-4 text-center">
-          <Button 
-            variant="ghost"
-            onClick={(e) => { e.stopPropagation(); navigate('/claims'); }}
-            className="text-xs md:text-sm text-blue-600 hover:text-blue-800 w-full"
-          >
-            View All Claims
-          </Button>
-        </CardFooter>
-      </Card>
+      <RecentActivities 
+        data={activities} 
+        isLoading={activitiesLoading}
+      />
     </div>
   );
 };
 
-export default React.memo(Dashboard);
+export default Dashboard;

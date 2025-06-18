@@ -5,79 +5,143 @@ const Policy = require('../models/Policy');
 const Claim = require('../models/Claim');
 const Lead = require('../models/Lead');
 const Quotation = require('../models/Quotation');
+const Agent = require('../models/Agent');
 const Activity = require('../models/Activity');
 const { AppError } = require('../utils/errorHandler');
 const { successResponse } = require('../utils/responseHandler');
 
 /**
- * Get dashboard overview stats
- * @route GET /api/dashboard/overview
- * @access Private
+ * Get dashboard overview stats with role-based filtering
  */
 const getDashboardOverview = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const userRole = req.user.role;
     
-    // Build filter based on user role
-    const filter = userRole === 'super_admin' ? {} : { assignedTo: userId };
-    
-    // Get counts for different entities
+    // Build role-based filter
+    let filter = {};
+    if (userRole === 'agent') {
+      filter = { assignedAgentId: userId };
+    } else if (userRole === 'manager') {
+      // Get team members for manager
+      const teamMembers = await User.find({ role: 'agent' }).select('_id');
+      const teamIds = teamMembers.map(member => member._id);
+      teamIds.push(userId);
+      filter = { assignedAgentId: { $in: teamIds } };
+    }
+    // Super admin sees everything (no filter)
+
+    // Get real-time counts
     const [
-      totalClients,
-      activeClients,
-      totalPolicies,
-      activePolicies,
-      totalClaims,
-      pendingClaims,
-      totalLeads,
-      activeLeads,
-      totalQuotations,
-      pendingQuotations
+      clientStats,
+      policyStats,
+      claimStats,
+      leadStats,
+      quotationStats
     ] = await Promise.all([
-      Client.countDocuments(filter),
-      Client.countDocuments({ ...filter, status: 'active' }),
-      Policy.countDocuments(filter),
-      Policy.countDocuments({ ...filter, status: 'active' }),
-      Claim.countDocuments(filter),
-      Claim.countDocuments({ ...filter, status: { $in: ['submitted', 'under_review'] } }),
-      Lead.countDocuments(filter),
-      Lead.countDocuments({ ...filter, status: { $in: ['new', 'contacted', 'qualified'] } }),
-      Quotation.countDocuments(filter),
-      Quotation.countDocuments({ ...filter, status: { $in: ['draft', 'sent', 'under_review'] } })
+      Client.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            active: { $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] } }
+          }
+        }
+      ]),
+      Policy.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            active: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } }
+          }
+        }
+      ]),
+      Claim.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $in: ['$status', ['reported', 'under_review']] }, 1, 0] } }
+          }
+        }
+      ]),
+      Lead.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            active: { $sum: { $cond: [{ $in: ['$status', ['new', 'contacted', 'qualified']] }, 1, 0] } }
+          }
+        }
+      ]),
+      Quotation.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            pending: { $sum: { $cond: [{ $in: ['$status', ['draft', 'sent']] }, 1, 0] } }
+          }
+        }
+      ])
     ]);
-    
+
+    // Calculate trends (comparing with last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [
+      recentClients,
+      recentPolicies,
+      recentClaims,
+      recentLeads,
+      recentQuotations
+    ] = await Promise.all([
+      Client.countDocuments({ ...filter, createdAt: { $gte: thirtyDaysAgo } }),
+      Policy.countDocuments({ ...filter, createdAt: { $gte: thirtyDaysAgo } }),
+      Claim.countDocuments({ ...filter, createdAt: { $gte: thirtyDaysAgo } }),
+      Lead.countDocuments({ ...filter, createdAt: { $gte: thirtyDaysAgo } }),
+      Quotation.countDocuments({ ...filter, createdAt: { $gte: thirtyDaysAgo } })
+    ]);
+
     // Calculate conversion rates
-    const leadConversionRate = totalLeads > 0 ? ((activePolicies / totalLeads) * 100).toFixed(2) : 0;
-    const quotationConversionRate = totalQuotations > 0 ? ((activePolicies / totalQuotations) * 100).toFixed(2) : 0;
+    const totalLeads = leadStats[0]?.total || 0;
+    const totalPolicies = policyStats[0]?.total || 0;
+    const totalQuotations = quotationStats[0]?.total || 0;
     
+    const leadConversionRate = totalLeads > 0 ? ((totalPolicies / totalLeads) * 100).toFixed(2) : '0';
+    const quotationConversionRate = totalQuotations > 0 ? ((totalPolicies / totalQuotations) * 100).toFixed(2) : '0';
+
     const overview = {
       clients: {
-        total: totalClients,
-        active: activeClients,
-        trend: '+12%' // This would be calculated from historical data
+        total: clientStats[0]?.total || 0,
+        active: clientStats[0]?.active || 0,
+        trend: recentClients > 0 ? `+${recentClients}` : '0'
       },
       policies: {
-        total: totalPolicies,
-        active: activePolicies,
-        trend: '+8%'
+        total: policyStats[0]?.total || 0,
+        active: policyStats[0]?.active || 0,
+        trend: recentPolicies > 0 ? `+${recentPolicies}` : '0'
       },
       claims: {
-        total: totalClaims,
-        pending: pendingClaims,
-        trend: '-5%'
+        total: claimStats[0]?.total || 0,
+        pending: claimStats[0]?.pending || 0,
+        trend: recentClaims > 0 ? `+${recentClaims}` : '0'
       },
       leads: {
         total: totalLeads,
-        active: activeLeads,
+        active: leadStats[0]?.active || 0,
         conversionRate: leadConversionRate,
-        trend: '+15%'
+        trend: recentLeads > 0 ? `+${recentLeads}` : '0'
       },
       quotations: {
         total: totalQuotations,
-        pending: pendingQuotations,
+        pending: quotationStats[0]?.pending || 0,
         conversionRate: quotationConversionRate,
-        trend: '+10%'
+        trend: recentQuotations > 0 ? `+${recentQuotations}` : '0'
       }
     };
     
@@ -88,9 +152,7 @@ const getDashboardOverview = async (req, res, next) => {
 };
 
 /**
- * Get recent activities for dashboard
- * @route GET /api/dashboard/activities
- * @access Private
+ * Get recent activities with role-based filtering
  */
 const getRecentActivities = async (req, res, next) => {
   try {
@@ -98,20 +160,21 @@ const getRecentActivities = async (req, res, next) => {
     const userRole = req.user.role;
     const { limit = 10 } = req.query;
     
-    // Build filter based on user role
-    const filter = userRole === 'super_admin' ? {} : { 
-      $or: [
-        { performedBy: userId },
-        { assignedTo: userId },
-        { relatedUsers: userId }
-      ]
-    };
+    let filter = {};
+    if (userRole === 'agent') {
+      filter = { userId: userId };
+    } else if (userRole === 'manager') {
+      const teamMembers = await User.find({ role: 'agent' }).select('_id');
+      const teamIds = teamMembers.map(member => member._id);
+      teamIds.push(userId);
+      filter = { userId: { $in: teamIds } };
+    }
     
     const activities = await Activity.find(filter)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .populate('performedBy', 'name email')
-      .populate('relatedClient', 'name email')
+      .populate('relatedClient', 'firstName lastName email')
       .lean();
     
     successResponse(res, activities, 'Recent activities retrieved successfully', 200);
@@ -121,9 +184,7 @@ const getRecentActivities = async (req, res, next) => {
 };
 
 /**
- * Get performance metrics for dashboard
- * @route GET /api/dashboard/performance
- * @access Private
+ * Get performance metrics with real-time calculations
  */
 const getPerformanceMetrics = async (req, res, next) => {
   try {
@@ -131,7 +192,7 @@ const getPerformanceMetrics = async (req, res, next) => {
     const userRole = req.user.role;
     const { period = '30d' } = req.query;
     
-    // Calculate date range based on period
+    // Calculate date range
     const now = new Date();
     let startDate;
     switch (period) {
@@ -148,16 +209,25 @@ const getPerformanceMetrics = async (req, res, next) => {
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
     
-    const filter = userRole === 'super_admin' ? {} : { assignedTo: userId };
+    let filter = {};
+    if (userRole === 'agent') {
+      filter = { assignedAgentId: userId };
+    } else if (userRole === 'manager') {
+      const teamMembers = await User.find({ role: 'agent' }).select('_id');
+      const teamIds = teamMembers.map(member => member._id);
+      teamIds.push(userId);
+      filter = { assignedAgentId: { $in: teamIds } };
+    }
+    
     const dateFilter = { createdAt: { $gte: startDate, $lte: now } };
     
-    // Get metrics for the period
+    // Get real metrics
     const [
       newClients,
       newPolicies,
       newClaims,
       newLeads,
-      totalRevenue
+      revenueData
     ] = await Promise.all([
       Client.countDocuments({ ...filter, ...dateFilter }),
       Policy.countDocuments({ ...filter, ...dateFilter }),
@@ -165,9 +235,12 @@ const getPerformanceMetrics = async (req, res, next) => {
       Lead.countDocuments({ ...filter, ...dateFilter }),
       Policy.aggregate([
         { $match: { ...filter, ...dateFilter } },
-        { $group: { _id: null, total: { $sum: '$premium' } } }
+        { $group: { _id: null, total: { $sum: '$premium.amount' } } }
       ])
     ]);
+    
+    const totalRevenue = revenueData[0]?.total || 0;
+    const averageDealSize = newPolicies > 0 ? (totalRevenue / newPolicies).toFixed(2) : '0.00';
     
     const metrics = {
       period,
@@ -175,8 +248,8 @@ const getPerformanceMetrics = async (req, res, next) => {
       newPolicies,
       newClaims,
       newLeads,
-      totalRevenue: totalRevenue[0]?.total || 0,
-      averageDealSize: newPolicies > 0 ? ((totalRevenue[0]?.total || 0) / newPolicies).toFixed(2) : 0
+      totalRevenue,
+      averageDealSize
     };
     
     successResponse(res, metrics, 'Performance metrics retrieved successfully', 200);
@@ -186,9 +259,7 @@ const getPerformanceMetrics = async (req, res, next) => {
 };
 
 /**
- * Get dashboard charts data
- * @route GET /api/dashboard/charts
- * @access Private
+ * Get real-time charts data
  */
 const getChartsData = async (req, res, next) => {
   try {
@@ -196,13 +267,20 @@ const getChartsData = async (req, res, next) => {
     const userRole = req.user.role;
     const { type = 'all' } = req.query;
     
-    const filter = userRole === 'super_admin' ? {} : { assignedTo: userId };
+    let filter = {};
+    if (userRole === 'agent') {
+      filter = { assignedAgentId: userId };
+    } else if (userRole === 'manager') {
+      const teamMembers = await User.find({ role: 'agent' }).select('_id');
+      const teamIds = teamMembers.map(member => member._id);
+      teamIds.push(userId);
+      filter = { assignedAgentId: { $in: teamIds } };
+    }
     
-    // Get data for different chart types
     const chartsData = {};
     
     if (type === 'all' || type === 'revenue') {
-      // Revenue chart data (last 12 months)
+      // Revenue chart - last 12 months
       const revenueData = await Policy.aggregate([
         { $match: filter },
         {
@@ -211,8 +289,8 @@ const getChartsData = async (req, res, next) => {
               year: { $year: '$createdAt' },
               month: { $month: '$createdAt' }
             },
-            revenue: { $sum: '$premium' },
-            count: { $sum: 1 }
+            revenue: { $sum: '$premium.amount' },
+            policies: { $sum: 1 }
           }
         },
         { $sort: { '_id.year': 1, '_id.month': 1 } },
@@ -222,12 +300,12 @@ const getChartsData = async (req, res, next) => {
       chartsData.revenue = revenueData.map(item => ({
         month: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
         revenue: item.revenue,
-        policies: item.count
+        policies: item.policies
       }));
     }
     
     if (type === 'all' || type === 'leads') {
-      // Leads funnel data
+      // Leads funnel
       const leadsData = await Lead.aggregate([
         { $match: filter },
         {
@@ -252,7 +330,7 @@ const getChartsData = async (req, res, next) => {
           $group: {
             _id: '$status',
             count: { $sum: 1 },
-            totalAmount: { $sum: '$claimAmount' }
+            amount: { $sum: '$claimAmount' }
           }
         }
       ]);
@@ -260,7 +338,7 @@ const getChartsData = async (req, res, next) => {
       chartsData.claimsStatus = claimsData.map(item => ({
         status: item._id,
         count: item.count,
-        amount: item.totalAmount
+        amount: item.amount
       }));
     }
     
@@ -271,16 +349,22 @@ const getChartsData = async (req, res, next) => {
 };
 
 /**
- * Get dashboard quick actions data
- * @route GET /api/dashboard/quick-actions
- * @access Private
+ * Get quick actions data with role-based filtering
  */
 const getQuickActions = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const userRole = req.user.role;
     
-    const filter = userRole === 'super_admin' ? {} : { assignedTo: userId };
+    let filter = {};
+    if (userRole === 'agent') {
+      filter = { assignedAgentId: userId };
+    } else if (userRole === 'manager') {
+      const teamMembers = await User.find({ role: 'agent' }).select('_id');
+      const teamIds = teamMembers.map(member => member._id);
+      teamIds.push(userId);
+      filter = { assignedAgentId: { $in: teamIds } };
+    }
     
     // Get pending items that need attention
     const [
@@ -289,7 +373,7 @@ const getQuickActions = async (req, res, next) => {
       overdueLeads,
       pendingQuotations
     ] = await Promise.all([
-      Claim.find({ ...filter, status: { $in: ['submitted', 'under_review'] } })
+      Claim.find({ ...filter, status: { $in: ['reported', 'under_review'] } })
         .limit(5)
         .select('claimId claimAmount status createdAt')
         .lean(),
@@ -304,14 +388,14 @@ const getQuickActions = async (req, res, next) => {
       Lead.find({ 
         ...filter, 
         status: { $in: ['new', 'contacted'] },
-        lastContactDate: { $lte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+        updatedAt: { $lte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
       })
         .limit(5)
-        .select('name email phone status lastContactDate')
+        .select('name email phone status updatedAt')
         .lean(),
       Quotation.find({ ...filter, status: 'sent' })
         .limit(5)
-        .select('quotationNumber totalAmount status createdAt')
+        .select('quotationId premiumAmount status createdAt')
         .lean()
     ]);
     
