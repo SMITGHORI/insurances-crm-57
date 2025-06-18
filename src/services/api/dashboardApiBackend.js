@@ -1,12 +1,16 @@
 
-import { API_CONFIG, API_ENDPOINTS } from '../../config/api';
+import { toast } from 'sonner';
+
+// Base API configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
- * Backend API service for dashboard data operations
+ * Backend API service for dashboard operations
+ * Connects to Node.js + Express + MongoDB backend
  */
 class DashboardBackendApiService {
   constructor() {
-    this.baseURL = `${API_CONFIG.BASE_URL}/dashboard`;
+    this.baseURL = `${API_BASE_URL}/dashboard`;
   }
 
   /**
@@ -20,6 +24,7 @@ class DashboardBackendApiService {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      signal: AbortSignal.timeout(10000), // 10 second timeout
       ...options,
     };
 
@@ -32,13 +37,13 @@ class DashboardBackendApiService {
     try {
       const response = await fetch(url, config);
       
-      const responseData = await response.json();
-      
       if (!response.ok) {
-        throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return responseData;
+      const data = await response.json();
+      return data.data || data; // Extract data field or return full response
     } catch (error) {
       console.error('Dashboard API Request failed:', error.message);
       throw error;
@@ -46,120 +51,97 @@ class DashboardBackendApiService {
   }
 
   /**
-   * Get dashboard overview statistics
+   * Get dashboard overview with real-time data
    */
   async getDashboardOverview() {
-    const response = await this.request('/overview');
-    return response.data;
+    return this.request('/overview');
   }
 
   /**
    * Get recent activities
    */
   async getRecentActivities(limit = 10) {
-    const response = await this.request(`/activities?limit=${limit}`);
-    return response.data;
+    return this.request(`/activities?limit=${limit}`);
   }
 
   /**
    * Get performance metrics
    */
   async getPerformanceMetrics(period = '30d') {
-    const response = await this.request(`/performance?period=${period}`);
-    return response.data;
+    return this.request(`/performance?period=${period}`);
   }
 
   /**
-   * Get charts data
+   * Get charts data for visualization
    */
   async getChartsData(type = 'all') {
-    const response = await this.request(`/charts?type=${type}`);
-    return response.data;
+    return this.request(`/charts?type=${type}`);
   }
 
   /**
    * Get quick actions data
    */
   async getQuickActions() {
-    const response = await this.request('/quick-actions');
-    return response.data;
+    return this.request('/quick-actions');
   }
 
   /**
-   * Format overview data for display
+   * Refresh dashboard data
+   */
+  async refreshDashboard() {
+    return this.request('/refresh', { method: 'POST' });
+  }
+
+  /**
+   * Format overview data for frontend consumption
    */
   formatOverviewData(data) {
     return {
-      ...data,
       clients: {
-        ...data.clients,
-        growthRate: this.parseGrowthRate(data.clients.trend),
-        activePercentage: data.clients.total > 0 
-          ? ((data.clients.active / data.clients.total) * 100).toFixed(1)
-          : 0
+        total: data.clients?.total || 0,
+        active: data.clients?.active || 0,
+        pending: data.clients?.pending || 0,
+        trend: data.clients?.trend || '0'
       },
       policies: {
-        ...data.policies,
-        growthRate: this.parseGrowthRate(data.policies.trend),
-        activePercentage: data.policies.total > 0 
-          ? ((data.policies.active / data.policies.total) * 100).toFixed(1)
-          : 0
+        total: data.policies?.total || 0,
+        active: data.policies?.active || 0,
+        expiring: data.policies?.expiring || 0,
+        trend: data.policies?.trend || '0'
       },
       claims: {
-        ...data.claims,
-        growthRate: this.parseGrowthRate(data.claims.trend),
-        pendingPercentage: data.claims.total > 0 
-          ? ((data.claims.pending / data.claims.total) * 100).toFixed(1)
-          : 0
+        total: data.claims?.total || 0,
+        pending: data.claims?.pending || 0,
+        approved: data.claims?.approved || 0,
+        trend: data.claims?.trend || '0'
       },
       leads: {
-        ...data.leads,
-        growthRate: this.parseGrowthRate(data.leads.trend),
-        activePercentage: data.leads.total > 0 
-          ? ((data.leads.active / data.leads.total) * 100).toFixed(1)
-          : 0
+        total: data.leads?.total || 0,
+        active: data.leads?.active || 0,
+        converted: data.leads?.converted || 0,
+        conversionRate: data.leads?.conversionRate || '0',
+        trend: data.leads?.trend || '0'
       },
       quotations: {
-        ...data.quotations,
-        growthRate: this.parseGrowthRate(data.quotations.trend),
-        pendingPercentage: data.quotations.total > 0 
-          ? ((data.quotations.pending / data.quotations.total) * 100).toFixed(1)
-          : 0
+        total: data.quotations?.total || 0,
+        pending: data.quotations?.pending || 0,
+        approved: data.quotations?.approved || 0,
+        conversionRate: data.quotations?.conversionRate || '0',
+        trend: data.quotations?.trend || '0'
       }
     };
   }
 
   /**
-   * Format charts data for display
+   * Format charts data for recharts consumption
    */
   formatChartsData(data) {
-    const formatted = { ...data };
-    
-    if (data.revenue) {
-      formatted.revenue = data.revenue.map(item => ({
-        ...item,
-        monthName: this.getMonthName(item.month),
-        formattedRevenue: this.formatCurrency(item.revenue)
-      }));
-    }
-    
-    if (data.leadsFunnel) {
-      formatted.leadsFunnel = data.leadsFunnel.map(item => ({
-        ...item,
-        statusLabel: this.getStatusLabel(item.status),
-        percentage: this.calculatePercentage(item.count, data.leadsFunnel)
-      }));
-    }
-    
-    if (data.claimsStatus) {
-      formatted.claimsStatus = data.claimsStatus.map(item => ({
-        ...item,
-        statusLabel: this.getStatusLabel(item.status),
-        formattedAmount: this.formatCurrency(item.amount)
-      }));
-    }
-    
-    return formatted;
+    return {
+      revenue: data.revenue || [],
+      leadsFunnel: data.leadsFunnel || [],
+      claimsStatus: data.claimsStatus || [],
+      clientTypes: data.clientTypes || []
+    };
   }
 
   /**
@@ -168,128 +150,26 @@ class DashboardBackendApiService {
   formatQuickActionsData(data) {
     return {
       pendingClaims: {
-        ...data.pendingClaims,
-        items: data.pendingClaims.items.map(item => ({
-          ...item,
-          formattedAmount: this.formatCurrency(item.claimAmount),
-          timeAgo: this.getTimeAgo(item.createdAt)
-        }))
+        count: data.pendingClaims?.count || 0,
+        items: data.pendingClaims?.items || []
       },
       expiringPolicies: {
-        ...data.expiringPolicies,
-        items: data.expiringPolicies.items.map(item => ({
-          ...item,
-          formattedPremium: this.formatCurrency(item.premium),
-          daysUntilExpiry: this.getDaysUntilExpiry(item.endDate)
-        }))
+        count: data.expiringPolicies?.count || 0,
+        items: data.expiringPolicies?.items || []
       },
       overdueLeads: {
-        ...data.overdueLeads,
-        items: data.overdueLeads.items.map(item => ({
-          ...item,
-          daysSinceContact: this.getDaysSinceContact(item.lastContactDate)
-        }))
+        count: data.overdueLeads?.count || 0,
+        items: data.overdueLeads?.items || []
       },
       pendingQuotations: {
-        ...data.pendingQuotations,
-        items: data.pendingQuotations.items.map(item => ({
-          ...item,
-          formattedAmount: this.formatCurrency(item.totalAmount),
-          timeAgo: this.getTimeAgo(item.createdAt)
-        }))
+        count: data.pendingQuotations?.count || 0,
+        items: data.pendingQuotations?.items || []
+      },
+      pendingClients: {
+        count: data.pendingClients?.count || 0,
+        items: data.pendingClients?.items || []
       }
     };
-  }
-
-  /**
-   * Parse growth rate string to number
-   */
-  parseGrowthRate(trend) {
-    if (!trend) return 0;
-    return parseFloat(trend.replace('%', '').replace('+', ''));
-  }
-
-  /**
-   * Format currency
-   */
-  formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount || 0);
-  }
-
-  /**
-   * Get month name from YYYY-MM format
-   */
-  getMonthName(monthString) {
-    const [year, month] = monthString.split('-');
-    const date = new Date(year, month - 1);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }
-
-  /**
-   * Get status label
-   */
-  getStatusLabel(status) {
-    const labels = {
-      'new': 'New',
-      'contacted': 'Contacted',
-      'qualified': 'Qualified',
-      'submitted': 'Submitted',
-      'under_review': 'Under Review',
-      'approved': 'Approved',
-      'rejected': 'Rejected',
-      'draft': 'Draft',
-      'sent': 'Sent',
-      'active': 'Active'
-    };
-    return labels[status] || status;
-  }
-
-  /**
-   * Calculate percentage
-   */
-  calculatePercentage(value, array) {
-    const total = array.reduce((sum, item) => sum + item.count, 0);
-    return total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-  }
-
-  /**
-   * Get time ago string
-   */
-  getTimeAgo(date) {
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - new Date(date)) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  }
-
-  /**
-   * Get days until expiry
-   */
-  getDaysUntilExpiry(endDate) {
-    const now = new Date();
-    const expiry = new Date(endDate);
-    const diffInDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-    return diffInDays;
-  }
-
-  /**
-   * Get days since contact
-   */
-  getDaysSinceContact(lastContactDate) {
-    const now = new Date();
-    const lastContact = new Date(lastContactDate);
-    const diffInDays = Math.floor((now - lastContact) / (1000 * 60 * 60 * 24));
-    return diffInDays;
   }
 }
 

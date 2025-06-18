@@ -1,720 +1,960 @@
+
 const Client = require('../models/Client');
-const { AppError } = require('../utils/errorHandler');
-const { successResponse, errorResponse } = require('../utils/responseHandler');
-const { uploadFile, deleteFile } = require('../utils/fileHandler');
-const exportService = require('../utils/exportService');
+const Activity = require('../models/Activity');
+const User = require('../models/User');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs').promises;
 
-class ClientController {
-  /**
-   * Get all clients with filtering, pagination, and search
-   */
-  async getAllClients(req, res, next) {
-    try {
-      const {
-        page = 1,
-        limit = 10,
-        search,
-        type,
-        status,
-        sortField = 'createdAt',
-        sortDirection = 'desc'
-      } = req.query;
+/**
+ * Client Controller with full CRUD operations and role-based access
+ */
 
-      // Build filter object with role-based access
-      const filter = {};
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
+// Get all clients with filtering, pagination, and role-based access
+exports.getAllClients = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      type, 
+      status = 'All', 
+      sortField = 'createdAt', 
+      sortDirection = 'desc' 
+    } = req.query;
 
-      // Type filter
-      if (type && type !== 'all') {
-        filter.clientType = type;
-      }
+    const { role, _id: userId } = req.user;
+    let filter = {};
 
-      // Status filter
-      if (status && status !== 'All') {
-        filter.status = status;
-      }
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      // Managers see clients from their team/region
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId); // Include manager's own clients
+      filter.assignedAgentId = { $in: agentIds };
+    }
+    // Super admin sees all clients (no additional filter)
 
-      // Search functionality
-      if (search) {
-        filter.$or = [
-          { clientId: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
-          { 'individualData.firstName': { $regex: search, $options: 'i' } },
-          { 'individualData.lastName': { $regex: search, $options: 'i' } },
-          { 'corporateData.companyName': { $regex: search, $options: 'i' } },
-          { 'groupData.groupName': { $regex: search, $options: 'i' } }
-        ];
-      }
+    // Apply search filter
+    if (search) {
+      filter.$or = [
+        { clientId: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { 'individualData.firstName': { $regex: search, $options: 'i' } },
+        { 'individualData.lastName': { $regex: search, $options: 'i' } },
+        { 'corporateData.companyName': { $regex: search, $options: 'i' } },
+        { 'groupData.groupName': { $regex: search, $options: 'i' } }
+      ];
+    }
 
-      // Pagination
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
-      const skip = (pageNum - 1) * limitNum;
+    // Apply type filter
+    if (type && type !== 'all') {
+      filter.clientType = type;
+    }
 
-      // Sorting
-      const sort = {};
+    // Apply status filter
+    if (status && status !== 'All') {
+      filter.status = status;
+    }
+
+    // Build sort object
+    const sort = {};
+    if (sortField === 'name') {
+      sort['individualData.firstName'] = sortDirection === 'desc' ? -1 : 1;
+    } else {
       sort[sortField] = sortDirection === 'desc' ? -1 : 1;
+    }
 
-      // Execute query
-      const [clients, totalCount] = await Promise.all([
-        Client.find(filter)
-          .populate('assignedAgentId', 'name email')
-          .sort(sort)
-          .skip(skip)
-          .limit(limitNum)
-          .lean(),
-        Client.countDocuments(filter)
-      ]);
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const clients = await Client.find(filter)
+      .populate('assignedAgentId', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName')
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
 
-      // Calculate pagination info
-      const totalPages = Math.ceil(totalCount / limitNum);
+    const totalClients = await Client.countDocuments(filter);
 
-      return successResponse(res, {
-        data: clients,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems: totalCount,
-          itemsPerPage: limitNum
+    // Transform data for frontend compatibility
+    const transformedClients = clients.map(client => ({
+      _id: client._id,
+      clientId: client.clientId,
+      clientType: client.clientType,
+      name: client.displayName,
+      email: client.email,
+      phone: client.phone,
+      type: client.clientType.charAt(0).toUpperCase() + client.clientType.slice(1),
+      contact: client.phone,
+      location: `${client.city}, ${client.state}`,
+      status: client.status,
+      policies: client.policiesCount,
+      createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
+      assignedAgent: client.assignedAgentId,
+      // Include type-specific data
+      ...client.individualData?.toObject(),
+      ...client.corporateData?.toObject(),
+      ...client.groupData?.toObject()
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedClients,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalClients / parseInt(limit)),
+        totalItems: totalClients,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch clients',
+      error: error.message
+    });
+  }
+};
+
+// Get client by ID with role-based access
+exports.getClientById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, _id: userId } = req.user;
+
+    let filter = { _id: id };
+
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
+    }
+
+    const client = await Client.findOne(filter)
+      .populate('assignedAgentId', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName')
+      .populate('updatedBy', 'firstName lastName');
+
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found or access denied'
+      });
+    }
+
+    // Transform for frontend
+    const transformedClient = {
+      _id: client._id,
+      clientId: client.clientId,
+      clientType: client.clientType,
+      name: client.displayName,
+      email: client.email,
+      phone: client.phone,
+      altPhone: client.altPhone,
+      address: client.address,
+      city: client.city,
+      state: client.state,
+      pincode: client.pincode,
+      country: client.country,
+      status: client.status,
+      source: client.source,
+      notes: client.notes,
+      assignedAgentId: client.assignedAgentId?._id,
+      assignedAgent: client.assignedAgentId,
+      policies: client.policiesCount,
+      documents: client.documents,
+      createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
+      createdBy: client.createdBy,
+      updatedBy: client.updatedBy,
+      // Include type-specific data
+      ...client.individualData?.toObject(),
+      ...client.corporateData?.toObject(),
+      ...client.groupData?.toObject()
+    };
+
+    res.status(200).json({
+      success: true,
+      data: transformedClient
+    });
+
+  } catch (error) {
+    console.error('Error fetching client:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch client',
+      error: error.message
+    });
+  }
+};
+
+// Create new client with business logic validation
+exports.createClient = async (req, res) => {
+  try {
+    const { role, _id: userId } = req.user;
+    const clientData = req.body;
+
+    // Business logic validations
+    await validateBusinessRules(clientData);
+
+    // Auto-assign to agent if they're creating the client
+    if (role === 'agent' && !clientData.assignedAgentId) {
+      clientData.assignedAgentId = userId;
+    }
+
+    // Set audit fields
+    clientData.createdBy = userId;
+
+    // Create type-specific data structure
+    const clientDoc = {
+      ...clientData,
+      individualData: clientData.clientType === 'individual' ? clientData : undefined,
+      corporateData: clientData.clientType === 'corporate' ? clientData : undefined,
+      groupData: clientData.clientType === 'group' ? clientData : undefined
+    };
+
+    const client = new Client(clientDoc);
+    await client.save();
+
+    // Log activity
+    await Activity.logActivity({
+      action: `Created ${clientData.clientType} client`,
+      type: 'client',
+      operation: 'create',
+      description: `Created client: ${client.displayName}`,
+      entityType: 'Client',
+      entityId: client._id,
+      entityName: client.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    const populatedClient = await Client.findById(client._id)
+      .populate('assignedAgentId', 'firstName lastName email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Client created successfully',
+      data: transformClientResponse(populatedClient)
+    });
+
+  } catch (error) {
+    console.error('Error creating client:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to create client',
+      errors: error.errors || []
+    });
+  }
+};
+
+// Update client with role-based restrictions
+exports.updateClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, _id: userId } = req.user;
+    const updateData = req.body;
+
+    // Check access permissions
+    let filter = { _id: id };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
+    }
+
+    const existingClient = await Client.findOne(filter);
+    if (!existingClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found or access denied'
+      });
+    }
+
+    // Validate business rules for updates
+    await validateBusinessRules(updateData, id);
+
+    // Restrict agent updates to certain fields only
+    if (role === 'agent') {
+      const allowedFields = ['phone', 'altPhone', 'address', 'city', 'state', 'pincode', 'notes'];
+      const restrictedUpdate = {};
+      allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+          restrictedUpdate[field] = updateData[field];
         }
       });
-    } catch (error) {
-      next(error);
+      Object.assign(updateData, restrictedUpdate);
     }
+
+    // Set audit fields
+    updateData.updatedBy = userId;
+
+    // Update type-specific data
+    if (updateData.clientType) {
+      if (updateData.clientType === 'individual') {
+        updateData.individualData = updateData;
+        updateData.corporateData = undefined;
+        updateData.groupData = undefined;
+      } else if (updateData.clientType === 'corporate') {
+        updateData.corporateData = updateData;
+        updateData.individualData = undefined;
+        updateData.groupData = undefined;
+      } else if (updateData.clientType === 'group') {
+        updateData.groupData = updateData;
+        updateData.individualData = undefined;
+        updateData.corporateData = undefined;
+      }
+    }
+
+    const updatedClient = await Client.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('assignedAgentId', 'firstName lastName email');
+
+    // Log activity
+    await Activity.logActivity({
+      action: `Updated ${updatedClient.clientType} client`,
+      type: 'client',
+      operation: 'update',
+      description: `Updated client: ${updatedClient.displayName}`,
+      entityType: 'Client',
+      entityId: updatedClient._id,
+      entityName: updatedClient.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Client updated successfully',
+      data: transformClientResponse(updatedClient)
+    });
+
+  } catch (error) {
+    console.error('Error updating client:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update client',
+      errors: error.errors || []
+    });
   }
+};
 
-  /**
-   * Export clients data
-   */
-  async exportClients(req, res, next) {
+// Delete client (Super Admin and Manager only)
+exports.deleteClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, _id: userId } = req.user;
+
+    const client = await Client.findById(id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Check if client has active policies or claims
+    // const activePolicies = await Policy.countDocuments({ clientId: id, status: 'Active' });
+    // const activeClaims = await Claim.countDocuments({ clientId: id, status: { $in: ['Pending', 'Under Review'] } });
+    
+    // if (activePolicies > 0 || activeClaims > 0) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'Cannot delete client with active policies or claims'
+    //   });
+    // }
+
+    await Client.findByIdAndDelete(id);
+
+    // Log activity
+    await Activity.logActivity({
+      action: `Deleted ${client.clientType} client`,
+      type: 'client',
+      operation: 'delete',
+      description: `Deleted client: ${client.displayName}`,
+      entityType: 'Client',
+      entityId: client._id,
+      entityName: client.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Client deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting client:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete client',
+      error: error.message
+    });
+  }
+};
+
+// Upload client document
+exports.uploadDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentType } = req.body;
+    const { role, _id: userId } = req.user;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Check client access
+    let filter = { _id: id };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    }
+
+    const client = await Client.findOne(filter);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found or access denied'
+      });
+    }
+
+    // Create document object
+    const document = {
+      documentType,
+      fileName: req.file.originalname,
+      fileUrl: `/uploads/documents/${req.file.filename}`,
+      fileSize: req.file.size,
+      uploadedBy: userId
+    };
+
+    // Remove existing document of same type
+    client.documents = client.documents.filter(doc => doc.documentType !== documentType);
+    
+    // Add new document
+    client.documents.push(document);
+    await client.save();
+
+    // Log activity
+    await Activity.logActivity({
+      action: `Uploaded ${documentType} document`,
+      type: 'document',
+      operation: 'create',
+      description: `Uploaded ${documentType} document for client: ${client.displayName}`,
+      entityType: 'Client',
+      entityId: client._id,
+      entityName: client.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Document uploaded successfully',
+      data: document
+    });
+
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload document',
+      error: error.message
+    });
+  }
+};
+
+// Get client documents
+exports.getClientDocuments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, _id: userId } = req.user;
+
+    let filter = { _id: id };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    }
+
+    const client = await Client.findOne(filter).select('documents');
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found or access denied'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: client.documents
+    });
+
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch documents',
+      error: error.message
+    });
+  }
+};
+
+// Delete client document
+exports.deleteDocument = async (req, res) => {
+  try {
+    const { id, documentId } = req.params;
+    const { role, _id: userId } = req.user;
+
+    let filter = { _id: id };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    }
+
+    const client = await Client.findOne(filter);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found or access denied'
+      });
+    }
+
+    const document = client.documents.id(documentId);
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Delete physical file
     try {
-      const { format, type, filters, selectedIds, fields } = req.body;
-      
-      // Build filter object with role-based access
-      const filter = {};
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
+      const filePath = path.join(__dirname, '..', document.fileUrl);
+      await fs.unlink(filePath);
+    } catch (fileError) {
+      console.warn('Could not delete physical file:', fileError.message);
+    }
 
-      // Handle different export types
-      switch (type) {
-        case 'selected':
-          if (!selectedIds || selectedIds.length === 0) {
-            throw new AppError('No clients selected for export', 400);
-          }
-          filter._id = { $in: selectedIds.map(id => mongoose.Types.ObjectId(id)) };
-          break;
-          
-        case 'filtered':
-          if (filters) {
-            if (filters.search) {
-              filter.$or = [
-                { clientId: { $regex: filters.search, $options: 'i' } },
-                { email: { $regex: filters.search, $options: 'i' } },
-                { 'individualData.firstName': { $regex: filters.search, $options: 'i' } },
-                { 'individualData.lastName': { $regex: filters.search, $options: 'i' } },
-                { 'corporateData.companyName': { $regex: filters.search, $options: 'i' } },
-                { 'groupData.groupName': { $regex: filters.search, $options: 'i' } }
-              ];
-            }
-            if (filters.type && filters.type !== 'all') {
-              filter.clientType = filters.type;
-            }
-            if (filters.status && filters.status !== 'All') {
-              filter.status = filters.status;
-            }
-            if (filters.agentId) {
-              filter.assignedAgentId = filters.agentId;
-            }
-          }
-          break;
-          
-        case 'dateRange':
-          if (filters && filters.startDate && filters.endDate) {
-            filter.createdAt = {
-              $gte: new Date(filters.startDate),
-              $lte: new Date(filters.endDate)
-            };
-          }
-          break;
-          
-        case 'all':
-        default:
-          // No additional filters needed
-          break;
-      }
+    // Remove from database
+    client.documents.id(documentId).remove();
+    await client.save();
 
-      // Fetch clients data
-      const clients = await Client.find(filter)
-        .populate('assignedAgentId', 'name email')
-        .lean();
+    // Log activity
+    await Activity.logActivity({
+      action: `Deleted ${document.documentType} document`,
+      type: 'document',
+      operation: 'delete',
+      description: `Deleted ${document.documentType} document for client: ${client.displayName}`,
+      entityType: 'Client',
+      entityId: client._id,
+      entityName: client.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
 
-      if (clients.length === 0) {
-        throw new AppError('No clients found for export', 404);
-      }
+    res.status(200).json({
+      success: true,
+      message: 'Document deleted successfully'
+    });
 
-      // Add display names for better export
-      const clientsWithDisplayNames = clients.map(client => ({
-        ...client,
-        displayName: client.displayName || this.getClientDisplayName(client),
-        assignedAgentName: client.assignedAgentId?.name || 'Unassigned'
-      }));
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete document',
+      error: error.message
+    });
+  }
+};
 
-      // Format data for export
-      const formattedData = exportService.formatDataForExport(clientsWithDisplayNames, 'clients');
-      
-      // Generate filename
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `clients_export_${timestamp}_${Date.now()}`;
+// Search clients
+exports.searchClients = async (req, res) => {
+  try {
+    const { query } = req.params;
+    const { limit = 10 } = req.query;
+    const { role, _id: userId } = req.user;
 
-      let result;
-      if (format === 'excel') {
-        result = await exportService.generateExcel(formattedData, fields, filename, 'Clients');
-      } else {
-        result = await exportService.generateCSV(formattedData, fields, filename);
-      }
+    let filter = {
+      $text: { $search: query }
+    };
 
-      // Set response headers for file download
-      res.setHeader('Content-Type', result.contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
-      
-      // Send file
-      res.sendFile(result.filePath, (err) => {
-        if (err) {
-          console.error('Error sending file:', err);
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
+    }
+
+    const clients = await Client.find(filter)
+      .populate('assignedAgentId', 'firstName lastName')
+      .sort({ score: { $meta: 'textScore' } })
+      .limit(parseInt(limit));
+
+    const transformedClients = clients.map(client => ({
+      _id: client._id,
+      clientId: client.clientId,
+      name: client.displayName,
+      email: client.email,
+      phone: client.phone,
+      type: client.clientType,
+      status: client.status
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedClients
+    });
+
+  } catch (error) {
+    console.error('Error searching clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search clients',
+      error: error.message
+    });
+  }
+};
+
+// Get clients by agent
+exports.getClientsByAgent = async (req, res) => {
+  try {
+    const { agentId } = req.params;
+    const { role, _id: userId } = req.user;
+
+    // Authorization check
+    if (role === 'agent' && agentId !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
+    }
+
+    const clients = await Client.find({ assignedAgentId: agentId })
+      .populate('assignedAgentId', 'firstName lastName')
+      .sort({ createdAt: -1 });
+
+    const transformedClients = clients.map(client => transformClientResponse(client));
+
+    res.status(200).json({
+      success: true,
+      data: transformedClients
+    });
+
+  } catch (error) {
+    console.error('Error fetching agent clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch agent clients',
+      error: error.message
+    });
+  }
+};
+
+// Assign client to agent
+exports.assignClientToAgent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { agentId } = req.body;
+    const { role, _id: userId } = req.user;
+
+    const client = await Client.findById(id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Verify agent exists
+    const agent = await User.findById(agentId);
+    if (!agent || agent.role !== 'agent') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid agent ID'
+      });
+    }
+
+    client.assignedAgentId = agentId;
+    client.updatedBy = userId;
+    await client.save();
+
+    // Log activity
+    await Activity.logActivity({
+      action: 'Assigned client to agent',
+      type: 'client',
+      operation: 'update',
+      description: `Assigned client ${client.displayName} to agent ${agent.firstName} ${agent.lastName}`,
+      entityType: 'Client',
+      entityId: client._id,
+      entityName: client.displayName,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Client assigned successfully',
+      data: await Client.findById(id).populate('assignedAgentId', 'firstName lastName email')
+    });
+
+  } catch (error) {
+    console.error('Error assigning client:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to assign client',
+      error: error.message
+    });
+  }
+};
+
+// Get client statistics
+exports.getClientStats = async (req, res) => {
+  try {
+    const { role, _id: userId } = req.user;
+
+    let matchFilter = {};
+    if (role === 'agent') {
+      matchFilter.assignedAgentId = new mongoose.Types.ObjectId(userId);
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      matchFilter.assignedAgentId = { $in: agentIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
+    const stats = await Client.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: null,
+          totalClients: { $sum: 1 },
+          activeClients: { $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] } },
+          pendingClients: { $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] } },
+          inactiveClients: { $sum: { $cond: [{ $eq: ['$status', 'Inactive'] }, 1, 0] } },
+          individualClients: { $sum: { $cond: [{ $eq: ['$clientType', 'individual'] }, 1, 0] } },
+          corporateClients: { $sum: { $cond: [{ $eq: ['$clientType', 'corporate'] }, 1, 0] } },
+          groupClients: { $sum: { $cond: [{ $eq: ['$clientType', 'group'] }, 1, 0] } },
+          totalPolicies: { $sum: '$policiesCount' },
+          avgPoliciesPerClient: { $avg: '$policiesCount' }
         }
-        // Clean up file after sending
-        setTimeout(() => {
-          exportService.cleanupFile(result.filePath);
-        }, 5000);
-      });
+      }
+    ]);
 
-    } catch (error) {
-      next(error);
+    const result = stats[0] || {
+      totalClients: 0,
+      activeClients: 0,
+      pendingClients: 0,
+      inactiveClients: 0,
+      individualClients: 0,
+      corporateClients: 0,
+      groupClients: 0,
+      totalPolicies: 0,
+      avgPoliciesPerClient: 0
+    };
+
+    // Calculate conversion rate (active clients / total clients)
+    result.conversionRate = result.totalClients > 0 
+      ? ((result.activeClients / result.totalClients) * 100).toFixed(2)
+      : 0;
+
+    // Get recent client growth
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentClients = await Client.countDocuments({
+      ...matchFilter,
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+
+    result.recentGrowth = recentClients;
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('Error fetching client stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch client statistics',
+      error: error.message
+    });
+  }
+};
+
+// Export clients data
+exports.exportClients = async (req, res) => {
+  try {
+    const { format = 'csv', filters = {} } = req.body;
+    const { role, _id: userId } = req.user;
+
+    let filter = {};
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
+    }
+
+    // Apply additional filters
+    Object.assign(filter, filters);
+
+    const clients = await Client.find(filter)
+      .populate('assignedAgentId', 'firstName lastName email')
+      .sort({ createdAt: -1 });
+
+    // Transform data for export
+    const exportData = clients.map(client => ({
+      clientId: client.clientId,
+      clientType: client.clientType,
+      name: client.displayName,
+      email: client.email,
+      phone: client.phone,
+      location: `${client.city}, ${client.state}`,
+      status: client.status,
+      assignedAgent: client.assignedAgentId ? 
+        `${client.assignedAgentId.firstName} ${client.assignedAgentId.lastName}` : '',
+      createdAt: client.createdAt.toISOString().split('T')[0]
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: exportData,
+      message: `${exportData.length} clients exported successfully`
+    });
+
+  } catch (error) {
+    console.error('Error exporting clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export clients',
+      error: error.message
+    });
+  }
+};
+
+// Helper function to validate business rules
+async function validateBusinessRules(clientData, excludeId = null) {
+  const errors = [];
+
+  // Check for duplicate email
+  const emailFilter = { email: clientData.email };
+  if (excludeId) emailFilter._id = { $ne: excludeId };
+  const existingEmail = await Client.findOne(emailFilter);
+  if (existingEmail) {
+    errors.push({ field: 'email', message: 'Email address already exists' });
+  }
+
+  // Check for duplicate phone
+  const phoneFilter = { phone: clientData.phone };
+  if (excludeId) phoneFilter._id = { $ne: excludeId };
+  const existingPhone = await Client.findOne(phoneFilter);
+  if (existingPhone) {
+    errors.push({ field: 'phone', message: 'Phone number already exists' });
+  }
+
+  // Check for duplicate PAN (for individual clients)
+  if (clientData.clientType === 'individual' && clientData.panNumber) {
+    const panFilter = { 'individualData.panNumber': clientData.panNumber };
+    if (excludeId) panFilter._id = { $ne: excludeId };
+    const existingPAN = await Client.findOne(panFilter);
+    if (existingPAN) {
+      errors.push({ field: 'panNumber', message: 'PAN number already exists' });
     }
   }
 
-  getClientDisplayName(client) {
-    switch (client.clientType) {
-      case 'individual':
-        return `${client.individualData?.firstName || ''} ${client.individualData?.lastName || ''}`.trim();
-      case 'corporate':
-        return client.corporateData?.companyName || 'Corporate Client';
-      case 'group':
-        return client.groupData?.groupName || 'Group Client';
-      default:
-        return 'Unknown Client';
+  // Check for duplicate registration number (for corporate clients)
+  if (clientData.clientType === 'corporate' && clientData.registrationNo) {
+    const regFilter = { 'corporateData.registrationNo': clientData.registrationNo };
+    if (excludeId) regFilter._id = { $ne: excludeId };
+    const existingReg = await Client.findOne(regFilter);
+    if (existingReg) {
+      errors.push({ field: 'registrationNo', message: 'Registration number already exists' });
     }
   }
 
-  /**
-   * Get client by ID
-   */
-  async getClientById(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError('Invalid client ID', 400);
-      }
-
-      const filter = { _id: id };
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const client = await Client.findOne(filter)
-        .populate('assignedAgentId', 'name email phone')
-        .populate('createdBy', 'name email')
-        .lean();
-
-      if (!client) {
-        throw new AppError('Client not found or access denied', 404);
-      }
-
-      return successResponse(res, { data: client });
-    } catch (error) {
-      next(error);
+  // Check for duplicate GST number (for corporate clients)
+  if (clientData.clientType === 'corporate' && clientData.gstNumber) {
+    const gstFilter = { 'corporateData.gstNumber': clientData.gstNumber };
+    if (excludeId) gstFilter._id = { $ne: excludeId };
+    const existingGST = await Client.findOne(gstFilter);
+    if (existingGST) {
+      errors.push({ field: 'gstNumber', message: 'GST number already exists' });
     }
   }
 
-  /**
-   * Create new client
-   */
-  async createClient(req, res, next) {
-    try {
-      const clientData = {
-        ...req.body,
-        createdBy: req.user._id
-      };
-
-      // Role-based assignment logic
-      if (req.user.role === 'agent') {
-        // Agents can only assign clients to themselves
-        clientData.assignedAgentId = req.user._id;
-      } else {
-        // Super admin and managers can assign to any agent
-        clientData.assignedAgentId = req.body.assignedAgentId || req.user._id;
-      }
-
-      // Move type-specific data to appropriate sub-document
-      if (clientData.clientType === 'individual') {
-        clientData.individualData = {
-          firstName: clientData.firstName,
-          lastName: clientData.lastName,
-          dob: clientData.dob,
-          gender: clientData.gender,
-          panNumber: clientData.panNumber,
-          aadharNumber: clientData.aadharNumber,
-          occupation: clientData.occupation,
-          annualIncome: clientData.annualIncome,
-          maritalStatus: clientData.maritalStatus,
-          nomineeName: clientData.nomineeName,
-          nomineeRelation: clientData.nomineeRelation,
-          nomineeContact: clientData.nomineeContact
-        };
-      } else if (clientData.clientType === 'corporate') {
-        clientData.corporateData = {
-          companyName: clientData.companyName,
-          registrationNo: clientData.registrationNo,
-          gstNumber: clientData.gstNumber,
-          industry: clientData.industry,
-          employeeCount: clientData.employeeCount,
-          turnover: clientData.turnover,
-          yearEstablished: clientData.yearEstablished,
-          website: clientData.website,
-          contactPersonName: clientData.contactPersonName,
-          contactPersonDesignation: clientData.contactPersonDesignation,
-          contactPersonEmail: clientData.contactPersonEmail,
-          contactPersonPhone: clientData.contactPersonPhone
-        };
-      } else if (clientData.clientType === 'group') {
-        clientData.groupData = {
-          groupName: clientData.groupName,
-          groupType: clientData.groupType,
-          memberCount: clientData.memberCount,
-          primaryContactName: clientData.primaryContactName,
-          relationshipWithGroup: clientData.relationshipWithGroup,
-          registrationID: clientData.registrationID,
-          groupFormationDate: clientData.groupFormationDate,
-          groupCategory: clientData.groupCategory,
-          groupPurpose: clientData.groupPurpose
-        };
-      }
-
-      const client = new Client(clientData);
-      await client.save();
-
-      return successResponse(res, {
-        message: 'Client created successfully',
-        data: client
-      }, 201);
-    } catch (error) {
-      if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
-        throw new AppError(`${field} already exists`, 400);
-      }
-      next(error);
-    }
-  }
-
-  /**
-   * Update client with role-based field restrictions
-   */
-  async updateClient(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError('Invalid client ID', 400);
-      }
-
-      const filter = { _id: id };
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const client = await Client.findOne(filter);
-      
-      if (!client) {
-        throw new AppError('Client not found or access denied', 404);
-      }
-
-      // Define allowed fields for agents (restricted access)
-      const agentAllowedFields = [
-        'phone', 'altPhone', 'address', 'city', 'state', 'pincode',
-        'notes', 'source', 'occupation', 'annualIncome', 'maritalStatus'
-      ];
-
-      // Define restricted fields for agents
-      const agentRestrictedFields = [
-        'clientType', 'status', 'assignedAgentId', 'email',
-        'panNumber', 'aadharNumber', 'registrationNo', 'gstNumber'
-      ];
-
-      // Filter update data based on user role
-      let updateData = { ...req.body };
-      
-      if (req.user.role === 'agent') {
-        // Remove restricted fields for agents
-        agentRestrictedFields.forEach(field => {
-          if (updateData[field] && updateData[field] !== client[field]) {
-            throw new AppError(`Agents cannot modify ${field}`, 403);
-          }
-          delete updateData[field];
-        });
-
-        // Only allow specific fields for agents
-        updateData = Object.keys(updateData)
-          .filter(key => agentAllowedFields.includes(key) || key.startsWith('individualData.') || key.startsWith('corporateData.') || key.startsWith('groupData.'))
-          .reduce((obj, key) => {
-            obj[key] = updateData[key];
-            return obj;
-          }, {});
-      }
-
-      // Update fields
-      Object.keys(updateData).forEach(key => {
-        if (key !== '_id' && key !== 'clientId') {
-          client[key] = updateData[key];
-        }
-      });
-
-      client.updatedBy = req.user._id;
-      await client.save();
-
-      return successResponse(res, {
-        message: 'Client updated successfully',
-        data: client
-      });
-    } catch (error) {
-      if (error.code === 11000) {
-        const field = Object.keys(error.keyPattern)[0];
-        throw new AppError(`${field} already exists`, 400);
-      }
-      next(error);
-    }
-  }
-
-  /**
-   * Delete client
-   */
-  async deleteClient(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError('Invalid client ID', 400);
-      }
-
-      const client = await Client.findById(id);
-      
-      if (!client) {
-        throw new AppError('Client not found', 404);
-      }
-
-      // Check if client has active policies
-      if (client.policiesCount > 0) {
-        throw new AppError('Cannot delete client with active policies', 400);
-      }
-
-      // Delete associated documents
-      for (const doc of client.documents) {
-        await deleteFile(doc.fileUrl);
-      }
-
-      await Client.findByIdAndDelete(id);
-
-      return successResponse(res, {
-        message: 'Client deleted successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Upload client document
-   */
-  async uploadDocument(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { documentType } = req.body;
-
-      if (!req.file) {
-        throw new AppError('No file uploaded', 400);
-      }
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError('Invalid client ID', 400);
-      }
-
-      const filter = { _id: id };
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const client = await Client.findOne(filter);
-      
-      if (!client) {
-        throw new AppError('Client not found or access denied', 404);
-      }
-
-      // Upload file
-      const fileUrl = await uploadFile(req.file, 'documents');
-
-      // Add document to client
-      const documentData = {
-        documentType,
-        fileName: req.file.originalname,
-        fileUrl,
-        fileSize: req.file.size,
-        uploadedBy: req.user._id
-      };
-
-      await client.addDocument(documentData);
-
-      return successResponse(res, {
-        message: 'Document uploaded successfully',
-        data: documentData
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get client documents
-   */
-  async getClientDocuments(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new AppError('Invalid client ID', 400);
-      }
-
-      const filter = { _id: id };
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const client = await Client.findOne(filter, 'documents')
-        .populate('documents.uploadedBy', 'name email');
-      
-      if (!client) {
-        throw new AppError('Client not found or access denied', 404);
-      }
-
-      return successResponse(res, {
-        data: client.documents
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Delete client document
-   */
-  async deleteDocument(req, res, next) {
-    try {
-      const { id, documentId } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(documentId)) {
-        throw new AppError('Invalid ID', 400);
-      }
-
-      const filter = { _id: id };
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const client = await Client.findOne(filter);
-      
-      if (!client) {
-        throw new AppError('Client not found or access denied', 404);
-      }
-
-      const document = client.documents.id(documentId);
-      
-      if (!document) {
-        throw new AppError('Document not found', 404);
-      }
-
-      // Delete file from storage
-      await deleteFile(document.fileUrl);
-
-      // Remove document from client
-      await client.removeDocument(documentId);
-
-      return successResponse(res, {
-        message: 'Document deleted successfully'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Search clients
-   */
-  async searchClients(req, res, next) {
-    try {
-      const { query } = req.params;
-      const { limit = 10 } = req.query;
-
-      const filter = {};
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const clients = await Client.searchClients(query, filter)
-        .limit(parseInt(limit))
-        .populate('assignedAgentId', 'name email')
-        .lean();
-
-      return successResponse(res, {
-        data: clients
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get clients by agent with role-based access control
-   */
-  async getClientsByAgent(req, res, next) {
-    try {
-      const { agentId } = req.params;
-
-      if (!mongoose.Types.ObjectId.isValid(agentId)) {
-        throw new AppError('Invalid agent ID', 400);
-      }
-
-      // Role-based access control
-      if (req.user.role === 'agent' && req.user._id.toString() !== agentId) {
-        throw new AppError('Agents can only view their own assigned clients', 403);
-      }
-
-      const clients = await Client.findByAgent(agentId)
-        .populate('assignedAgentId', 'name email')
-        .lean();
-
-      return successResponse(res, {
-        data: clients
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Assign client to agent
-   */
-  async assignClientToAgent(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { agentId } = req.body;
-
-      if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(agentId)) {
-        throw new AppError('Invalid ID', 400);
-      }
-
-      const client = await Client.findById(id);
-      
-      if (!client) {
-        throw new AppError('Client not found', 404);
-      }
-
-      client.assignedAgentId = agentId;
-      client.updatedBy = req.user._id;
-      await client.save();
-
-      return successResponse(res, {
-        message: 'Client assigned successfully',
-        data: client
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get client statistics
-   */
-  async getClientStats(req, res, next) {
-    try {
-      const filter = {};
-      
-      // Apply agent filter from middleware
-      if (req.agentFilter) {
-        Object.assign(filter, req.agentFilter);
-      }
-
-      const stats = await Client.aggregate([
-        { $match: filter },
-        {
-          $group: {
-            _id: null,
-            totalClients: { $sum: 1 },
-            activeClients: {
-              $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] }
-            },
-            inactiveClients: {
-              $sum: { $cond: [{ $eq: ['$status', 'Inactive'] }, 1, 0] }
-            },
-            pendingClients: {
-              $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] }
-            },
-            individualClients: {
-              $sum: { $cond: [{ $eq: ['$clientType', 'individual'] }, 1, 0] }
-            },
-            corporateClients: {
-              $sum: { $cond: [{ $eq: ['$clientType', 'corporate'] }, 1, 0] }
-            },
-            groupClients: {
-              $sum: { $cond: [{ $eq: ['$clientType', 'group'] }, 1, 0] }
-            }
-          }
-        }
-      ]);
-
-      return successResponse(res, {
-        data: stats[0] || {
-          totalClients: 0,
-          activeClients: 0,
-          inactiveClients: 0,
-          pendingClients: 0,
-          individualClients: 0,
-          corporateClients: 0,
-          groupClients: 0
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
+  if (errors.length > 0) {
+    const error = new Error('Validation failed');
+    error.errors = errors;
+    throw error;
   }
 }
 
-module.exports = new ClientController();
+// Helper function to transform client response
+function transformClientResponse(client) {
+  return {
+    _id: client._id,
+    clientId: client.clientId,
+    clientType: client.clientType,
+    name: client.displayName,
+    email: client.email,
+    phone: client.phone,
+    altPhone: client.altPhone,
+    address: client.address,
+    city: client.city,
+    state: client.state,
+    pincode: client.pincode,
+    country: client.country,
+    status: client.status,
+    source: client.source,
+    notes: client.notes,
+    assignedAgentId: client.assignedAgentId?._id,
+    assignedAgent: client.assignedAgentId,
+    policies: client.policiesCount,
+    type: client.clientType.charAt(0).toUpperCase() + client.clientType.slice(1),
+    contact: client.phone,
+    location: `${client.city}, ${client.state}`,
+    documents: client.documents,
+    createdAt: client.createdAt,
+    updatedAt: client.updatedAt,
+    // Include type-specific data
+    ...client.individualData?.toObject(),
+    ...client.corporateData?.toObject(),
+    ...client.groupData?.toObject()
+  };
+}
