@@ -1,131 +1,186 @@
 
 const mongoose = require('mongoose');
 
-const settingsSchema = new mongoose.Schema({
-  key: {
+const whatsAppTemplateSchema = new mongoose.Schema({
+  name: {
     type: String,
     required: true,
-    unique: true,
-    trim: true
+    maxlength: 100
   },
-  value: {
-    type: mongoose.Schema.Types.Mixed,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['string', 'number', 'boolean', 'object', 'array'],
-    required: true
-  },
-  category: {
+  message: {
     type: String,
     required: true,
-    enum: ['activity', 'system', 'security', 'notification', 'general']
+    maxlength: 1000
   },
-  description: {
-    type: String,
-    required: true
-  },
-  isEditable: {
+  variables: [{
+    name: String,
+    description: String
+  }],
+  isActive: {
     type: Boolean,
     default: true
   },
-  isVisible: {
-    type: Boolean,
-    default: true
-  },
-  validationRules: {
-    min: Number,
-    max: Number,
-    options: [String], // For dropdown options
-    pattern: String, // For regex validation
-    required: Boolean
-  },
-  defaultValue: {
-    type: mongoose.Schema.Types.Mixed
-  },
-  lastModifiedBy: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true
 });
 
-// Index for quick lookups
-settingsSchema.index({ key: 1 });
-settingsSchema.index({ category: 1 });
-
-// Static method to get setting value
-settingsSchema.statics.getValue = async function(key, defaultValue = null) {
-  const setting = await this.findOne({ key });
-  return setting ? setting.value : defaultValue;
-};
-
-// Static method to set setting value
-settingsSchema.statics.setValue = async function(key, value, userId = null) {
-  const setting = await this.findOneAndUpdate(
-    { key },
-    { 
-      value, 
-      lastModifiedBy: userId,
-      updatedAt: new Date()
-    },
-    { 
-      new: true, 
-      upsert: false 
-    }
-  );
-  
-  return setting;
-};
-
-// Initialize default settings
-settingsSchema.statics.initializeDefaults = async function() {
-  const defaults = [
-    {
-      key: 'activity_retention_days',
-      value: 7,
-      type: 'number',
-      category: 'activity',
-      description: 'Number of days to retain activity logs before archiving',
-      validationRules: {
-        min: 1,
-        max: 365,
-        options: ['1', '3', '7', '14', '30', '60', '90', '180', '365'],
-        required: true
-      },
-      defaultValue: 7
-    },
-    {
-      key: 'activity_auto_archive',
-      value: true,
-      type: 'boolean',
-      category: 'activity',
-      description: 'Automatically archive expired activity logs',
-      defaultValue: true
-    },
-    {
-      key: 'activity_log_level',
-      value: 'all',
-      type: 'string',
-      category: 'activity',
-      description: 'Level of activity logging',
-      validationRules: {
-        options: ['all', 'critical', 'high', 'medium'],
-        required: true
-      },
-      defaultValue: 'all'
-    }
-  ];
-
-  for (const setting of defaults) {
-    await this.findOneAndUpdate(
-      { key: setting.key },
-      setting,
-      { upsert: true, new: true }
-    );
+const emailCampaignSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    maxlength: 100
+  },
+  subject: {
+    type: String,
+    required: true,
+    maxlength: 200
+  },
+  content: {
+    type: String,
+    required: true,
+    maxlength: 5000
+  },
+  targetSegment: {
+    type: String,
+    enum: ['All', 'New', 'In Progress', 'Qualified', 'High Priority', 'Stale'],
+    default: 'All'
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
-};
+}, {
+  timestamps: true
+});
+
+const leadQualificationCriteriaSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    maxlength: 100
+  },
+  criteria: {
+    minBudget: { type: Number, default: 0 },
+    requiredFields: [String],
+    timeframe: { type: String, enum: ['Immediate', 'Within 1 month', 'Within 3 months', 'Within 6 months', 'Later'] },
+    sources: [String],
+    products: [String]
+  },
+  scoreThreshold: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 50
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
+}, {
+  timestamps: true
+});
+
+const settingsSchema = new mongoose.Schema({
+  // WhatsApp Configuration
+  whatsApp: {
+    apiKey: String,
+    businessPhone: String,
+    templates: [whatsAppTemplateSchema],
+    welcomeMessage: {
+      type: String,
+      default: 'Welcome to our insurance services! We are excited to help you find the perfect coverage. Our agent will contact you soon.'
+    }
+  },
+
+  // Email Campaign Configuration
+  emailCampaigns: [emailCampaignSchema],
+
+  // Lead Qualification Configuration
+  leadQualification: [leadQualificationCriteriaSchema],
+
+  // Territory Assignment Rules
+  territoryRules: {
+    autoAssignment: {
+      type: Boolean,
+      default: true
+    },
+    rules: [{
+      territory: String,
+      cities: [String],
+      defaultAgent: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    }]
+  },
+
+  // Lead Scoring Configuration
+  leadScoring: {
+    budgetWeights: {
+      high: { min: Number, score: Number },
+      medium: { min: Number, score: Number },
+      low: { min: Number, score: Number }
+    },
+    engagementWeights: {
+      followUpMultiplier: { type: Number, default: 2 },
+      noteMultiplier: { type: Number, default: 1 },
+      recentActivityBonus: { type: Number, default: 10 }
+    },
+    priorityWeights: {
+      high: { type: Number, default: 15 },
+      medium: { type: Number, default: 10 },
+      low: { type: Number, default: 5 }
+    }
+  },
+
+  // Stale Lead Configuration
+  staleLeadSettings: {
+    warningDays: { type: Number, default: 7 },
+    staleDays: { type: Number, default: 14 },
+    autoReassignDays: { type: Number, default: 21 }
+  },
+
+  // High-Value Lead Configuration
+  highValueSettings: {
+    budgetThreshold: { type: Number, default: 1000000 },
+    requiresApproval: { type: Boolean, default: true },
+    approverRole: { type: String, enum: ['manager', 'super_admin'], default: 'super_admin' }
+  },
+
+  // System Configuration
+  system: {
+    defaultLeadAssignment: { type: String, enum: ['round_robin', 'territory', 'manual'], default: 'territory' },
+    duplicateDetection: { type: Boolean, default: true },
+    autoMerge: { type: Boolean, default: true },
+    activityLogging: { type: Boolean, default: true }
+  },
+
+  // Updated by
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  }
+}, {
+  timestamps: true
+});
+
+// Ensure only one settings document
+settingsSchema.index({ _id: 1 }, { unique: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

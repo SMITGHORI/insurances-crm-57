@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 
@@ -29,7 +28,9 @@ const {
   assignLead,
   convertToClient,
   getLeadsStats,
-  searchLeads
+  searchLeads,
+  getStaleLeads,
+  getLeadFunnelReport
 } = require('../controllers/leadController');
 
 // Apply authentication middleware to all routes
@@ -68,6 +69,29 @@ router.get('/stats',
 router.get('/search/:query',
   resourceOwnershipMiddleware(),
   searchLeads
+);
+
+/**
+ * @route   GET /api/leads/stale
+ * @desc    Get stale leads (no activity for specified days)
+ * @access  Private (All authenticated users)
+ * @query   days - Number of days to consider stale (default: 7)
+ */
+router.get('/stale',
+  resourceOwnershipMiddleware(),
+  getStaleLeads
+);
+
+/**
+ * @route   GET /api/leads/funnel-report
+ * @desc    Get lead funnel report
+ * @access  Private (Managers, Super Admin)
+ * @query   period, agentId
+ */
+router.get('/funnel-report',
+  roleMiddleware(['manager', 'super_admin']),
+  resourceOwnershipMiddleware(),
+  getLeadFunnelReport
 );
 
 /**

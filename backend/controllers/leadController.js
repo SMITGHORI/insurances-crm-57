@@ -1,8 +1,165 @@
-
 const Lead = require('../models/Lead');
+const Client = require('../models/Client');
+const User = require('../models/User');
+const Activity = require('../models/Activity');
 const { AppError } = require('../utils/errorHandler');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
 const { generateId } = require('../utils/generateId');
+
+// Lead scoring configuration
+const LEAD_SCORING_CONFIG = {
+  budget: {
+    high: { min: 1000000, score: 30 },
+    medium: { min: 500000, score: 20 },
+    low: { min: 100000, score: 10 },
+    minimal: { score: 5 }
+  },
+  engagement: {
+    followUpCount: 5,
+    noteCount: 3,
+    recentActivity: 7 // days
+  },
+  timeline: {
+    urgent: { days: 7, score: 25 },
+    soon: { days: 30, score: 15 },
+    later: { days: 90, score: 5 }
+  }
+};
+
+// Territory assignment rules
+const TERRITORY_RULES = {
+  'Mumbai': ['Mumbai', 'Navi Mumbai', 'Thane'],
+  'Delhi': ['Delhi', 'New Delhi', 'Gurgaon', 'Noida'],
+  'Bangalore': ['Bangalore', 'Bengaluru'],
+  'Chennai': ['Chennai'],
+  'Pune': ['Pune'],
+  'Hyderabad': ['Hyderabad']
+};
+
+/**
+ * Calculate lead score based on multiple factors
+ */
+const calculateLeadScore = (lead) => {
+  let score = 0;
+  
+  // Budget scoring
+  if (lead.budget) {
+    if (lead.budget >= LEAD_SCORING_CONFIG.budget.high.min) {
+      score += LEAD_SCORING_CONFIG.budget.high.score;
+    } else if (lead.budget >= LEAD_SCORING_CONFIG.budget.medium.min) {
+      score += LEAD_SCORING_CONFIG.budget.medium.score;
+    } else if (lead.budget >= LEAD_SCORING_CONFIG.budget.low.min) {
+      score += LEAD_SCORING_CONFIG.budget.low.score;
+    } else {
+      score += LEAD_SCORING_CONFIG.budget.minimal.score;
+    }
+  }
+  
+  // Engagement scoring
+  const followUpCount = lead.followUps ? lead.followUps.length : 0;
+  const noteCount = lead.notes ? lead.notes.length : 0;
+  
+  score += Math.min(followUpCount * 2, 10); // Max 10 points for follow-ups
+  score += Math.min(noteCount * 1, 5); // Max 5 points for notes
+  
+  // Recent activity bonus
+  if (lead.lastInteraction) {
+    const daysSinceLastActivity = Math.floor((new Date() - new Date(lead.lastInteraction)) / (1000 * 60 * 60 * 24));
+    if (daysSinceLastActivity <= LEAD_SCORING_CONFIG.engagement.recentActivity) {
+      score += 10;
+    }
+  }
+  
+  // Priority scoring
+  if (lead.priority === 'High') score += 15;
+  else if (lead.priority === 'Medium') score += 10;
+  else score += 5;
+  
+  // Status scoring
+  if (lead.status === 'Qualified') score += 20;
+  else if (lead.status === 'In Progress') score += 15;
+  else if (lead.status === 'New') score += 10;
+  
+  return Math.min(score, 100); // Cap at 100
+};
+
+/**
+ * Detect duplicate leads
+ */
+const detectDuplicateLeads = async (leadData) => {
+  const duplicates = await Lead.find({
+    $or: [
+      { email: leadData.email },
+      { phone: leadData.phone }
+    ]
+  });
+  
+  return duplicates;
+};
+
+/**
+ * Auto-assign lead based on territory
+ */
+const autoAssignByTerritory = async (address) => {
+  if (!address) return null;
+  
+  const addressLower = address.toLowerCase();
+  let assignedTerritory = null;
+  
+  // Find territory based on address
+  for (const [territory, cities] of Object.entries(TERRITORY_RULES)) {
+    if (cities.some(city => addressLower.includes(city.toLowerCase()))) {
+      assignedTerritory = territory;
+      break;
+    }
+  }
+  
+  if (assignedTerritory) {
+    // Find available agent in territory
+    const agent = await User.findOne({
+      role: 'agent',
+      status: 'active',
+      territory: assignedTerritory
+    }).sort({ leadCount: 1 }); // Assign to agent with least leads
+    
+    return agent;
+  }
+  
+  return null;
+};
+
+/**
+ * Log lead activity
+ */
+const logLeadActivity = async (leadId, action, description, userId) => {
+  try {
+    await Activity.create({
+      type: 'lead',
+      action,
+      description,
+      entityId: leadId,
+      entityType: 'Lead',
+      userId,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Failed to log lead activity:', error);
+  }
+};
+
+/**
+ * Update agent workload statistics
+ */
+const updateAgentWorkload = async (agentId, increment = true) => {
+  try {
+    const updateValue = increment ? 1 : -1;
+    await User.findByIdAndUpdate(agentId, {
+      $inc: { leadCount: updateValue }
+    });
+  } catch (error) {
+    console.error('Failed to update agent workload:', error);
+  }
+};
 
 /**
  * Get all leads with filtering, pagination, and search
@@ -20,7 +177,10 @@ const getLeads = async (req, res, next) => {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       dateFrom,
-      dateTo
+      dateTo,
+      territory,
+      minScore,
+      maxScore
     } = req.query;
 
     // Build filter object
@@ -49,6 +209,18 @@ const getLeads = async (req, res, next) => {
     // Apply assigned agent filter
     if (assignedTo && assignedTo !== 'all') {
       filter['assignedTo.name'] = assignedTo;
+    }
+
+    // Apply territory filter
+    if (territory && territory !== 'all') {
+      filter.territory = territory;
+    }
+
+    // Apply score range filter
+    if (minScore || maxScore) {
+      filter.score = {};
+      if (minScore) filter.score.$gte = parseInt(minScore);
+      if (maxScore) filter.score.$lte = parseInt(maxScore);
     }
 
     // Apply date range filter
@@ -87,6 +259,12 @@ const getLeads = async (req, res, next) => {
       Lead.countDocuments(search ? { ...filter, $text: { $search: search } } : filter)
     ]);
 
+    // Calculate lead scores for each lead
+    const leadsWithScores = leads.map(lead => ({
+      ...lead,
+      score: calculateLeadScore(lead)
+    }));
+
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / parseInt(limit));
     const hasNext = parseInt(page) < totalPages;
@@ -102,7 +280,7 @@ const getLeads = async (req, res, next) => {
     };
 
     successResponse(res, {
-      leads,
+      leads: leadsWithScores,
       pagination,
       totalCount
     }, 'Leads retrieved successfully');
@@ -134,7 +312,13 @@ const getLeadById = async (req, res, next) => {
       }
     }
 
-    successResponse(res, lead, 'Lead retrieved successfully');
+    // Calculate lead score
+    const leadWithScore = {
+      ...lead,
+      score: calculateLeadScore(lead)
+    };
+
+    successResponse(res, leadWithScore, 'Lead retrieved successfully');
 
   } catch (error) {
     next(error);
@@ -146,6 +330,38 @@ const getLeadById = async (req, res, next) => {
  */
 const createLead = async (req, res, next) => {
   try {
+    // Check for duplicates
+    const duplicates = await detectDuplicateLeads(req.body);
+    if (duplicates.length > 0) {
+      // Merge with existing lead
+      const existingLead = duplicates[0];
+      
+      // Update existing lead with new information
+      Object.keys(req.body).forEach(key => {
+        if (req.body[key] && key !== 'email' && key !== 'phone') {
+          existingLead[key] = req.body[key];
+        }
+      });
+      
+      await existingLead.save();
+      
+      // Log merge activity
+      await logLeadActivity(existingLead._id, 'merged', 'Lead merged with duplicate', req.user._id);
+      
+      return successResponse(res, existingLead, 'Lead merged with existing duplicate', 200);
+    }
+
+    // Auto-assign based on territory
+    if (req.body.address && !req.body.assignedTo?.agentId) {
+      const agent = await autoAssignByTerritory(req.body.address);
+      if (agent) {
+        req.body.assignedTo = {
+          agentId: agent._id,
+          name: agent.name || agent.email
+        };
+      }
+    }
+
     // Ensure assignedTo.agentId is set if not provided
     if (!req.body.assignedTo?.agentId && req.user.role === 'agent') {
       req.body.assignedTo = {
@@ -161,7 +377,21 @@ const createLead = async (req, res, next) => {
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, populatedLead, 'Lead created successfully', 201);
+    // Update agent workload
+    if (lead.assignedTo?.agentId) {
+      await updateAgentWorkload(lead.assignedTo.agentId, true);
+    }
+
+    // Log activity
+    await logLeadActivity(lead._id, 'created', 'Lead created', req.user._id);
+
+    // Calculate score
+    const leadWithScore = {
+      ...populatedLead,
+      score: calculateLeadScore(populatedLead)
+    };
+
+    successResponse(res, leadWithScore, 'Lead created successfully', 201);
 
   } catch (error) {
     if (error.code === 11000) {
@@ -191,6 +421,8 @@ const updateLead = async (req, res, next) => {
       }
     }
 
+    const oldAssignedAgent = lead.assignedTo?.agentId;
+
     // Update lead fields
     Object.keys(req.body).forEach(key => {
       if (req.body[key] !== undefined) {
@@ -201,11 +433,27 @@ const updateLead = async (req, res, next) => {
     lead.lastInteraction = new Date();
     await lead.save();
 
+    // Update agent workload if assignment changed
+    if (oldAssignedAgent && req.body.assignedTo?.agentId && 
+        oldAssignedAgent.toString() !== req.body.assignedTo.agentId.toString()) {
+      await updateAgentWorkload(oldAssignedAgent, false);
+      await updateAgentWorkload(req.body.assignedTo.agentId, true);
+    }
+
     const updatedLead = await Lead.findById(lead._id)
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, updatedLead, 'Lead updated successfully');
+    // Log activity
+    await logLeadActivity(lead._id, 'updated', 'Lead updated', req.user._id);
+
+    // Calculate score
+    const leadWithScore = {
+      ...updatedLead,
+      score: calculateLeadScore(updatedLead)
+    };
+
+    successResponse(res, leadWithScore, 'Lead updated successfully');
 
   } catch (error) {
     if (error.code === 11000) {
@@ -235,7 +483,15 @@ const deleteLead = async (req, res, next) => {
       }
     }
 
+    // Update agent workload
+    if (lead.assignedTo?.agentId) {
+      await updateAgentWorkload(lead.assignedTo.agentId, false);
+    }
+
     await Lead.findByIdAndDelete(id);
+
+    // Log activity
+    await logLeadActivity(id, 'deleted', 'Lead deleted', req.user._id);
 
     successResponse(res, null, 'Lead deleted successfully');
 
@@ -274,7 +530,16 @@ const addFollowUp = async (req, res, next) => {
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, updatedLead, 'Follow-up added successfully');
+    // Log activity
+    await logLeadActivity(lead._id, 'follow_up_added', `Follow-up added: ${followUpData.type}`, req.user._id);
+
+    // Calculate score
+    const leadWithScore = {
+      ...updatedLead,
+      score: calculateLeadScore(updatedLead)
+    };
+
+    successResponse(res, leadWithScore, 'Follow-up added successfully');
 
   } catch (error) {
     next(error);
@@ -311,7 +576,16 @@ const addNote = async (req, res, next) => {
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, updatedLead, 'Note added successfully');
+    // Log activity
+    await logLeadActivity(lead._id, 'note_added', 'Note added to lead', req.user._id);
+
+    // Calculate score
+    const leadWithScore = {
+      ...updatedLead,
+      score: calculateLeadScore(updatedLead)
+    };
+
+    successResponse(res, leadWithScore, 'Note added successfully');
 
   } catch (error) {
     next(error);
@@ -331,13 +605,30 @@ const assignLead = async (req, res, next) => {
       throw new AppError('Lead not found', 404);
     }
 
+    const oldAgentId = lead.assignedTo?.agentId;
+
     await lead.assignToAgent(agentId, agentName);
+
+    // Update agent workloads
+    if (oldAgentId && oldAgentId.toString() !== agentId.toString()) {
+      await updateAgentWorkload(oldAgentId, false);
+    }
+    await updateAgentWorkload(agentId, true);
 
     const updatedLead = await Lead.findById(lead._id)
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, updatedLead, 'Lead assigned successfully');
+    // Log activity
+    await logLeadActivity(lead._id, 'assigned', `Lead assigned to ${agentName}`, req.user._id);
+
+    // Calculate score
+    const leadWithScore = {
+      ...updatedLead,
+      score: calculateLeadScore(updatedLead)
+    };
+
+    successResponse(res, leadWithScore, 'Lead assigned successfully');
 
   } catch (error) {
     next(error);
@@ -367,18 +658,78 @@ const convertToClient = async (req, res, next) => {
       }
     }
 
+    // Create client record from lead data
+    const clientData = {
+      displayName: lead.name,
+      firstName: lead.name.split(' ')[0],
+      lastName: lead.name.split(' ').slice(1).join(' ') || '',
+      email: lead.email,
+      phone: lead.phone,
+      address: lead.address,
+      city: lead.address ? lead.address.split(',').slice(-2, -1)[0]?.trim() : '',
+      state: lead.address ? lead.address.split(',').slice(-1)[0]?.trim() : '',
+      clientType: 'Individual',
+      status: 'Active',
+      assignedAgentId: lead.assignedTo?.agentId,
+      leadId: lead._id,
+      tags: lead.tags || [],
+      additionalInfo: lead.additionalInfo || ''
+    };
+
+    const client = new Client(clientData);
+    await client.save();
+
+    // Transfer lead notes and follow-ups to client
+    if (lead.notes && lead.notes.length > 0) {
+      client.notes = lead.notes.map(note => ({
+        content: `[Transferred from Lead ${lead.leadId}] ${note.content}`,
+        createdBy: note.createdBy,
+        createdAt: note.createdAt
+      }));
+    }
+
+    // Transfer follow-ups as client interactions
+    if (lead.followUps && lead.followUps.length > 0) {
+      client.interactions = lead.followUps.map(followUp => ({
+        type: followUp.type,
+        date: followUp.date,
+        time: followUp.time,
+        description: followUp.outcome,
+        nextAction: followUp.nextAction,
+        createdBy: followUp.createdBy,
+        createdAt: followUp.createdAt
+      }));
+    }
+
+    await client.save();
+
     // Update lead status
     lead.status = 'Converted';
+    lead.convertedToClientId = client._id;
     lead.lastInteraction = new Date();
     await lead.save();
 
-    // Here you would typically create a client record
-    // For now, we'll just return success with a mock client ID
-    const mockClientId = generateId('CL');
+    // Log activities
+    await logLeadActivity(lead._id, 'converted', `Lead converted to client ${client.clientId}`, req.user._id);
+
+    // Send WhatsApp welcome message (placeholder for now)
+    // This will be implemented with WhatsApp API integration
+    console.log(`Send welcome WhatsApp message to ${client.phone}`);
+
+    // Update agent performance metrics
+    if (lead.assignedTo?.agentId) {
+      await User.findByIdAndUpdate(lead.assignedTo.agentId, {
+        $inc: { 
+          conversionCount: 1,
+          leadCount: -1 
+        }
+      });
+    }
 
     successResponse(res, {
       leadId: lead._id,
-      clientId: mockClientId,
+      clientId: client._id,
+      clientNumber: client.clientId,
       message: 'Lead converted to client successfully'
     }, 'Lead converted successfully');
 
@@ -433,7 +784,8 @@ const getLeadsStats = async (req, res, next) => {
       statusStats,
       sourceStats,
       priorityStats,
-      conversionStats
+      conversionStats,
+      avgScore
     ] = await Promise.all([
       Lead.countDocuments(filter),
       Lead.aggregate([
@@ -451,6 +803,10 @@ const getLeadsStats = async (req, res, next) => {
       Lead.aggregate([
         { $match: { ...filter, status: 'Converted' } },
         { $count: 'converted' }
+      ]),
+      Lead.aggregate([
+        { $match: filter },
+        { $group: { _id: null, avgScore: { $avg: '$score' } } }
       ])
     ]);
 
@@ -463,6 +819,7 @@ const getLeadsStats = async (req, res, next) => {
       converted: statusStats.find(s => s._id === 'Converted')?.count || 0,
       lost: statusStats.find(s => s._id === 'Lost')?.count || 0,
       conversionRate: totalLeads > 0 ? ((conversionStats[0]?.converted || 0) / totalLeads * 100).toFixed(1) : '0.0',
+      averageScore: avgScore[0]?.avgScore ? avgScore[0].avgScore.toFixed(1) : '0.0',
       topSources: sourceStats.sort((a, b) => b.count - a.count).slice(0, 5),
       priorityDistribution: priorityStats,
       period
@@ -480,7 +837,8 @@ const getLeadsStats = async (req, res, next) => {
  */
 const searchLeads = async (req, res, next) => {
   try {
-    const { query, limit = 10 } = req.params;
+    const { query } = req.params;
+    const { limit = 10 } = req.query;
 
     if (!query || query.length < 2) {
       throw new AppError('Search query must be at least 2 characters', 400);
@@ -502,7 +860,140 @@ const searchLeads = async (req, res, next) => {
       .populate('assignedTo.agentId', 'name email')
       .lean();
 
-    successResponse(res, leads, 'Search results retrieved successfully');
+    // Calculate lead scores
+    const leadsWithScores = leads.map(lead => ({
+      ...lead,
+      score: calculateLeadScore(lead)
+    }));
+
+    successResponse(res, leadsWithScores, 'Search results retrieved successfully');
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get stale leads (no activity for specified days)
+ */
+const getStaleLeads = async (req, res, next) => {
+  try {
+    const { days = 7 } = req.query;
+    const staleDate = new Date();
+    staleDate.setDate(staleDate.getDate() - parseInt(days));
+
+    const filter = {
+      status: { $in: ['New', 'In Progress'] },
+      $or: [
+        { lastInteraction: { $lte: staleDate } },
+        { lastInteraction: { $exists: false } }
+      ]
+    };
+
+    // Apply role-based filtering
+    if (req.ownershipFilter) {
+      Object.assign(filter, req.ownershipFilter);
+    }
+
+    const staleLeads = await Lead.find(filter)
+      .populate('assignedTo.agentId', 'name email')
+      .sort({ lastInteraction: 1 })
+      .lean();
+
+    const leadsWithScores = staleLeads.map(lead => ({
+      ...lead,
+      score: calculateLeadScore(lead),
+      daysSinceLastActivity: lead.lastInteraction ? 
+        Math.floor((new Date() - new Date(lead.lastInteraction)) / (1000 * 60 * 60 * 24)) : 
+        Math.floor((new Date() - new Date(lead.createdAt)) / (1000 * 60 * 60 * 24))
+    }));
+
+    successResponse(res, leadsWithScores, 'Stale leads retrieved successfully');
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get lead funnel report
+ */
+const getLeadFunnelReport = async (req, res, next) => {
+  try {
+    const { period = '30d', agentId } = req.query;
+
+    // Build base filter
+    const filter = {};
+
+    // Apply role-based filtering
+    if (req.ownershipFilter) {
+      Object.assign(filter, req.ownershipFilter);
+    }
+
+    // Apply agent filter if specified
+    if (agentId) {
+      filter['assignedTo.agentId'] = agentId;
+    }
+
+    // Calculate date range
+    const now = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    filter.createdAt = { $gte: startDate };
+
+    // Get funnel data
+    const [totalLeads, statusBreakdown, sourceBreakdown, conversionRate] = await Promise.all([
+      Lead.countDocuments(filter),
+      Lead.aggregate([
+        { $match: filter },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      Lead.aggregate([
+        { $match: filter },
+        { $group: { _id: '$source', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      Lead.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            converted: {
+              $sum: {
+                $cond: [{ $eq: ['$status', 'Converted'] }, 1, 0]
+              }
+            }
+          }
+        }
+      ])
+    ]);
+
+    const funnelReport = {
+      totalLeads,
+      statusBreakdown,
+      sourceBreakdown,
+      conversionRate: conversionRate[0] ? 
+        ((conversionRate[0].converted / conversionRate[0].total) * 100).toFixed(2) : '0.00',
+      period
+    };
+
+    successResponse(res, funnelReport, 'Lead funnel report generated successfully');
 
   } catch (error) {
     next(error);
@@ -520,5 +1011,7 @@ module.exports = {
   assignLead,
   convertToClient,
   getLeadsStats,
-  searchLeads
+  searchLeads,
+  getStaleLeads,
+  getLeadFunnelReport
 };
