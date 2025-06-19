@@ -1,26 +1,28 @@
 
 const Policy = require('../models/Policy');
 const Client = require('../models/Client');
+const Activity = require('../models/Activity');
 const User = require('../models/User');
-const { AppError } = require('../utils/errorHandler');
-const { successResponse, errorResponse, paginatedResponse, createdResponse, updatedResponse, deletedResponse } = require('../utils/responseHandler');
-const fs = require('fs').promises;
+const mongoose = require('mongoose');
 const path = require('path');
+const fs = require('fs').promises;
 
 /**
- * Get all policies with filtering, pagination, and search
+ * Policy Controller with full CRUD operations, role-based access, and cross-module integration
  */
-const getAllPolicies = async (req, res, next) => {
+
+// Get all policies with filtering, pagination, and role-based access
+exports.getAllPolicies = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      status,
-      type,
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      type, 
+      status = 'All', 
       clientId,
       agentId,
-      sortField = 'createdAt',
+      sortField = 'createdAt', 
       sortDirection = 'desc',
       minPremium,
       maxPremium,
@@ -28,827 +30,1307 @@ const getAllPolicies = async (req, res, next) => {
       endDate
     } = req.query;
 
-    // Build filter object
+    const { role, _id: userId } = req.user;
     let filter = { isDeleted: false };
 
-    // Apply role-based filtering
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
     }
 
-    // Search functionality
+    // Apply search filter
     if (search) {
       filter.$or = [
         { policyNumber: { $regex: search, $options: 'i' } },
         { company: { $regex: search, $options: 'i' } },
-        { subType: { $regex: search, $options: 'i' } }
+        { companyPolicyNumber: { $regex: search, $options: 'i' } }
       ];
     }
 
-    // Status filter
-    if (status && status !== 'All') {
-      filter.status = status;
-    }
-
-    // Type filter
+    // Apply type filter
     if (type && type !== 'all') {
       filter.type = type;
     }
 
-    // Client filter
+    // Apply status filter
+    if (status && status !== 'All') {
+      filter.status = status;
+    }
+
+    // Apply client filter
     if (clientId) {
-      filter.clientId = clientId;
+      filter.clientId = new mongoose.Types.ObjectId(clientId);
     }
 
-    // Agent filter
+    // Apply agent filter
     if (agentId) {
-      filter.assignedAgentId = agentId;
+      filter.assignedAgentId = new mongoose.Types.ObjectId(agentId);
     }
 
-    // Premium range filter
+    // Apply premium range filters
     if (minPremium || maxPremium) {
       filter['premium.amount'] = {};
       if (minPremium) filter['premium.amount'].$gte = parseFloat(minPremium);
       if (maxPremium) filter['premium.amount'].$lte = parseFloat(maxPremium);
     }
 
-    // Date range filter
+    // Apply date filters
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
       if (endDate) filter.createdAt.$lte = new Date(endDate);
     }
 
-    // Pagination
-    const currentPage = parseInt(page);
-    const itemsPerPage = Math.min(parseInt(limit), 100);
-    const skip = (currentPage - 1) * itemsPerPage;
-
-    // Sort object
+    // Build sort object
     const sort = {};
     sort[sortField] = sortDirection === 'desc' ? -1 : 1;
 
-    // Execute query with population
-    const [policies, totalItems] = await Promise.all([
-      Policy.find(filter)
-        .populate('clientId', 'name email phone type businessName')
-        .populate('assignedAgentId', 'name email phone')
-        .populate('createdBy', 'name email')
-        .populate('updatedBy', 'name email')
-        .sort(sort)
-        .skip(skip)
-        .limit(itemsPerPage)
-        .lean(),
-      Policy.countDocuments(filter)
-    ]);
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const policies = await Policy.find(filter)
+      .populate('clientId', 'displayName email phone clientType')
+      .populate('assignedAgentId', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName')
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    // Calculate pagination info
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    const pagination = {
-      currentPage,
-      totalPages,
-      totalItems,
-      itemsPerPage
-    };
+    const totalPolicies = await Policy.countDocuments(filter);
 
-    return paginatedResponse(res, policies, pagination);
+    // Update policy statuses automatically
+    await updatePolicyStatuses();
+
+    res.status(200).json({
+      success: true,
+      data: policies,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalPolicies / parseInt(limit)),
+        totalItems: totalPolicies,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch policies',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policy by ID
- */
-const getPolicyById = async (req, res, next) => {
+// Get policy by ID with role-based access
+exports.getPolicyById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
 
-    // Apply ownership filter for agents
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
     }
 
     const policy = await Policy.findOne(filter)
-      .populate('clientId', 'name email phone type businessName address')
-      .populate('assignedAgentId', 'name email phone role')
-      .populate('createdBy', 'name email')
-      .populate('updatedBy', 'name email')
-      .populate('documents.uploadedBy', 'name email')
-      .populate('notes.createdBy', 'name email')
-      .populate('renewalHistory.agentId', 'name email');
+      .populate('clientId', 'displayName email phone clientType address city state')
+      .populate('assignedAgentId', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName')
+      .populate('updatedBy', 'firstName lastName')
+      .populate('documents.uploadedBy', 'firstName lastName')
+      .populate('notes.createdBy', 'firstName lastName');
 
     if (!policy) {
-      throw new AppError('Policy not found', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    return successResponse(res, { data: policy });
+    res.status(200).json({
+      success: true,
+      data: policy
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching policy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch policy',
+      error: error.message
+    });
   }
 };
 
-/**
- * Create new policy
- */
-const createPolicy = async (req, res, next) => {
+// Create new policy with business logic validation
+exports.createPolicy = async (req, res) => {
   try {
-    // Verify client exists
-    const client = await Client.findById(req.body.clientId);
-    if (!client) {
-      throw new AppError('Client not found', 404);
+    const { role, _id: userId } = req.user;
+    const policyData = req.body;
+
+    // Validate client exists and is active
+    const client = await Client.findById(policyData.clientId);
+    if (!client || client.status !== 'Active') {
+      return res.status(400).json({
+        success: false,
+        message: 'Client not found or not active'
+      });
     }
 
-    // Verify agent exists
-    const agent = await User.findById(req.body.assignedAgentId);
+    // Validate assigned agent exists
+    const agent = await User.findById(policyData.assignedAgentId);
     if (!agent || agent.role !== 'agent') {
-      throw new AppError('Assigned agent not found', 404);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid assigned agent'
+      });
+    }
+
+    // Auto-assign to creator if agent role
+    if (role === 'agent' && !policyData.assignedAgentId) {
+      policyData.assignedAgentId = userId;
     }
 
     // Generate policy number if not provided
-    if (!req.body.policyNumber) {
-      const year = new Date().getFullYear();
-      const count = await Policy.countDocuments({ 
-        policyNumber: { $regex: `^POL-${year}-` } 
-      });
-      req.body.policyNumber = `POL-${year}-${String(count + 1).padStart(3, '0')}`;
+    if (!policyData.policyNumber) {
+      policyData.policyNumber = await generatePolicyNumber();
     }
 
-    // Check for duplicate policy number
-    const existingPolicy = await Policy.findOne({ 
-      policyNumber: req.body.policyNumber 
+    // Calculate commission amount automatically
+    if (policyData.commission && policyData.premium) {
+      policyData.commission.amount = (policyData.premium.amount * policyData.commission.rate) / 100;
+    }
+
+    // Calculate next due date based on frequency
+    if (policyData.premium && policyData.startDate) {
+      policyData.premium.nextDueDate = calculateNextDueDate(policyData.startDate, policyData.premium.frequency);
+    }
+
+    // Set audit fields
+    policyData.createdBy = userId;
+
+    const policy = new Policy(policyData);
+    await policy.save();
+
+    // Update client policy count
+    await Client.findByIdAndUpdate(policyData.clientId, {
+      $inc: { policiesCount: 1 }
     });
-    if (existingPolicy) {
-      throw new AppError('Policy number already exists', 400);
-    }
 
-    // Set creator
-    req.body.createdBy = req.user._id;
+    // Log activity
+    await Activity.logActivity({
+      action: `Created ${policyData.type} policy`,
+      type: 'policy',
+      operation: 'create',
+      description: `Created policy: ${policy.policyNumber} for client: ${client.displayName}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
 
-    // Create policy
-    const policy = new Policy(req.body);
-    await policy.save();
-
-    // Populate the created policy
     const populatedPolicy = await Policy.findById(policy._id)
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email');
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName email');
 
-    return createdResponse(res, populatedPolicy, 'Policy created successfully');
+    res.status(201).json({
+      success: true,
+      message: 'Policy created successfully',
+      data: populatedPolicy
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error creating policy:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to create policy',
+      errors: error.errors || []
+    });
   }
 };
 
-/**
- * Update policy
- */
-const updatePolicy = async (req, res, next) => {
+// Update policy with role-based restrictions
+exports.updatePolicy = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
+    const updateData = req.body;
 
+    // Check access permissions
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      // Managers can only view, not edit (handled by middleware)
+      return res.status(403).json({
+        success: false,
+        message: 'Managers have read-only access to policies'
+      });
     }
 
-    const policy = await Policy.findOne(filter);
-    if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+    const existingPolicy = await Policy.findOne(filter);
+    if (!existingPolicy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    // Verify client exists if clientId is being updated
-    if (req.body.clientId && req.body.clientId !== policy.clientId.toString()) {
-      const client = await Client.findById(req.body.clientId);
-      if (!client) {
-        throw new AppError('Client not found', 404);
+    // Recalculate commission if premium or rate changes
+    if (updateData.commission || updateData.premium) {
+      const newPremium = updateData.premium?.amount || existingPolicy.premium.amount;
+      const newRate = updateData.commission?.rate || existingPolicy.commission.rate;
+      if (updateData.commission) {
+        updateData.commission.amount = (newPremium * newRate) / 100;
       }
     }
 
-    // Verify agent exists if assignedAgentId is being updated
-    if (req.body.assignedAgentId && req.body.assignedAgentId !== policy.assignedAgentId.toString()) {
-      const agent = await User.findById(req.body.assignedAgentId);
-      if (!agent || agent.role !== 'agent') {
-        throw new AppError('Assigned agent not found', 404);
-      }
+    // Update next due date if frequency changes
+    if (updateData.premium?.frequency) {
+      updateData.premium.nextDueDate = calculateNextDueDate(
+        existingPolicy.startDate, 
+        updateData.premium.frequency
+      );
     }
 
-    // Set updater
-    req.body.updatedBy = req.user._id;
+    // Set audit fields
+    updateData.updatedBy = userId;
 
-    // Update policy
-    Object.assign(policy, req.body);
-    await policy.save();
+    const updatedPolicy = await Policy.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('clientId', 'displayName email phone')
+     .populate('assignedAgentId', 'firstName lastName email');
 
-    // Populate the updated policy
-    const populatedPolicy = await Policy.findById(policy._id)
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email');
+    // Log activity
+    await Activity.logActivity({
+      action: `Updated ${updatedPolicy.type} policy`,
+      type: 'policy',
+      operation: 'update',
+      description: `Updated policy: ${updatedPolicy.policyNumber}`,
+      entityType: 'Policy',
+      entityId: updatedPolicy._id,
+      entityName: updatedPolicy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
 
-    return updatedResponse(res, populatedPolicy, 'Policy updated successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Policy updated successfully',
+      data: updatedPolicy
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error updating policy:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to update policy',
+      errors: error.errors || []
+    });
   }
 };
 
-/**
- * Delete policy (soft delete)
- */
-const deletePolicy = async (req, res, next) => {
+// Delete policy (soft delete - Super Admin only)
+exports.deletePolicy = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
 
-    const policy = await Policy.findOne({ _id: id, isDeleted: false });
-    if (!policy) {
-      throw new AppError('Policy not found', 404);
+    const policy = await Policy.findById(id);
+    if (!policy || policy.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found'
+      });
     }
 
-    // Perform soft delete
-    await policy.softDelete(req.user._id);
+    // Check for active claims
+    // const activeClaims = await Claim.countDocuments({ policyId: id, status: { $in: ['pending', 'under_review'] } });
+    // if (activeClaims > 0) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'Cannot delete policy with active claims'
+    //   });
+    // }
 
-    return deletedResponse(res, 'Policy deleted successfully');
+    // Soft delete
+    policy.isDeleted = true;
+    policy.deletedAt = new Date();
+    policy.deletedBy = userId;
+    await policy.save();
+
+    // Update client policy count
+    await Client.findByIdAndUpdate(policy.clientId, {
+      $inc: { policiesCount: -1 }
+    });
+
+    // Log activity
+    await Activity.logActivity({
+      action: `Deleted ${policy.type} policy`,
+      type: 'policy',
+      operation: 'delete',
+      description: `Deleted policy: ${policy.policyNumber}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Policy deleted successfully'
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error deleting policy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete policy',
+      error: error.message
+    });
   }
 };
 
-/**
- * Upload policy document
- */
-const uploadDocument = async (req, res, next) => {
+// Upload policy document
+exports.uploadDocument = async (req, res) => {
   try {
     const { id } = req.params;
     const { documentType, name } = req.body;
+    const { role, _id: userId } = req.user;
 
     if (!req.file) {
-      throw new AppError('No file uploaded', 400);
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
     }
 
+    // Check policy access
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter);
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
     // Create document object
     const document = {
       name: name || req.file.originalname,
       type: documentType,
-      url: `/uploads/policies/${req.file.filename}`,
+      url: `/uploads/documents/${req.file.filename}`,
       size: req.file.size,
       mimeType: req.file.mimetype,
-      uploadedBy: req.user._id
+      uploadedBy: userId
     };
 
-    // Add document to policy
     policy.documents.push(document);
     await policy.save();
 
-    // Get the added document
-    const addedDocument = policy.documents[policy.documents.length - 1];
+    // Log activity
+    await Activity.logActivity({
+      action: `Uploaded ${documentType} document`,
+      type: 'document',
+      operation: 'create',
+      description: `Uploaded ${documentType} document for policy: ${policy.policyNumber}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
 
-    return createdResponse(res, addedDocument, 'Document uploaded successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Document uploaded successfully',
+      data: document
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error uploading document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload document',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policy documents
- */
-const getPolicyDocuments = async (req, res, next) => {
+// Get policy documents
+exports.getPolicyDocuments = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter)
       .select('documents')
-      .populate('documents.uploadedBy', 'name email');
-
+      .populate('documents.uploadedBy', 'firstName lastName');
+    
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    return successResponse(res, { data: policy.documents });
+    res.status(200).json({
+      success: true,
+      data: policy.documents
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching documents:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch documents',
+      error: error.message
+    });
   }
 };
 
-/**
- * Delete policy document
- */
-const deleteDocument = async (req, res, next) => {
+// Delete policy document
+exports.deleteDocument = async (req, res) => {
   try {
     const { id, documentId } = req.params;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter);
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
     const document = policy.documents.id(documentId);
     if (!document) {
-      throw new AppError('Document not found', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
     }
 
-    // Delete file from filesystem
+    // Delete physical file
     try {
-      const filePath = path.join(__dirname, '..', 'uploads', 'policies', path.basename(document.url));
+      const filePath = path.join(__dirname, '..', document.url);
       await fs.unlink(filePath);
     } catch (fileError) {
-      console.error('Error deleting file:', fileError);
+      console.warn('Could not delete physical file:', fileError.message);
     }
 
-    // Remove document from policy
-    policy.documents.pull(documentId);
+    // Remove from database
+    policy.documents.id(documentId).remove();
     await policy.save();
 
-    return deletedResponse(res, 'Document deleted successfully');
+    // Log activity
+    await Activity.logActivity({
+      action: `Deleted ${document.type} document`,
+      type: 'document',
+      operation: 'delete',
+      description: `Deleted ${document.type} document for policy: ${policy.policyNumber}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Document deleted successfully'
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error deleting document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete document',
+      error: error.message
+    });
   }
 };
 
-/**
- * Add payment record
- */
-const addPayment = async (req, res, next) => {
+// Add payment record
+exports.addPayment = async (req, res) => {
   try {
     const { id } = req.params;
+    const paymentData = req.body;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter);
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    // Add payment to policy
-    const payment = await policy.addPayment(req.body);
-    const addedPayment = policy.paymentHistory[policy.paymentHistory.length - 1];
+    // Add payment to history
+    policy.paymentHistory.push(paymentData);
 
-    return createdResponse(res, addedPayment, 'Payment record added successfully');
+    // Update next due date if it's a premium payment
+    if (paymentData.amount >= policy.premium.amount) {
+      policy.premium.nextDueDate = calculateNextDueDate(
+        policy.premium.nextDueDate || new Date(),
+        policy.premium.frequency
+      );
+    }
+
+    await policy.save();
+
+    // Log activity
+    await Activity.logActivity({
+      action: 'Added payment record',
+      type: 'payment',
+      operation: 'create',
+      description: `Added payment of ${paymentData.amount} for policy: ${policy.policyNumber}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Payment record added successfully',
+      data: policy.paymentHistory[policy.paymentHistory.length - 1]
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error adding payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add payment record',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policy payment history
- */
-const getPaymentHistory = async (req, res, next) => {
+// Get payment history
+exports.getPaymentHistory = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter).select('paymentHistory');
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    return successResponse(res, { data: policy.paymentHistory });
+    res.status(200).json({
+      success: true,
+      data: policy.paymentHistory
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching payment history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payment history',
+      error: error.message
+    });
   }
 };
 
-/**
- * Renew policy
- */
-const renewPolicy = async (req, res, next) => {
+// Renew policy
+exports.renewPolicy = async (req, res) => {
   try {
     const { id } = req.params;
+    const { newEndDate, premium, notes } = req.body;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter);
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    // Set default agent to current user if not provided
-    if (!req.body.agentId) {
-      req.body.agentId = req.user._id;
+    // Add renewal record
+    const renewalRecord = {
+      renewalDate: new Date(),
+      previousEndDate: policy.endDate,
+      premium: premium || policy.premium.amount,
+      agentId: userId,
+      notes: notes
+    };
+
+    policy.renewalHistory.push(renewalRecord);
+
+    // Update policy details
+    policy.endDate = new Date(newEndDate);
+    policy.status = 'active';
+    
+    if (premium) {
+      policy.premium.amount = premium;
+      // Recalculate commission
+      policy.commission.amount = (premium * policy.commission.rate) / 100;
     }
 
-    // Renew the policy
-    await policy.renew(req.body);
+    // Update next due date
+    policy.premium.nextDueDate = calculateNextDueDate(new Date(), policy.premium.frequency);
 
-    // Populate and return updated policy
-    const updatedPolicy = await Policy.findById(policy._id)
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email');
+    await policy.save();
 
-    return updatedResponse(res, updatedPolicy, 'Policy renewed successfully');
+    // Log activity
+    await Activity.logActivity({
+      action: 'Renewed policy',
+      type: 'policy',
+      operation: 'update',
+      description: `Renewed policy: ${policy.policyNumber} until ${newEndDate}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Policy renewed successfully',
+      data: policy
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error renewing policy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to renew policy',
+      error: error.message
+    });
   }
 };
 
-/**
- * Add note to policy
- */
-const addNote = async (req, res, next) => {
+// Add note to policy
+exports.addNote = async (req, res) => {
   try {
     const { id } = req.params;
+    const noteData = req.body;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
-      filter[req.ownerField] = req.user._id;
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter);
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    // Set note creator
-    req.body.createdBy = req.user._id;
+    noteData.createdBy = userId;
+    policy.notes.push(noteData);
+    await policy.save();
 
-    // Add note to policy
-    await policy.addNote(req.body);
-    const addedNote = policy.notes[policy.notes.length - 1];
+    const populatedPolicy = await Policy.findById(id)
+      .select('notes')
+      .populate('notes.createdBy', 'firstName lastName');
 
-    // Populate the note creator
-    await policy.populate('notes.createdBy', 'name email');
+    const newNote = populatedPolicy.notes[populatedPolicy.notes.length - 1];
 
-    return createdResponse(res, addedNote, 'Note added successfully');
+    res.status(201).json({
+      success: true,
+      message: 'Note added successfully',
+      data: newNote
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error adding note:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add note',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policy notes
- */
-const getPolicyNotes = async (req, res, next) => {
+// Get policy notes
+exports.getPolicyNotes = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, _id: userId } = req.user;
 
     let filter = { _id: id, isDeleted: false };
-
-    // Apply ownership filter for agents
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
     }
 
     const policy = await Policy.findOne(filter)
       .select('notes')
-      .populate('notes.createdBy', 'name email');
-
+      .populate('notes.createdBy', 'firstName lastName');
+    
     if (!policy) {
-      throw new AppError('Policy not found or access denied', 404);
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found or access denied'
+      });
     }
 
-    return successResponse(res, { data: policy.notes });
+    res.status(200).json({
+      success: true,
+      data: policy.notes
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching notes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notes',
+      error: error.message
+    });
   }
 };
 
-/**
- * Search policies
- */
-const searchPolicies = async (req, res, next) => {
+// Search policies
+exports.searchPolicies = async (req, res) => {
   try {
     const { query } = req.params;
     const { limit = 10 } = req.query;
-
-    if (!query || query.trim().length < 2) {
-      throw new AppError('Search query must be at least 2 characters', 400);
-    }
+    const { role, _id: userId } = req.user;
 
     let filter = {
       isDeleted: false,
       $or: [
         { policyNumber: { $regex: query, $options: 'i' } },
         { company: { $regex: query, $options: 'i' } },
-        { subType: { $regex: query, $options: 'i' } }
+        { companyPolicyNumber: { $regex: query, $options: 'i' } }
       ]
     };
 
-    // Apply role-based filtering
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
     }
 
     const policies = await Policy.find(filter)
-      .populate('clientId', 'name email')
-      .select('policyNumber type status company premium.amount clientId')
-      .limit(Math.min(parseInt(limit), 50))
-      .lean();
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
 
-    return successResponse(res, { data: policies });
+    res.status(200).json({
+      success: true,
+      data: policies
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error searching policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search policies',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policies by agent
- */
-const getPoliciesByAgent = async (req, res, next) => {
+// Get policies by agent
+exports.getPoliciesByAgent = async (req, res) => {
   try {
     const { agentId } = req.params;
+    const { role, _id: userId } = req.user;
 
-    // Check if user can access this agent's data
-    if (req.user.role === 'agent' && req.user._id.toString() !== agentId) {
-      throw new AppError('Access denied', 403);
+    // Authorization check
+    if (role === 'agent' && agentId !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied'
+      });
     }
 
-    const policies = await Policy.findByAgent(agentId);
+    const policies = await Policy.find({ 
+      assignedAgentId: agentId, 
+      isDeleted: false 
+    })
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName')
+      .sort({ createdAt: -1 });
 
-    return successResponse(res, { data: policies });
+    res.status(200).json({
+      success: true,
+      data: policies
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching agent policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch agent policies',
+      error: error.message
+    });
   }
 };
 
-/**
- * Assign policy to agent
- */
-const assignPolicyToAgent = async (req, res, next) => {
+// Assign policy to agent
+exports.assignPolicyToAgent = async (req, res) => {
   try {
     const { id } = req.params;
     const { agentId } = req.body;
+    const { role, _id: userId } = req.user;
+
+    const policy = await Policy.findOne({ _id: id, isDeleted: false });
+    if (!policy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Policy not found'
+      });
+    }
 
     // Verify agent exists
     const agent = await User.findById(agentId);
     if (!agent || agent.role !== 'agent') {
-      throw new AppError('Agent not found', 404);
-    }
-
-    const policy = await Policy.findOne({ _id: id, isDeleted: false });
-    if (!policy) {
-      throw new AppError('Policy not found', 404);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid agent ID'
+      });
     }
 
     policy.assignedAgentId = agentId;
-    policy.updatedBy = req.user._id;
+    policy.updatedBy = userId;
     await policy.save();
 
-    const updatedPolicy = await Policy.findById(policy._id)
-      .populate('assignedAgentId', 'name email');
+    // Log activity
+    await Activity.logActivity({
+      action: 'Assigned policy to agent',
+      type: 'policy',
+      operation: 'update',
+      description: `Assigned policy ${policy.policyNumber} to agent ${agent.firstName} ${agent.lastName}`,
+      entityType: 'Policy',
+      entityId: policy._id,
+      entityName: policy.policyNumber,
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
 
-    return updatedResponse(res, updatedPolicy, 'Policy assigned successfully');
+    res.status(200).json({
+      success: true,
+      message: 'Policy assigned successfully',
+      data: await Policy.findById(id).populate('assignedAgentId', 'firstName lastName email')
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error assigning policy:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to assign policy',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policy statistics
- */
-const getPolicyStats = async (req, res, next) => {
+// Get policy statistics
+exports.getPolicyStats = async (req, res) => {
   try {
-    // Get basic statistics
-    const [basicStats] = await Policy.getStatistics();
+    const { role, _id: userId } = req.user;
 
-    // Get statistics by type
-    const typeStats = await Policy.aggregate([
-      { $match: { isDeleted: false } },
+    let matchFilter = { isDeleted: false };
+    if (role === 'agent') {
+      matchFilter.assignedAgentId = new mongoose.Types.ObjectId(userId);
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      matchFilter.assignedAgentId = { $in: agentIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
+    const stats = await Policy.aggregate([
+      { $match: matchFilter },
       {
         $group: {
-          _id: '$type',
-          count: { $sum: 1 },
-          totalPremium: { $sum: '$premium.amount' }
+          _id: null,
+          totalPolicies: { $sum: 1 },
+          activePolicies: { $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] } },
+          expiredPolicies: { $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] } },
+          cancelledPolicies: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+          totalPremium: { $sum: '$premium.amount' },
+          avgPremium: { $avg: '$premium.amount' },
+          totalCommission: { $sum: '$commission.amount' }
         }
       }
     ]);
 
-    // Get statistics by status
-    const statusStats = await Policy.aggregate([
-      { $match: { isDeleted: false } },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
+    // Get policies by type
+    const byType = await Policy.aggregate([
+      { $match: matchFilter },
+      { $group: { _id: '$type', count: { $sum: 1 } } }
     ]);
+
+    const result = stats[0] || {
+      totalPolicies: 0,
+      activePolicies: 0,
+      expiredPolicies: 0,
+      cancelledPolicies: 0,
+      totalPremium: 0,
+      avgPremium: 0,
+      totalCommission: 0
+    };
+
+    result.byType = byType.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
 
     // Get recent policies count
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const recentPolicies = await Policy.countDocuments({
-      isDeleted: false,
+      ...matchFilter,
       createdAt: { $gte: thirtyDaysAgo }
     });
 
-    // Get renewals this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    result.recentPolicies = recentPolicies;
 
-    const renewalsThisMonth = await Policy.countDocuments({
-      isDeleted: false,
-      'renewalHistory.renewalDate': { $gte: startOfMonth }
+    res.status(200).json({
+      success: true,
+      data: result
     });
 
-    const stats = {
-      ...basicStats,
-      byType: typeStats.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {}),
-      byStatus: statusStats.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {}),
-      recentPolicies,
-      renewalsThisMonth
-    };
-
-    return successResponse(res, { data: stats });
   } catch (error) {
-    next(error);
+    console.error('Error fetching policy stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch policy statistics',
+      error: error.message
+    });
   }
 };
 
-/**
- * Get policies expiring within specified days
- */
-const getExpiringPolicies = async (req, res, next) => {
+// Get expiring policies
+exports.getExpiringPolicies = async (req, res) => {
   try {
     const { days = 30 } = req.params;
+    const { role, _id: userId } = req.user;
 
-    let filter = { isDeleted: false };
-
-    // Apply role-based filtering
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
-    }
-
-    const policies = await Policy.findExpiringSoon(parseInt(days))
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email');
-
-    return successResponse(res, { data: policies });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Get policies due for renewal
- */
-const getPoliciesDueForRenewal = async (req, res, next) => {
-  try {
-    const { days = 30 } = req.query;
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + parseInt(days));
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + parseInt(days));
 
     let filter = {
       isDeleted: false,
-      endDate: { $lte: futureDate, $gt: new Date() },
-      status: 'active'
+      status: 'active',
+      endDate: { $lte: expiryDate, $gte: new Date() }
     };
 
-    // Apply role-based filtering
-    if (req.ownershipFilter) {
-      filter = { ...filter, ...req.ownershipFilter };
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
     }
 
-    const policies = await Policy.find(filter)
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email')
+    const expiringPolicies = await Policy.find(filter)
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName email')
       .sort({ endDate: 1 });
 
-    return successResponse(res, { data: policies });
+    res.status(200).json({
+      success: true,
+      data: expiringPolicies
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error fetching expiring policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch expiring policies',
+      error: error.message
+    });
   }
 };
 
-/**
- * Bulk assign policies to agents
- */
-const bulkAssignPolicies = async (req, res, next) => {
+// Get policies due for renewal
+exports.getPoliciesDueForRenewal = async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+    const { role, _id: userId } = req.user;
+
+    const renewalDate = new Date();
+    renewalDate.setDate(renewalDate.getDate() + parseInt(days));
+
+    let filter = {
+      isDeleted: false,
+      status: { $in: ['active', 'expired'] },
+      endDate: { $lte: renewalDate }
+    };
+
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
+    }
+
+    const renewalPolicies = await Policy.find(filter)
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName email')
+      .sort({ endDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: renewalPolicies
+    });
+
+  } catch (error) {
+    console.error('Error fetching renewal policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch policies due for renewal',
+      error: error.message
+    });
+  }
+};
+
+// Bulk assign policies
+exports.bulkAssignPolicies = async (req, res) => {
   try {
     const { policyIds, agentId } = req.body;
+    const { role, _id: userId } = req.user;
 
     // Verify agent exists
     const agent = await User.findById(agentId);
     if (!agent || agent.role !== 'agent') {
-      throw new AppError('Agent not found', 404);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid agent ID'
+      });
     }
 
-    // Update policies
     const result = await Policy.updateMany(
       { _id: { $in: policyIds }, isDeleted: false },
       { 
         assignedAgentId: agentId,
-        updatedBy: req.user._id,
-        updatedAt: new Date()
+        updatedBy: userId
       }
     );
 
-    return successResponse(res, { 
-      data: { 
-        updatedCount: result.modifiedCount,
-        assignedAgent: agent.name
-      }
-    }, `${result.modifiedCount} policies assigned successfully`);
+    // Log activity
+    await Activity.logActivity({
+      action: 'Bulk assigned policies',
+      type: 'policy',
+      operation: 'update',
+      description: `Bulk assigned ${result.modifiedCount} policies to agent ${agent.firstName} ${agent.lastName}`,
+      entityType: 'Policy',
+      entityId: null,
+      entityName: 'Bulk Assignment',
+      userId: userId,
+      userName: `${req.user.firstName} ${req.user.lastName}`,
+      userRole: role,
+      performedBy: userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} policies assigned successfully`,
+      data: { assignedCount: result.modifiedCount }
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error bulk assigning policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to bulk assign policies',
+      error: error.message
+    });
   }
 };
 
-/**
- * Export policies data
- */
-const exportPolicies = async (req, res, next) => {
+// Export policies
+exports.exportPolicies = async (req, res) => {
   try {
-    const { format = 'json', ...filters } = req.query;
+    const { role, _id: userId } = req.user;
+    const filters = req.query;
 
     let filter = { isDeleted: false };
-
-    // Apply filters
-    if (filters.status) filter.status = filters.status;
-    if (filters.type) filter.type = filters.type;
-    if (filters.agentId) filter.assignedAgentId = filters.agentId;
-
-    const policies = await Policy.find(filter)
-      .populate('clientId', 'name email phone')
-      .populate('assignedAgentId', 'name email')
-      .select('-documents -paymentHistory -renewalHistory -notes')
-      .lean();
-
-    // Format data based on requested format
-    if (format === 'csv') {
-      // Implementation for CSV export would go here
-      throw new AppError('CSV export not implemented yet', 501);
+    
+    // Role-based filtering
+    if (role === 'agent') {
+      filter.assignedAgentId = userId;
+    } else if (role === 'manager') {
+      const teamAgents = await User.find({ managerId: userId }).select('_id');
+      const agentIds = teamAgents.map(agent => agent._id);
+      agentIds.push(userId);
+      filter.assignedAgentId = { $in: agentIds };
     }
 
-    return successResponse(res, { data: policies });
+    // Apply additional filters
+    if (filters.type && filters.type !== 'all') {
+      filter.type = filters.type;
+    }
+    if (filters.status && filters.status !== 'All') {
+      filter.status = filters.status;
+    }
+
+    const policies = await Policy.find(filter)
+      .populate('clientId', 'displayName email phone')
+      .populate('assignedAgentId', 'firstName lastName email')
+      .sort({ createdAt: -1 });
+
+    // Transform data for export
+    const exportData = policies.map(policy => ({
+      policyNumber: policy.policyNumber,
+      clientName: policy.clientId?.displayName || '',
+      type: policy.type,
+      status: policy.status,
+      company: policy.company,
+      premium: policy.premium.amount,
+      coverage: policy.coverage.amount,
+      startDate: policy.startDate.toISOString().split('T')[0],
+      endDate: policy.endDate.toISOString().split('T')[0],
+      assignedAgent: policy.assignedAgentId ? 
+        `${policy.assignedAgentId.firstName} ${policy.assignedAgentId.lastName}` : '',
+      createdAt: policy.createdAt.toISOString().split('T')[0]
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: exportData,
+      message: `${exportData.length} policies exported successfully`
+    });
+
   } catch (error) {
-    next(error);
+    console.error('Error exporting policies:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export policies',
+      error: error.message
+    });
   }
 };
 
-module.exports = {
-  getAllPolicies,
-  getPolicyById,
-  createPolicy,
-  updatePolicy,
-  deletePolicy,
-  uploadDocument,
-  getPolicyDocuments,
-  deleteDocument,
-  addPayment,
-  getPaymentHistory,
-  renewPolicy,
-  addNote,
-  getPolicyNotes,
-  searchPolicies,
-  getPoliciesByAgent,
-  assignPolicyToAgent,
-  getPolicyStats,
-  getExpiringPolicies,
-  getPoliciesDueForRenewal,
-  bulkAssignPolicies,
-  exportPolicies
-};
+// Helper function to generate policy number
+async function generatePolicyNumber() {
+  const year = new Date().getFullYear();
+  const count = await Policy.countDocuments({ 
+    policyNumber: { $regex: `^POL-${year}-` }
+  });
+  return `POL-${year}-${String(count + 1).padStart(3, '0')}`;
+}
+
+// Helper function to calculate next due date
+function calculateNextDueDate(startDate, frequency) {
+  const date = new Date(startDate);
+  
+  switch (frequency) {
+    case 'monthly':
+      date.setMonth(date.getMonth() + 1);
+      break;
+    case 'quarterly':
+      date.setMonth(date.getMonth() + 3);
+      break;
+    case 'semi-annual':
+      date.setMonth(date.getMonth() + 6);
+      break;
+    case 'annual':
+      date.setFullYear(date.getFullYear() + 1);
+      break;
+    default:
+      date.setMonth(date.getMonth() + 1);
+  }
+  
+  return date;
+}
+
+// Helper function to automatically update policy statuses
+async function updatePolicyStatuses() {
+  const today = new Date();
+  
+  // Update expired policies
+  await Policy.updateMany(
+    {
+      endDate: { $lt: today },
+      status: 'active',
+      isDeleted: false
+    },
+    { status: 'expired' }
+  );
+  
+  // Update lapsed policies (overdue premium)
+  await Policy.updateMany(
+    {
+      'premium.nextDueDate': { $lt: today },
+      status: 'active',
+      isDeleted: false
+    },
+    { status: 'lapsed' }
+  );
+}
