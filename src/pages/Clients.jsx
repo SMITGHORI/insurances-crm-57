@@ -1,14 +1,18 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Building, User, Group } from 'lucide-react';
 import { toast } from 'sonner';
 import ClientForm from '../components/clients/ClientForm';
 import ClientFilters from '../components/clients/ClientFilters';
+import ClientStatsCards from '../components/clients/ClientStatsCards';
+import BulkOperationsToolbar from '../components/clients/BulkOperationsToolbar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ClientTable from '../components/clients/ClientTable';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useClients, useDeleteClient, useCreateClient } from '../hooks/useClients';
+import { useBulkClientOperations, useClientExport } from '../hooks/useClientFeatures';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
@@ -32,6 +36,7 @@ const Clients = () => {
   const [sortDirection, setSortDirection] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+  const [selectedClients, setSelectedClients] = useState([]);
 
   // API query parameters
   const queryParams = {
@@ -55,6 +60,8 @@ const Clients = () => {
 
   const createClientMutation = useCreateClient();
   const deleteClientMutation = useDeleteClient();
+  const { bulkAssign, bulkStatusUpdate, bulkDelete } = useBulkClientOperations();
+  const exportMutation = useClientExport();
 
   // Extract data from API response
   const clients = clientsResponse?.data || [];
@@ -72,7 +79,7 @@ const Clients = () => {
       setSortField(field);
       setSortDirection('asc');
     }
-    setCurrentPage(1); // Reset to first page when sorting
+    setCurrentPage(1);
   };
 
   // Handle adding a new client
@@ -86,7 +93,6 @@ const Clients = () => {
       await createClientMutation.mutateAsync(clientData);
       setShowAddModal(false);
     } catch (error) {
-      // Error is already handled in the mutation
       console.error('Failed to create client:', error);
     }
   };
@@ -94,7 +100,6 @@ const Clients = () => {
   // Handle edit client with permission check
   const handleEditClient = (id) => {
     if (isAgent()) {
-      // Agents can only edit assigned clients
       const client = clients.find(c => c._id === id);
       if (client?.assignedAgentId !== user.id) {
         toast.error('You can only edit clients assigned to you');
@@ -128,11 +133,10 @@ const Clients = () => {
     }
   };
 
-  // Handle export (will be implemented with backend)
-  const handleExport = async () => {
+  // Handle export
+  const handleExport = async (exportData) => {
     try {
-      toast.info('Export feature will be available after backend integration');
-      // TODO: Implement export functionality with backend
+      await exportMutation.mutateAsync(exportData);
     } catch (error) {
       toast.error('Failed to export clients');
     }
@@ -143,7 +147,32 @@ const Clients = () => {
     setCurrentPage(page);
   };
 
-  // Filter clients by type for tabs (client-side filtering for performance)
+  // Bulk operations handlers
+  const handleBulkAssign = async (clientIds, agentId) => {
+    await bulkAssign({ clientIds, agentId });
+    setSelectedClients([]);
+  };
+
+  const handleBulkStatusUpdate = async (clientIds, status) => {
+    await bulkStatusUpdate({ clientIds, status });
+    setSelectedClients([]);
+  };
+
+  const handleBulkDelete = async (clientIds) => {
+    await bulkDelete(clientIds);
+    setSelectedClients([]);
+  };
+
+  const handleBulkExport = (clients) => {
+    const exportData = {
+      type: 'selected',
+      format: 'csv',
+      selectedIds: clients.map(c => c._id || c.id)
+    };
+    handleExport(exportData);
+  };
+
+  // Filter clients by type for tabs
   const getFilteredClients = (type) => {
     if (type === 'all') return clients;
     return clients.filter(client => 
@@ -187,6 +216,9 @@ const Clients = () => {
           )}
         </div>
 
+        {/* Client Statistics Cards */}
+        <ClientStatsCards />
+
         {/* Role-based info banner for agents */}
         {isAgent() && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -214,6 +246,19 @@ const Clients = () => {
             setCurrentPage(1);
           }}
           showExport={hasPermission('viewAllClients')}
+          selectedClients={selectedClients}
+          filteredData={getFilteredClients(clientTypeFilter)}
+          allData={clients}
+        />
+
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar
+          selectedClients={selectedClients}
+          onClearSelection={() => setSelectedClients([])}
+          onBulkAssign={handleBulkAssign}
+          onBulkStatusUpdate={handleBulkStatusUpdate}
+          onBulkDelete={handleBulkDelete}
+          onBulkExport={handleBulkExport}
         />
 
         {/* Enhanced Client Tabs */}
@@ -277,11 +322,12 @@ const Clients = () => {
                   totalItems={totalClients}
                   onPageChange={handlePageChange}
                   isDeleting={deleteClientMutation.isLoading}
-                  // Role-based permissions
                   canEdit={hasPermission('editAnyClient') || isAgent()}
                   canDelete={hasPermission('deleteClient')}
                   userRole={user?.role}
                   userId={user?.id}
+                  selectedClients={selectedClients}
+                  onSelectionChange={setSelectedClients}
                 />
               </TabsContent>
             ))}
