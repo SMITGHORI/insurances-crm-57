@@ -4,14 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableHead, 
-  TableRow, 
-  TableCell 
-} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { 
   Select,
   SelectContent,
@@ -19,325 +12,263 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Download, Trash } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Plus, CreditCard, Calendar, DollarSign, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePolicyPayments, useAddPayment } from '../../hooks/usePolicyFeatures';
 
 const PaymentHistory = ({ policy, setPolicy }) => {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    receiptNumber: '',
-    amount: policy.premium,
-    date: new Date().toISOString().split('T')[0],
-    mode: 'Online',
-    reference: '',
-    receipt: null
+  const [paymentData, setPaymentData] = useState({
+    amount: '',
+    paymentMethod: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    transactionId: '',
+    notes: ''
   });
 
-  const handleAddPayment = () => {
-    // Validation
-    if (!newPayment.receiptNumber || !newPayment.amount || !newPayment.date || !newPayment.mode) {
-      toast.error('Please fill in all required fields');
+  const { data: payments, isLoading } = usePolicyPayments(policy.id);
+  const addPaymentMutation = useAddPayment();
+
+  const handleAddPayment = async () => {
+    if (!paymentData.amount || !paymentData.paymentMethod) {
+      toast.error('Amount and payment method are required');
       return;
     }
 
-    const updatedPolicy = { ...policy };
-    
-    if (!updatedPolicy.payments) {
-      updatedPolicy.payments = [];
-    }
-    
-    // Add the new payment
-    updatedPolicy.payments.push({
-      ...newPayment,
-      id: Date.now() // Simple ID for the payment entry
-    });
-    
-    // Add history entry
-    if (!updatedPolicy.history) {
-      updatedPolicy.history = [];
-    }
-    
-    updatedPolicy.history.push({
-      action: 'Payment Recorded',
-      by: 'Admin',
-      timestamp: new Date().toISOString(),
-      details: `Payment of ₹${newPayment.amount} recorded with receipt number ${newPayment.receiptNumber}`
-    });
-    
-    // Update last premium paid date
-    updatedPolicy.lastPremiumPaid = newPayment.date;
-    
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-      
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
-    }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    setShowAddForm(false);
-    setNewPayment({
-      receiptNumber: '',
-      amount: policy.premium,
-      date: new Date().toISOString().split('T')[0],
-      mode: 'Online',
-      reference: '',
-      receipt: null
-    });
-    
-    toast.success('Payment recorded successfully');
-  };
-
-  const handleDeletePayment = (paymentId) => {
-    const updatedPolicy = { ...policy };
-    
-    // Filter out the payment to delete
-    updatedPolicy.payments = updatedPolicy.payments.filter(p => p.id !== paymentId);
-    
-    // Add history entry
-    if (!updatedPolicy.history) {
-      updatedPolicy.history = [];
-    }
-    
-    updatedPolicy.history.push({
-      action: 'Payment Deleted',
-      by: 'Admin',
-      timestamp: new Date().toISOString(),
-      details: `Payment record deleted`
-    });
-    
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-      
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
-    }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    toast.success('Payment deleted successfully');
-  };
-
-  const handleReceiptUpload = (file) => {
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setNewPayment({
-        ...newPayment,
-        receipt: {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          url: event.target.result,
-          uploadDate: new Date().toISOString()
+    try {
+      await addPaymentMutation.mutateAsync({
+        policyId: policy.id,
+        paymentData: {
+          ...paymentData,
+          amount: parseFloat(paymentData.amount),
+          status: 'completed'
         }
       });
-      toast.success('Receipt uploaded');
-    };
-    
-    reader.onerror = () => {
-      toast.error('Failed to process receipt');
-    };
-    
-    reader.readAsDataURL(file);
+      
+      setPaymentData({
+        amount: '',
+        paymentMethod: '',
+        paymentDate: new Date().toISOString().split('T')[0],
+        transactionId: '',
+        notes: ''
+      });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding payment:', error);
+    }
   };
 
-  const handleDownload = (payment) => {
-    if (!payment.receipt || !payment.receipt.url) {
-      toast.error('Receipt not available for download');
-      return;
-    }
+  const getStatusBadge = (status) => {
+    const statusColors = {
+      completed: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      failed: 'bg-red-100 text-red-800',
+      refunded: 'bg-purple-100 text-purple-800'
+    };
     
-    const link = payment.receipt.url;
-    const fileName = payment.receipt.name || `receipt-${payment.receiptNumber}.${payment.receipt.type.split('/')[1]}`;
-    
-    const a = document.createElement('a');
-    a.href = link;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    return <Badge className={statusColors[status] || 'bg-gray-100 text-gray-800'}>
+      {status?.charAt(0).toUpperCase() + status?.slice(1)}
+    </Badge>;
   };
+
+  const getPaymentMethodIcon = (method) => {
+    switch (method) {
+      case 'credit_card':
+      case 'debit_card':
+        return <CreditCard className="h-4 w-4" />;
+      case 'cash':
+        return <DollarSign className="h-4 w-4" />;
+      default:
+        return <Receipt className="h-4 w-4" />;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="animate-pulse bg-gray-100 h-16 rounded"></div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Payment & Receipt Tracking</CardTitle>
-        <Button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          size="sm"
-        >
-          <Plus size={16} className="mr-2" /> New Payment
-        </Button>
-      </CardHeader>
-      <CardContent>
-        {showAddForm && (
-          <div className="mb-6 border rounded-md p-4">
-            <h3 className="font-medium mb-4">Record New Payment</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="receipt-number">Receipt Number</Label>
-                <Input 
-                  id="receipt-number"
-                  value={newPayment.receiptNumber} 
-                  onChange={(e) => setNewPayment({...newPayment, receiptNumber: e.target.value})}
-                  placeholder="e.g. REC-12345"
-                />
+        <CardTitle>Payment History</CardTitle>
+        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Payment
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Payment Record</DialogTitle>
+              <DialogDescription>
+                Record a new payment for this policy.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount *</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5">₹</span>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      className="pl-8"
+                      value={paymentData.amount}
+                      onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Payment Method *</Label>
+                  <Select 
+                    value={paymentData.paymentMethod}
+                    onValueChange={(value) => setPaymentData({...paymentData, paymentMethod: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="check">Check</SelectItem>
+                      <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="credit_card">Credit Card</SelectItem>
+                      <SelectItem value="debit_card">Debit Card</SelectItem>
+                      <SelectItem value="online">Online Payment</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment-date">Payment Date</Label>
-                <Input 
-                  id="payment-date"
-                  type="date" 
-                  value={newPayment.date} 
-                  onChange={(e) => setNewPayment({...newPayment, date: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment-amount">Amount</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">₹</span>
-                  <Input 
-                    id="payment-amount"
-                    type="number"
-                    className="pl-8"
-                    value={newPayment.amount} 
-                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payment-date">Payment Date</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="payment-date"
+                      type="date"
+                      className="pl-10"
+                      value={paymentData.paymentDate}
+                      onChange={(e) => setPaymentData({...paymentData, paymentDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="transaction-id">Transaction ID</Label>
+                  <Input
+                    id="transaction-id"
+                    value={paymentData.transactionId}
+                    onChange={(e) => setPaymentData({...paymentData, transactionId: e.target.value})}
+                    placeholder="Optional"
                   />
                 </div>
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="payment-mode">Payment Mode</Label>
-                <Select 
-                  onValueChange={(value) => setNewPayment({...newPayment, mode: value})} 
-                  defaultValue={newPayment.mode}
-                >
-                  <SelectTrigger id="payment-mode">
-                    <SelectValue placeholder="Select payment mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Cash">Cash</SelectItem>
-                    <SelectItem value="Cheque">Cheque</SelectItem>
-                    <SelectItem value="UPI">UPI</SelectItem>
-                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="Credit Card">Credit Card</SelectItem>
-                    <SelectItem value="Debit Card">Debit Card</SelectItem>
-                    <SelectItem value="Online">Online</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="payment-reference">Reference/Transaction ID</Label>
-                <Input 
-                  id="payment-reference"
-                  value={newPayment.reference} 
-                  onChange={(e) => setNewPayment({...newPayment, reference: e.target.value})}
-                  placeholder="e.g. NEFT123456 or UPI ID"
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  value={paymentData.notes}
+                  onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
+                  placeholder="Optional payment notes"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="receipt-upload">Upload Receipt (optional)</Label>
-                <div className="flex items-center">
-                  <Input 
-                    id="receipt-upload"
-                    type="file" 
-                    onChange={(e) => handleReceiptUpload(e.target.files[0])} 
-                    accept="application/pdf,image/*"
-                  />
-                </div>
-                {newPayment.receipt && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {newPayment.receipt.name} ({Math.round(newPayment.receipt.size/1024)} KB)
-                  </p>
-                )}
               </div>
             </div>
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowAddForm(false)}
-              >
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddPayment}>
-                Save Payment
+              <Button 
+                onClick={handleAddPayment}
+                disabled={addPaymentMutation.isLoading}
+              >
+                {addPaymentMutation.isLoading ? 'Adding...' : 'Add Payment'}
               </Button>
-            </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      
+      <CardContent>
+        {payments && payments.length > 0 ? (
+          <div className="space-y-4">
+            {payments.map((payment) => (
+              <div key={payment.id} className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {getPaymentMethodIcon(payment.paymentMethod)}
+                    <span className="font-medium">₹{payment.amount.toLocaleString()}</span>
+                    {getStatusBadge(payment.status)}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {formatDate(payment.paymentDate)}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                  <div>
+                    <span className="font-medium">Method:</span> {payment.paymentMethod.replace('_', ' ')}
+                  </div>
+                  {payment.transactionId && (
+                    <div>
+                      <span className="font-medium">Transaction ID:</span> {payment.transactionId}
+                    </div>
+                  )}
+                  {payment.notes && (
+                    <div className="col-span-2">
+                      <span className="font-medium">Notes:</span> {payment.notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <Receipt className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>No payment records found</p>
+            <p className="text-sm">Add the first payment record for this policy</p>
           </div>
         )}
-
-        <div>
-          <h3 className="font-medium mb-3">Payment Timeline</h3>
-          
-          {policy.payments && policy.payments.length > 0 ? (
-            <div>
-              <p className="mb-4 text-sm">
-                <strong>Last Premium Paid:</strong> {policy.lastPremiumPaid ? new Date(policy.lastPremiumPaid).toLocaleDateString() : 'Not recorded'}
-              </p>
-              
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Receipt No.</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {policy.payments.map((payment) => (
-                    <TableRow key={payment.id || payment.receiptNumber}>
-                      <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{payment.receiptNumber}</TableCell>
-                      <TableCell>₹{parseInt(payment.amount).toLocaleString()}</TableCell>
-                      <TableCell>{payment.mode}</TableCell>
-                      <TableCell>{payment.reference}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          {payment.receipt && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => handleDownload(payment)}
-                            >
-                              <Download size={16} />
-                            </Button>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="text-red-500" 
-                            onClick={() => handleDeletePayment(payment.id)}
-                          >
-                            <Trash size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No payment records found
-            </div>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

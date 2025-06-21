@@ -4,329 +4,276 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { 
-  Table, 
-  TableHeader, 
-  TableBody, 
-  TableHead, 
-  TableRow, 
-  TableCell 
-} from '@/components/ui/table';
-import { Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Plus, Calendar, RotateCcw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRenewPolicy, usePoliciesDueForRenewal } from '../../hooks/usePolicyFeatures';
 
 const RenewalHistory = ({ policy, setPolicy }) => {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newRenewal, setNewRenewal] = useState({
-    date: new Date().toISOString().split('T')[0],
-    premium: policy.premium,
-    renewedBy: 'Admin',
-    remarks: ''
-  });
-  
-  const [reminderSettings, setReminderSettings] = useState({
-    days30: policy.reminderSettings?.days30 ?? true,
-    days14: policy.reminderSettings?.days14 ?? true,
-    days7: policy.reminderSettings?.days7 ?? true,
-    days1: policy.reminderSettings?.days1 ?? true,
-    emailNotification: policy.reminderSettings?.emailNotification ?? false,
-    smsNotification: policy.reminderSettings?.smsNotification ?? false,
-    whatsappNotification: policy.reminderSettings?.whatsappNotification ?? false
+  const [showRenewalForm, setShowRenewalForm] = useState(false);
+  const [renewalData, setRenewalData] = useState({
+    newEndDate: '',
+    newPremium: policy.premium || '',
+    notes: ''
   });
 
-  const handleAddRenewal = () => {
-    // Validation
-    if (!newRenewal.date || !newRenewal.premium || !newRenewal.renewedBy) {
-      toast.error('Please fill in all required fields');
+  const renewPolicyMutation = useRenewPolicy();
+  const { data: dueForRenewal } = usePoliciesDueForRenewal(30);
+
+  const handleRenewPolicy = async () => {
+    if (!renewalData.newEndDate || !renewalData.newPremium) {
+      toast.error('End date and premium are required');
       return;
     }
 
-    const updatedPolicy = { ...policy };
-    
-    if (!updatedPolicy.renewals) {
-      updatedPolicy.renewals = [];
-    }
-    
-    // Add the new renewal
-    updatedPolicy.renewals.push({
-      ...newRenewal,
-      id: Date.now() // Simple ID for the renewal entry
-    });
-    
-    // Add history entry
-    if (!updatedPolicy.history) {
-      updatedPolicy.history = [];
-    }
-    
-    updatedPolicy.history.push({
-      action: 'Renewal Added',
-      by: 'Admin',
-      timestamp: new Date().toISOString(),
-      details: `Policy renewed on ${new Date(newRenewal.date).toLocaleDateString()}`
-    });
-    
-    // Update the premium if it changed
-    if (newRenewal.premium !== policy.premium) {
-      updatedPolicy.premium = newRenewal.premium;
-      updatedPolicy.history.push({
-        action: 'Premium Updated',
-        by: 'Admin',
-        timestamp: new Date().toISOString(),
-        details: `Premium updated to ₹${newRenewal.premium}`
+    try {
+      await renewPolicyMutation.mutateAsync({
+        policyId: policy.id,
+        renewalData: {
+          newEndDate: renewalData.newEndDate,
+          newPremium: parseFloat(renewalData.newPremium),
+          notes: renewalData.notes
+        }
       });
-    }
-    
-    // Update end date (add 1 year to current end date)
-    const currentEndDate = new Date(updatedPolicy.endDate);
-    const newEndDate = new Date(currentEndDate.setFullYear(currentEndDate.getFullYear() + 1));
-    updatedPolicy.endDate = newEndDate.toISOString().split('T')[0];
-    
-    // Update reminder settings
-    updatedPolicy.reminderSettings = reminderSettings;
-    
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      setRenewalData({
+        newEndDate: '',
+        newPremium: policy.premium || '',
+        notes: ''
+      });
+      setShowRenewalForm(false);
+    } catch (error) {
+      console.error('Error renewing policy:', error);
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    setShowAddForm(false);
-    setNewRenewal({
-      date: new Date().toISOString().split('T')[0],
-      premium: updatedPolicy.premium,
-      renewedBy: 'Admin',
-      remarks: ''
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
-    
-    toast.success('Renewal added successfully');
   };
-  
-  const handleSaveReminderSettings = () => {
-    const updatedPolicy = {
-      ...policy,
-      reminderSettings
-    };
-    
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-      
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
-    }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    toast.success('Reminder settings saved');
-  };
+
+  // Calculate days until expiry
+  const daysUntilExpiry = Math.floor(
+    (new Date(policy.endDate) - new Date()) / (1000 * 60 * 60 * 24)
+  );
+
+  const isExpiringSoon = daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+  const isExpired = daysUntilExpiry <= 0;
+
+  // Mock renewal history - in real app this would come from backend
+  const renewalHistory = policy.renewalHistory || [];
 
   return (
     <div className="space-y-6">
+      {/* Renewal Status Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Policy Renewal Status
+            <Dialog open={showRenewalForm} onOpenChange={setShowRenewalForm}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Renew Policy
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Renew Policy</DialogTitle>
+                  <DialogDescription>
+                    Set new terms for policy renewal.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-end">Current End Date</Label>
+                      <Input
+                        id="current-end"
+                        value={formatDate(policy.endDate)}
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="new-end">New End Date *</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                        <Input
+                          id="new-end"
+                          type="date"
+                          className="pl-10"
+                          value={renewalData.newEndDate}
+                          onChange={(e) => setRenewalData({...renewalData, newEndDate: e.target.value})}
+                          min={policy.endDate}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-premium">Current Premium</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5">₹</span>
+                        <Input
+                          id="current-premium"
+                          value={policy.premium}
+                          disabled
+                          className="pl-8 bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="new-premium">New Premium *</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5">₹</span>
+                        <Input
+                          id="new-premium"
+                          type="number"
+                          step="0.01"
+                          className="pl-8"
+                          value={renewalData.newPremium}
+                          onChange={(e) => setRenewalData({...renewalData, newPremium: e.target.value})}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="renewal-notes">Renewal Notes</Label>
+                    <Input
+                      id="renewal-notes"
+                      value={renewalData.notes}
+                      onChange={(e) => setRenewalData({...renewalData, notes: e.target.value})}
+                      placeholder="Optional renewal notes"
+                    />
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowRenewalForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleRenewPolicy}
+                    disabled={renewPolicyMutation.isLoading}
+                  >
+                    {renewPolicyMutation.isLoading ? 'Renewing...' : 'Renew Policy'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{daysUntilExpiry}</div>
+              <div className="text-sm text-gray-600">Days until expiry</div>
+              {isExpired && (
+                <Badge variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Expired
+                </Badge>
+              )}
+              {isExpiringSoon && !isExpired && (
+                <Badge variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Expiring Soon
+                </Badge>
+              )}
+            </div>
+            
+            <div className="text-center p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                {formatDate(policy.endDate)}
+              </div>
+              <div className="text-sm text-gray-600">Current end date</div>
+            </div>
+            
+            <div className="text-center p-4 border rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">
+                ₹{policy.premium?.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-600">Current premium</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Renewal History */}
       <Card>
         <CardHeader>
           <CardTitle>Renewal History</CardTitle>
         </CardHeader>
         <CardContent>
-          {policy.renewals && policy.renewals.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Premium</TableHead>
-                  <TableHead>Renewed By</TableHead>
-                  <TableHead>Remarks</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {policy.renewals.map((renewal, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{new Date(renewal.date).toLocaleDateString()}</TableCell>
-                    <TableCell>₹{parseInt(renewal.premium).toLocaleString()}</TableCell>
-                    <TableCell>{renewal.renewedBy}</TableCell>
-                    <TableCell>{renewal.remarks}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No renewal history found
-            </div>
-          )}
-
-          {!showAddForm ? (
-            <Button 
-              onClick={() => setShowAddForm(true)}
-              className="mt-4"
-            >
-              <Plus size={16} className="mr-2" /> Add Renewal
-            </Button>
-          ) : (
-            <div className="mt-6 border rounded-md p-4">
-              <h3 className="font-medium mb-4">Add Renewal</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2">
-                  <Label htmlFor="renewal-date">Renewal Date</Label>
-                  <Input 
-                    id="renewal-date"
-                    type="date" 
-                    value={newRenewal.date} 
-                    onChange={(e) => setNewRenewal({...newRenewal, date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="renewal-premium">Premium</Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5">₹</span>
-                    <Input 
-                      id="renewal-premium"
-                      type="number"
-                      className="pl-8"
-                      value={newRenewal.premium} 
-                      onChange={(e) => setNewRenewal({...newRenewal, premium: e.target.value})}
-                    />
+          {renewalHistory && renewalHistory.length > 0 ? (
+            <div className="space-y-4">
+              {renewalHistory.map((renewal, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium">
+                        Renewed on {formatDate(renewal.renewalDate)}
+                      </span>
+                    </div>
+                    <Badge className="bg-green-100 text-green-800">
+                      Completed
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Previous End:</span><br />
+                      {formatDate(renewal.previousEndDate)}
+                    </div>
+                    <div>
+                      <span className="font-medium">New End:</span><br />
+                      {formatDate(renewal.newEndDate)}
+                    </div>
+                    <div>
+                      <span className="font-medium">Previous Premium:</span><br />
+                      ₹{renewal.previousPremium?.toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="font-medium">New Premium:</span><br />
+                      ₹{renewal.newPremium?.toLocaleString()}
+                    </div>
+                    {renewal.notes && (
+                      <div className="col-span-2 md:col-span-4">
+                        <span className="font-medium">Notes:</span> {renewal.notes}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="renewal-by">Renewed By</Label>
-                  <Input 
-                    id="renewal-by"
-                    value={newRenewal.renewedBy} 
-                    onChange={(e) => setNewRenewal({...newRenewal, renewedBy: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="renewal-remarks">Remarks</Label>
-                  <Input 
-                    id="renewal-remarks"
-                    value={newRenewal.remarks} 
-                    onChange={(e) => setNewRenewal({...newRenewal, remarks: e.target.value})}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowAddForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleAddRenewal}>
-                  Save Renewal
-                </Button>
-              </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <RotateCcw className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No renewal history found</p>
+              <p className="text-sm">This policy hasn't been renewed yet</p>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Renewal Reminder Settings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div>
-              <h3 className="font-medium mb-3">Reminder Schedule</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="days30"
-                    checked={reminderSettings.days30}
-                    onChange={(e) => setReminderSettings({...reminderSettings, days30: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="days30">30 days before</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="days14"
-                    checked={reminderSettings.days14}
-                    onChange={(e) => setReminderSettings({...reminderSettings, days14: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="days14">14 days before</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="days7"
-                    checked={reminderSettings.days7}
-                    onChange={(e) => setReminderSettings({...reminderSettings, days7: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="days7">7 days before</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="days1"
-                    checked={reminderSettings.days1}
-                    onChange={(e) => setReminderSettings({...reminderSettings, days1: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="days1">1 day before</Label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-3">Notification Methods</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="email"
-                    checked={reminderSettings.emailNotification}
-                    onChange={(e) => setReminderSettings({...reminderSettings, emailNotification: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="email">Email</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="sms"
-                    checked={reminderSettings.smsNotification}
-                    onChange={(e) => setReminderSettings({...reminderSettings, smsNotification: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="sms">SMS</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="whatsapp"
-                    checked={reminderSettings.whatsappNotification}
-                    onChange={(e) => setReminderSettings({...reminderSettings, whatsappNotification: e.target.checked})}
-                    className="rounded border-gray-300"
-                  />
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={handleSaveReminderSettings}>
-                Save Reminder Settings
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
