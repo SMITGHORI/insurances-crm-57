@@ -1,21 +1,14 @@
-
 import React, { useState } from 'react';
 import { Search, Filter, Download, SortAsc, SortDesc, X, FileDown, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-
-const ClientFilters = ({ 
-  searchTerm, 
-  setSearchTerm, 
-  selectedFilter, 
+const ClientFilters = ({
+  searchTerm,
+  setSearchTerm,
+  selectedFilter,
   setSelectedFilter,
   filterOptions,
   handleExport,
@@ -31,8 +24,7 @@ const ClientFilters = ({
   allData = []
 }) => {
   const [isExporting, setIsExporting] = useState(false);
-
-  const toggleSort = (field) => {
+  const toggleSort = field => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -40,10 +32,8 @@ const ClientFilters = ({
       setSortDirection('asc');
     }
   };
-
   const handleExportAction = async (format, type) => {
     setIsExporting(true);
-    
     try {
       let exportData = {
         format,
@@ -59,7 +49,6 @@ const ClientFilters = ({
           }
           exportData.selectedIds = selectedClients.map(client => client._id);
           break;
-          
         case 'filtered':
           exportData.filters = {
             search: searchTerm,
@@ -68,7 +57,6 @@ const ClientFilters = ({
             ...activeFilters
           };
           break;
-          
         case 'dateRange':
           // You can add date range picker here
           const startDate = prompt('Enter start date (YYYY-MM-DD):');
@@ -77,9 +65,11 @@ const ClientFilters = ({
             toast.error('Please provide valid date range');
             return;
           }
-          exportData.filters = { startDate, endDate };
+          exportData.filters = {
+            startDate,
+            endDate
+          };
           break;
-          
         case 'all':
         default:
           // No additional data needed
@@ -98,15 +88,9 @@ const ClientFilters = ({
       setIsExporting(false);
     }
   };
-
-  const ExportDropdown = () => (
-    <DropdownMenu>
+  const ExportDropdown = () => <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className="inline-flex items-center"
-          disabled={isExporting}
-        >
+        <Button variant="outline" className="inline-flex items-center" disabled={isExporting}>
           <Download className="h-4 w-4 mr-1" />
           {isExporting ? 'Exporting...' : 'Export'}
         </Button>
@@ -126,8 +110,7 @@ const ClientFilters = ({
         </DropdownMenuItem>
         
         {/* Filtered Data */}
-        {(searchTerm || selectedFilter !== 'All' || Object.keys(activeFilters || {}).length > 0) && (
-          <>
+        {(searchTerm || selectedFilter !== 'All' || Object.keys(activeFilters || {}).length > 0) && <>
             <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Filtered Data ({filteredData.length} items)</div>
             <DropdownMenuItem onClick={() => handleExportAction('csv', 'filtered')}>
               <FileDown className="h-4 w-4 mr-2" />
@@ -137,12 +120,10 @@ const ClientFilters = ({
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export Filtered as Excel
             </DropdownMenuItem>
-          </>
-        )}
+          </>}
         
         {/* Selected Data */}
-        {selectedClients.length > 0 && (
-          <>
+        {selectedClients.length > 0 && <>
             <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Selected Data ({selectedClients.length} items)</div>
             <DropdownMenuItem onClick={() => handleExportAction('csv', 'selected')}>
               <FileDown className="h-4 w-4 mr-2" />
@@ -152,8 +133,7 @@ const ClientFilters = ({
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export Selected as Excel
             </DropdownMenuItem>
-          </>
-        )}
+          </>}
         
         {/* Date Range */}
         <div className="px-2 py-1 text-xs font-medium text-gray-500 border-t">Date Range</div>
@@ -166,69 +146,30 @@ const ClientFilters = ({
           Export Date Range as Excel
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  return (
-    <div className="bg-white rounded-lg shadow p-4">
+    </DropdownMenu>;
+  return <div className="bg-white rounded-lg shadow p-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="relative w-full md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
-            <Input
-              type="text"
-              className="pl-10 pr-3"
-              placeholder={placeholderText}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <Input type="text" className="pl-10 pr-3" placeholder={placeholderText} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
           
           <div className="relative flex items-center gap-2">
             <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              className="block pl-3 pr-10 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-amba-blue focus:border-amba-blue"
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-            >
-              {filterOptions.map((option) => (
-                <option key={option} value={option}>
+            <select className="block pl-3 pr-10 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-amba-blue focus:border-amba-blue" value={selectedFilter} onChange={e => setSelectedFilter(e.target.value)}>
+              {filterOptions.map(option => <option key={option} value={option}>
                   {option}
-                </option>
-              ))}
+                </option>)}
             </select>
           </div>
           
           <div className="flex items-center gap-1">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-1 px-2"
-              onClick={() => toggleSort('name')}
-            >
-              Name
-              {sortField === 'name' && (
-                sortDirection === 'asc' ? 
-                <SortAsc className="h-3 w-3" /> : 
-                <SortDesc className="h-3 w-3" />
-              )}
-            </Button>
             
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-1 px-2"
-              onClick={() => toggleSort('type')}
-            >
-              Type
-              {sortField === 'type' && (
-                sortDirection === 'asc' ? 
-                <SortAsc className="h-3 w-3" /> : 
-                <SortDesc className="h-3 w-3" />
-              )}
-            </Button>
+            
+            
           </div>
         </div>
         
@@ -237,25 +178,14 @@ const ClientFilters = ({
         </div>
       </div>
       
-      {activeFilters && activeFilters.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {activeFilters.map((filter, index) => (
-            <Badge key={index} variant="secondary" className="flex items-center gap-1">
+      {activeFilters && activeFilters.length > 0 && <div className="mt-3 flex flex-wrap gap-2">
+          {activeFilters.map((filter, index) => <Badge key={index} variant="secondary" className="flex items-center gap-1">
               {filter.name}: {filter.value}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-4 w-4 p-0 ml-1" 
-                onClick={() => removeFilter(filter.name)}
-              >
+              <Button variant="ghost" size="sm" className="h-4 w-4 p-0 ml-1" onClick={() => removeFilter(filter.name)}>
                 <X className="h-3 w-3" />
               </Button>
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+            </Badge>)}
+        </div>}
+    </div>;
 };
-
 export default ClientFilters;
