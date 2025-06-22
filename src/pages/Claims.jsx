@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ClaimsTable from '@/components/claims/ClaimsTable';
 import { useIsMobile } from '@/hooks/use-mobile';
