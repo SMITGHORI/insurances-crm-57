@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   useDashboardOverview, 
   useRecentActivities, 
@@ -28,6 +29,17 @@ import RecentActivities from '@/components/dashboard/RecentActivities';
 
 const DashboardContent = ({ isMobile }) => {
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Check if QueryClient is available before using React Query hooks
+  const queryClient = useQueryClient();
+  
+  if (!queryClient) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
   
   // Real-time data hooks - these will only work if QueryClientProvider is available
   const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
@@ -192,6 +204,20 @@ const DashboardContent = ({ isMobile }) => {
   );
 };
 
+const QueryClientWrapper = ({ children }) => {
+  try {
+    const queryClient = useQueryClient();
+    return children;
+  } catch (error) {
+    console.error('QueryClient not available:', error);
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+};
+
 const Dashboard = () => {
   const isMobile = useIsMobile();
   
@@ -214,7 +240,9 @@ const Dashboard = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       }>
-        <DashboardContent isMobile={isMobile} />
+        <QueryClientWrapper>
+          <DashboardContent isMobile={isMobile} />
+        </QueryClientWrapper>
       </Suspense>
     </div>
   );
