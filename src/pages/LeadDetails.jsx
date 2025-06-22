@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useLead, useDeleteLead } from '@/hooks/useLeads';
+import LeadTimeline from '@/components/leads/LeadTimeline';
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -265,17 +265,21 @@ const LeadDetails = () => {
         </Card>
       )}
 
-      {/* Tabs for follow-ups and notes */}
+      {/* Tabs for follow-ups, notes, and timeline */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="followups">Follow-ups</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
         </TabsList>
         <TabsContent value="followups">
           <LeadFollowUps lead={lead} />
         </TabsContent>
         <TabsContent value="notes">
           <LeadNotes lead={lead} />
+        </TabsContent>
+        <TabsContent value="timeline">
+          <LeadTimeline lead={lead} />
         </TabsContent>
       </Tabs>
 
