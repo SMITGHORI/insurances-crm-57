@@ -1,3 +1,4 @@
+
 import React, { useState, Suspense } from 'react';
 import { 
   Users, 
@@ -13,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useQueryClient } from '@tanstack/react-query';
 import { 
   useDashboardOverview, 
   useRecentActivities, 
@@ -29,22 +29,7 @@ import RecentActivities from '@/components/dashboard/RecentActivities';
 const DashboardContent = ({ isMobile }) => {
   const [refreshing, setRefreshing] = useState(false);
   
-  // Check if QueryClient context is available first
-  const queryClient = useQueryClient();
-  
-  if (!queryClient) {
-    console.log('QueryClient not available in DashboardContent');
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Initializing Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Real-time data hooks - only call if queryClient is available
+  // Real-time data hooks - these will only work if QueryClientProvider is available
   const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities(10);
   const { data: metrics, isLoading: metricsLoading } = usePerformanceMetrics('30d');
