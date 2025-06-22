@@ -17,7 +17,9 @@ const ClaimsTable = ({
   sortField,
   sortDirection,
   handleExport,
-  updateActiveFilters
+  updateActiveFilters,
+  selectedClaims = [],
+  onClaimSelection
 }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -104,6 +106,23 @@ const ClaimsTable = ({
     setCurrentPage(page);
   };
 
+  const handleSelectAll = () => {
+    if (selectedClaims.length === claims.length) {
+      claims.forEach(claim => onClaimSelection(claim._id, false));
+    } else {
+      claims.forEach(claim => {
+        if (!selectedClaims.includes(claim._id)) {
+          onClaimSelection(claim._id, true);
+        }
+      });
+    }
+  };
+
+  const handleSelectClaim = (claimId) => {
+    const isSelected = selectedClaims.includes(claimId);
+    onClaimSelection(claimId, !isSelected);
+  };
+
   // Render mobile view
   if (isMobile) {
     return <ClaimsMobileView claims={claims} filterParams={filterParams} handleExport={() => handleExport(claims)} />;
@@ -117,6 +136,14 @@ const ClaimsTable = ({
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={selectedClaims.length === claims.length && claims.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Claim Details
                   </th>
@@ -139,6 +166,14 @@ const ClaimsTable = ({
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {claims.map(claim => <tr key={claim._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedClaims.includes(claim._id)}
+                        onChange={() => handleSelectClaim(claim._id)}
+                        className="rounded"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-blue-700">
