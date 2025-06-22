@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -57,9 +58,6 @@ const ClaimTimeline = ({ claim }) => {
     }
   };
 
-  // Safely get timeline array, defaulting to empty array if undefined
-  const timeline = claim?.timeline || [];
-
   const getTimelineIcon = (status) => {
     switch (status) {
       case 'incident':
@@ -81,8 +79,11 @@ const ClaimTimeline = ({ claim }) => {
     }
   };
 
+  // Safely get timeline array, defaulting to empty array if undefined
+  const timelineData = timeline || [];
+
   // Sort timeline events by date and time if timeline exists
-  const sortedTimeline = timeline.length > 0 ? [...timeline].sort((a, b) => {
+  const sortedTimeline = timelineData.length > 0 ? [...timelineData].sort((a, b) => {
     const dateA = new Date(`${a.date} ${a.time}`);
     const dateB = new Date(`${b.date} ${b.time}`);
     return dateB - dateA; // Most recent first
