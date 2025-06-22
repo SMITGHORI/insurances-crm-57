@@ -45,18 +45,19 @@ const NotFound = lazy(() => import('@/pages/NotFound'));
 const CommunicationDashboard = lazy(() => import('@/components/communication/CommunicationDashboard'));
 const OffersModule = lazy(() => import('@/components/offers/OffersModule'));
 
-// Create a client
+// Create a client instance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes (replaces cacheTime)
       retry: 2,
+      refetchOnWindowFocus: false,
     },
   },
 });
 
-// Full skeleton loading component - no blue spinner
+// Full skeleton loading component
 const LoadingComponent = () => (
   <div className="min-h-screen bg-gray-50">
     <PageSkeleton />
@@ -75,6 +76,9 @@ function App() {
                   {/* Auth Routes */}
                   <Route path="/auth" element={<Auth />} />
                   
+                  {/* Redirect root to dashboard */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  
                   {/* Protected Routes */}
                   <Route path="/" element={
                     <ProtectedRoute>
@@ -82,11 +86,6 @@ function App() {
                     </ProtectedRoute>
                   }>
                     {/* Dashboard */}
-                    <Route index element={
-                      <RouteGuard route="/dashboard">
-                        <Dashboard />
-                      </RouteGuard>
-                    } />
                     <Route path="dashboard" element={
                       <RouteGuard route="/dashboard">
                         <Dashboard />
