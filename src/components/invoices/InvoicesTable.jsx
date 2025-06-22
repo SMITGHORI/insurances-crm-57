@@ -166,7 +166,11 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort, handleExport }) =
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {invoices.map((invoice) => (
-                  <tr key={invoice._id} className="hover:bg-gray-50">
+                  <tr 
+                    key={invoice._id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleView(invoice._id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-blue-700">
                         {invoice.invoiceNumber}
@@ -191,15 +195,7 @@ const InvoicesTable = ({ filterParams, sortConfig, handleSort, handleExport }) =
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(invoice.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleView(invoice._id)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="sm"

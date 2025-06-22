@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Eye, Edit, Trash, ArrowUpDown, User, Building, Group, Link } from 'lucide-react';
+import { Edit, Trash, ArrowUpDown, User, Building, Group, Link } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -104,7 +105,8 @@ const ClientTable = ({
         {clients.map((client) => (
           <div 
             key={client._id || client.id} 
-            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => onViewClient(client._id || client.id)}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -152,15 +154,10 @@ const ClientTable = ({
                 </div>
                 <div className="flex space-x-1">
                   <Button
-                    onClick={() => onViewClient(client._id || client.id)}
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    onClick={() => onEditClient(client._id || client.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditClient(client._id || client.id);
+                    }}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 text-yellow-600"
@@ -168,7 +165,10 @@ const ClientTable = ({
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
-                    onClick={() => onDeleteClient(client._id || client.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteClient(client._id || client.id);
+                    }}
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0 text-red-600"
@@ -336,13 +336,6 @@ const ClientTable = ({
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => onViewClient(client._id || client.id)}
-                    className="text-blue-600 hover:text-blue-900"
-                    title="View client details"
-                  >
-                    <Eye className="h-5 w-5" />
-                  </button>
-                  <button
                     onClick={() => onEditClient(client._id || client.id)}
                     className="text-yellow-600 hover:text-yellow-900"
                     title="Edit client"
@@ -385,19 +378,26 @@ const ClientTable = ({
               >
                 Previous
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="bg-amba-blue text-white"
-              >
-                {currentPage}
-              </Button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const page = i + 1;
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => onPageChange(page)}
+                    className="border-l-0"
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
               <Button 
                 variant="outline" 
                 size="sm" 
                 disabled={currentPage >= totalPages}
                 onClick={() => onPageChange(currentPage + 1)}
-                className="rounded-r-md"
+                className="rounded-r-md border-l-0"
               >
                 Next
               </Button>

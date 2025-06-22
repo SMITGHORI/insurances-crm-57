@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, Edit, Trash2, FileText } from 'lucide-react';
+import { Edit, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import { MoreHorizontal } from 'lucide-react';
 
 const ClientTableActions = ({ 
   client, 
-  onView, 
   onEdit, 
   onDelete,
   canEdit = true,
@@ -37,11 +36,6 @@ const ClientTableActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onView(client._id)}>
-          <Eye className="mr-2 h-4 w-4" />
-          View Details
-        </DropdownMenuItem>
-        
         {canEditClient && (
           <DropdownMenuItem onClick={() => onEdit(client._id)}>
             <Edit className="mr-2 h-4 w-4" />

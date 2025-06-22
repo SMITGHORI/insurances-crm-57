@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { Eye, Edit, Trash2, FileText, Download } from 'lucide-react';
+import { Edit, Trash2, FileText, Download } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ClaimsMobileView from './ClaimsMobileView';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useClaims, useDeleteClaim } from '@/hooks/useClaims';
 import { toast } from 'sonner';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
+
 const ClaimsTable = ({
   filterParams,
   setFilterParams,
@@ -39,6 +40,7 @@ const ClaimsTable = ({
     page: currentPage,
     limit: itemsPerPage
   });
+  
   const deleteClaimMutation = useDeleteClaim();
 
   // Handle loading state with professional skeleton
@@ -48,7 +50,8 @@ const ClaimsTable = ({
 
   // Handle error state
   if (error) {
-    return <Card className="w-full">
+    return (
+      <Card className="w-full">
         <CardContent className="p-6">
           <div className="text-center">
             <p className="text-red-500 mb-4">Failed to load claims: {error.message}</p>
@@ -57,14 +60,16 @@ const ClaimsTable = ({
             </Button>
           </div>
         </CardContent>
-      </Card>;
+      </Card>
+    );
   }
+  
   const claims = claimsResponse?.data || [];
   const totalItems = claimsResponse?.total || 0;
   const totalPages = claimsResponse?.totalPages || 1;
 
   // Get appropriate status badge
-  const getStatusBadge = status => {
+  const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Pending</Badge>;
@@ -82,27 +87,32 @@ const ClaimsTable = ({
         return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">{status}</Badge>;
     }
   };
-  const handleView = claimId => {
+
+  const handleView = (claimId) => {
     navigate(`/claims/${claimId}`);
   };
-  const handleEdit = claimId => {
+
+  const handleEdit = (claimId) => {
     navigate(`/claims/${claimId}/edit`);
   };
-  const handleDelete = async claimId => {
+
+  const handleDelete = async (claimId) => {
     try {
       await deleteClaimMutation.mutateAsync(claimId);
     } catch (error) {
       console.error('Delete failed:', error);
     }
   };
-  const handleStatusFilterChange = status => {
+
+  const handleStatusFilterChange = (status) => {
     setFilterParams({
       ...filterParams,
       status
     });
     updateActiveFilters('Status', status === 'all' ? null : status);
   };
-  const handlePageChange = page => {
+
+  const handlePageChange = (page) => {
     setCurrentPage(page);
   };
 
@@ -125,11 +135,18 @@ const ClaimsTable = ({
 
   // Render mobile view
   if (isMobile) {
-    return <ClaimsMobileView claims={claims} filterParams={filterParams} handleExport={() => handleExport(claims)} />;
+    return (
+      <ClaimsMobileView 
+        claims={claims} 
+        filterParams={filterParams} 
+        handleExport={() => handleExport(claims)} 
+      />
+    );
   }
 
   // Desktop view
-  return <div className="space-y-4">
+  return (
+    <div className="space-y-4">
       <Card className="w-full">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -165,8 +182,13 @@ const ClaimsTable = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {claims.map(claim => <tr key={claim._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                {claims.map((claim) => (
+                  <tr 
+                    key={claim._id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleView(claim._id)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={selectedClaims.includes(claim._id)}
@@ -208,26 +230,40 @@ const ClaimsTable = ({
                         <div className="text-sm font-medium text-gray-900">
                           {formatCurrency(claim.claimAmount)}
                         </div>
-                        {claim.approvedAmount !== null && <div className={`text-xs ${claim.approvedAmount === 0 ? 'text-red-500' : 'text-green-600'}`}>
+                        {claim.approvedAmount !== null && (
+                          <div className={`text-xs ${claim.approvedAmount === 0 ? 'text-red-500' : 'text-green-600'}`}>
                             Approved: {formatCurrency(claim.approvedAmount)}
-                          </div>}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button onClick={() => handleStatusFilterChange(claim.status)} className="inline-block">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusFilterChange(claim.status);
+                        }} 
+                        className="inline-block"
+                      >
                         {getStatusBadge(claim.status)}
                       </button>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleView(claim._id)} className="text-blue-600 hover:text-blue-800">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(claim._id)} className="text-green-600 hover:text-green-800">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(claim._id)}
+                        className="text-green-600 hover:text-green-800"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -240,14 +276,18 @@ const ClaimsTable = ({
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(claim._id)} className="bg-red-600 hover:bg-red-700">
+                            <AlertDialogAction
+                              onClick={() => handleDelete(claim._id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
                     </td>
-                  </tr>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -284,6 +324,8 @@ const ClaimsTable = ({
       <div className="flex justify-end">
         
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default ClaimsTable;
