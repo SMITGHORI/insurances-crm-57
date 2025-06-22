@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   useDashboardOverview, 
   useRecentActivities, 
@@ -26,8 +27,7 @@ import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivities from '@/components/dashboard/RecentActivities';
 
-const Dashboard = () => {
-  const isMobile = useIsMobile();
+const DashboardContent = ({ isMobile }) => {
   const [refreshing, setRefreshing] = useState(false);
   
   // Real-time data hooks
@@ -95,17 +95,7 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 text-sm md:text-base">
-            Real-time overview of your insurance business
-          </p>
-        </div>
-      </div>
-
+    <>
       {/* Refresh Button */}
       <div className="flex justify-end mb-4">
         <Button 
@@ -199,6 +189,45 @@ const Dashboard = () => {
         data={activities} 
         isLoading={activitiesLoading}
       />
+    </>
+  );
+};
+
+const Dashboard = () => {
+  const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
+
+  // Check if QueryClient context is available
+  if (!queryClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 text-sm md:text-base">
+            Real-time overview of your insurance business
+          </p>
+        </div>
+      </div>
+
+      <Suspense fallback={
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      }>
+        <DashboardContent isMobile={isMobile} />
+      </Suspense>
     </div>
   );
 };
