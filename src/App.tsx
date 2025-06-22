@@ -80,195 +80,256 @@ function App() {
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   
                   {/* Protected Routes */}
-                  <Route path="/" element={
+                  <Route path="/dashboard" element={
                     <ProtectedRoute>
                       <MainLayout />
                     </ProtectedRoute>
                   }>
-                    {/* Dashboard */}
-                    <Route path="dashboard" element={
+                    <Route index element={
                       <RouteGuard route="/dashboard">
                         <Dashboard />
                       </RouteGuard>
                     } />
-                    
-                    {/* Communication Routes */}
-                    <Route path="communication" element={
+                  </Route>
+
+                  <Route path="/communication" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/communication">
                         <CommunicationDashboard />
                       </RouteGuard>
                     } />
-                    
-                    {/* Offers & Broadcasts Routes */}
-                    <Route path="offers" element={
+                  </Route>
+
+                  <Route path="/offers" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/offers">
                         <OffersModule />
                       </RouteGuard>
                     } />
-                    
-                    {/* Client Routes */}
-                    <Route path="clients" element={
+                  </Route>
+
+                  <Route path="/clients" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/clients">
                         <Clients />
                       </RouteGuard>
                     } />
-                    <Route path="clients/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createClient">
                         <ClientDetails />
                       </RouteGuard>
                     } />
-                    <Route path="clients/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/clients">
                         <ClientDetailsView />
                       </RouteGuard>
                     } />
-                    <Route path="clients/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/clients">
                         <ClientEdit />
                       </RouteGuard>
                     } />
-                    
-                    {/* Policy Routes */}
-                    <Route path="policies" element={
+                  </Route>
+
+                  <Route path="/policies" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/policies">
                         <Policies />
                       </RouteGuard>
                     } />
-                    <Route path="policies/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createPolicy">
                         <PolicyCreate />
                       </RouteGuard>
                     } />
-                    <Route path="policies/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/policies">
                         <PolicyDetails />
                       </RouteGuard>
                     } />
-                    <Route path="policies/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/policies">
                         <PolicyEdit />
                       </RouteGuard>
                     } />
-                    
-                    {/* Claims Routes */}
-                    <Route path="claims" element={
+                  </Route>
+
+                  <Route path="/claims" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/claims">
                         <Claims />
                       </RouteGuard>
                     } />
-                    <Route path="claims/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createClaim">
                         <ClaimCreate />
                       </RouteGuard>
                     } />
-                    <Route path="claims/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/claims">
                         <ClaimDetails />
                       </RouteGuard>
                     } />
-                    <Route path="claims/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/claims">
                         <ClaimEdit />
                       </RouteGuard>
                     } />
-                    
-                    {/* Leads Routes */}
-                    <Route path="leads" element={
+                  </Route>
+
+                  <Route path="/leads" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/leads">
                         <Leads />
                       </RouteGuard>
                     } />
-                    <Route path="leads/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createLead">
                         <LeadForm />
                       </RouteGuard>
                     } />
-                    <Route path="leads/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/leads">
                         <LeadDetails />
                       </RouteGuard>
                     } />
-                    <Route path="leads/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/leads">
                         <LeadForm />
                       </RouteGuard>
                     } />
-                    
-                    {/* Quotations Routes */}
-                    <Route path="quotations" element={
+                  </Route>
+
+                  <Route path="/quotations" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/quotations">
                         <Quotations />
                       </RouteGuard>
                     } />
-                    <Route path="quotations/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createQuotation">
                         <QuotationForm />
                       </RouteGuard>
                     } />
-                    <Route path="quotations/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/quotations">
                         <QuotationDetails />
                       </RouteGuard>
                     } />
-                    <Route path="quotations/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/quotations">
                         <QuotationEdit />
                       </RouteGuard>
                     } />
-                    
-                    {/* Invoices Routes */}
-                    <Route path="invoices" element={
+                  </Route>
+
+                  <Route path="/invoices" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/invoices">
                         <Invoices />
                       </RouteGuard>
                     } />
-                    <Route path="invoices/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createInvoice">
                         <InvoiceForm />
                       </RouteGuard>
                     } />
-                    <Route path="invoices/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/invoices">
                         <InvoiceDetails />
                       </RouteGuard>
                     } />
-                    <Route path="invoices/:id/edit" element={
+                    <Route path=":id/edit" element={
                       <RouteGuard route="/invoices">
                         <InvoiceEdit />
                       </RouteGuard>
                     } />
-                    
-                    {/* Activities Routes */}
-                    <Route path="activities" element={
+                  </Route>
+
+                  <Route path="/activities" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/recent-activities">
                         <RecentActivities />
                       </RouteGuard>
                     } />
-                    <Route path="recent-activities" element={
+                  </Route>
+
+                  <Route path="/recent-activities" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/recent-activities">
                         <RecentActivities />
                       </RouteGuard>
                     } />
-                    
-                    {/* Agents Routes - Only for Super Admin */}
-                    <Route path="agents" element={
+                  </Route>
+
+                  <Route path="/agents" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/agents">
                         <Agents />
                       </RouteGuard>
                     } />
-                    <Route path="agents/create" element={
+                    <Route path="create" element={
                       <RouteGuard requiredPermission="createAgent">
                         <AgentCreate />
                       </RouteGuard>
                     } />
-                    <Route path="agents/:id" element={
+                    <Route path=":id" element={
                       <RouteGuard route="/agents">
                         <AgentDetails />
                       </RouteGuard>
                     } />
-                    
-                    {/* Settings */}
-                    <Route path="settings" element={
+                  </Route>
+
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={
                       <RouteGuard route="/settings">
                         <Settings />
                       </RouteGuard>
