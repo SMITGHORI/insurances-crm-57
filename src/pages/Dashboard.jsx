@@ -1,4 +1,3 @@
-
 import React, { useState, Suspense } from 'react';
 import { 
   Users, 
@@ -30,7 +29,22 @@ import RecentActivities from '@/components/dashboard/RecentActivities';
 const DashboardContent = ({ isMobile }) => {
   const [refreshing, setRefreshing] = useState(false);
   
-  // Real-time data hooks
+  // Check if QueryClient context is available first
+  const queryClient = useQueryClient();
+  
+  if (!queryClient) {
+    console.log('QueryClient not available in DashboardContent');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Initializing Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Real-time data hooks - only call if queryClient is available
   const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities(10);
   const { data: metrics, isLoading: metricsLoading } = usePerformanceMetrics('30d');
@@ -195,20 +209,9 @@ const DashboardContent = ({ isMobile }) => {
 
 const Dashboard = () => {
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
-
-  // Check if QueryClient context is available
-  if (!queryClient) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
+  
+  console.log('Dashboard component rendering');
+  
   return (
     <div className="space-y-4 md:space-y-6 p-3 md:p-6">
       {/* Header */}
