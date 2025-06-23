@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
@@ -9,17 +8,13 @@ import {
   Phone,
   Calendar,
   ShieldCheck,
-  FileText,
-  Users,
-  Receipt,
   Trash2,
   AlertTriangle
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -29,10 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import AgentClients from '@/components/agents/AgentClients';
-import AgentPolicies from '@/components/agents/AgentPolicies';
-import AgentPerformance from '@/components/agents/AgentPerformance';
-import AgentCommissions from '@/components/agents/AgentCommissions';
+import AgentDetailTabs from '@/components/agents/AgentDetailTabs';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -40,7 +32,6 @@ const AgentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState("overview");
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -437,43 +428,8 @@ const AgentDetails = () => {
         </Card>
       </div>
 
-      {/* Tab Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
-          <TabsTrigger value="overview" className="flex items-center">
-            <FileText size={16} className="mr-2" />
-            <span>Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="clients" className="flex items-center">
-            <Users size={16} className="mr-2" />
-            <span>Clients</span>
-          </TabsTrigger>
-          <TabsTrigger value="policies" className="flex items-center">
-            <ShieldCheck size={16} className="mr-2" />
-            <span>Policies</span>
-          </TabsTrigger>
-          <TabsTrigger value="commissions" className="flex items-center">
-            <Receipt size={16} className="mr-2" />
-            <span>Commissions</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="mt-6">
-          <AgentPerformance agentId={agent._id || agent.id} />
-        </TabsContent>
-        
-        <TabsContent value="clients" className="mt-6">
-          <AgentClients agentId={agent._id || agent.id} />
-        </TabsContent>
-        
-        <TabsContent value="policies" className="mt-6">
-          <AgentPolicies agentId={agent._id || agent.id} />
-        </TabsContent>
-        
-        <TabsContent value="commissions" className="mt-6">
-          <AgentCommissions agentId={agent._id || agent.id} />
-        </TabsContent>
-      </Tabs>
+      {/* Enhanced Tab Content */}
+      <AgentDetailTabs agent={agent} />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
