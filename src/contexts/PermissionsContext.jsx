@@ -36,7 +36,6 @@ const ROLE_PERMISSIONS = {
     deleteAgent: true,
     manageAgentStatus: true,
     viewAgentCommissions: true,
-    assignClientsToAgents: true,
     
     // Policies permissions
     viewAllPolicies: true,
@@ -103,7 +102,6 @@ const ROLE_PERMISSIONS = {
     deleteAgent: true,
     manageAgentStatus: true,
     viewAgentCommissions: true,
-    assignClientsToAgents: true,
     
     // Policies permissions
     viewAllPolicies: true,
@@ -160,7 +158,6 @@ const ROLE_PERMISSIONS = {
     editClientCriticalFields: false,
     deleteClient: false,
     viewClientFinancials: false,
-    assignClientsToAgents: false,
     transferClientOwnership: false,
     
     // Agent-specific client permissions
