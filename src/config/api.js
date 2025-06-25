@@ -1,110 +1,120 @@
 
-/**
- * API configuration for backend integration
- * Centralizes API URLs and settings
- */
-
-// Environment-based API configuration
-const getApiBaseUrl = () => {
-  // Check for environment variables (Vite uses VITE_ prefix)
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
-  // Development fallback
-  if (import.meta.env.DEV) {
-    return 'http://localhost:5000/api';
-  }
-  
-  // Production fallback - replace with your actual production API URL
-  return '/api';
-};
-
+// API Configuration
 export const API_CONFIG = {
-  BASE_URL: getApiBaseUrl(),
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api',
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second
 };
 
-// API endpoints
+// API Endpoints
 export const API_ENDPOINTS = {
-  // Client endpoints
+  // Authentication
+  AUTH: '/auth',
+  LOGIN: '/auth/login',
+  REGISTER: '/auth/register',
+  LOGOUT: '/auth/logout',
+  REFRESH: '/auth/refresh',
+  
+  // Clients
   CLIENTS: '/clients',
-  CLIENT_BY_ID: (id) => `/clients/${id}`,
-  CLIENT_DOCUMENTS: (id) => `/clients/${id}/documents`,
-  CLIENT_DOCUMENT: (clientId, documentId) => `/clients/${clientId}/documents/${documentId}`,
+  CLIENT_SEARCH: '/clients/search',
+  CLIENT_EXPORT: '/clients/export',
   
-  // Policy endpoints
+  // Policies
   POLICIES: '/policies',
-  POLICY_BY_ID: (id) => `/policies/${id}`,
-  POLICY_DOCUMENTS: (id) => `/policies/${id}/documents`,
-  POLICY_RENEWALS: (id) => `/policies/${id}/renewals`,
-  POLICY_PAYMENTS: (id) => `/policies/${id}/payments`,
+  POLICY_SEARCH: '/policies/search',
+  POLICY_EXPORT: '/policies/export',
+  POLICY_RENEW: '/policies/renew',
   
-  // Agent endpoints
-  AGENTS: '/agents',
-  AGENT_BY_ID: (id) => `/agents/${id}`,
-  AGENT_CLIENTS: (id) => `/agents/${id}/clients`,
-  AGENT_POLICIES: (id) => `/agents/${id}/policies`,
-  AGENT_COMMISSIONS: (id) => `/agents/${id}/commissions`,
-  AGENT_PERFORMANCE: (id) => `/agents/${id}/performance`,
-  
-  // Claims endpoints
+  // Claims
   CLAIMS: '/claims',
-  CLAIM_BY_ID: (id) => `/claims/${id}`,
-  CLAIM_DOCUMENTS: (id) => `/claims/${id}/documents`,
-  CLAIM_DOCUMENT: (claimId, documentId) => `/claims/${claimId}/documents/${documentId}`,
-  CLAIM_NOTES: (id) => `/claims/${id}/notes`,
-  CLAIM_STATUS: (id) => `/claims/${id}/status`,
-  CLAIMS_STATS: '/claims/stats',
+  CLAIM_SEARCH: '/claims/search',
+  CLAIM_EXPORT: '/claims/export',
+  CLAIM_APPROVE: '/claims/approve',
+  CLAIM_REJECT: '/claims/reject',
   
-  // Leads endpoints
+  // Leads
   LEADS: '/leads',
-  LEAD_BY_ID: (id) => `/leads/${id}`,
-  LEAD_FOLLOWUPS: (id) => `/leads/${id}/followups`,
-  LEAD_NOTES: (id) => `/leads/${id}/notes`,
-  LEAD_ASSIGN: (id) => `/leads/${id}/assign`,
-  LEAD_CONVERT: (id) => `/leads/${id}/convert`,
-  LEADS_STATS: '/leads/stats',
+  LEAD_SEARCH: '/leads/search',
+  LEAD_ASSIGN: '/leads/assign',
+  LEAD_CONVERT: '/leads/convert',
   
-  // Quotations endpoints
+  // Agents
+  AGENTS: '/agents',
+  AGENT_SEARCH: '/agents/search',
+  AGENT_PERFORMANCE: '/agents/performance',
+  
+  // Quotations
   QUOTATIONS: '/quotations',
-  QUOTATION_BY_ID: (id) => `/quotations/${id}`,
-  QUOTATION_SEND: (id) => `/quotations/${id}/send`,
-  QUOTATION_STATUS: (id) => `/quotations/${id}/status`,
-  QUOTATIONS_STATS: '/quotations/stats',
+  QUOTATION_SEARCH: '/quotations/search',
+  QUOTATION_SEND: '/quotations/send',
   
-  // Invoices endpoints
-  INVOICES: '/invoices',
-  INVOICE_BY_ID: (id) => `/invoices/${id}`,
-  INVOICE_SEND: (id) => `/invoices/${id}/send`,
-  INVOICE_STATUS: (id) => `/invoices/${id}/status`,
-  INVOICES_STATS: '/invoices/stats',
+  // Dashboard
+  DASHBOARD: '/dashboard',
+  DASHBOARD_STATS: '/dashboard/stats',
+  DASHBOARD_ANALYTICS: '/dashboard/analytics',
   
-  // Activities endpoints
+  // Communication
+  COMMUNICATION: '/communication',
+  COMMUNICATION_SEND: '/communication/send',
+  COMMUNICATION_TEMPLATES: '/communication/templates',
+  
+  // Broadcast
+  BROADCAST: '/broadcast',
+  ENHANCED_BROADCAST: '/enhanced-broadcast',
+  
+  // Activities
   ACTIVITIES: '/activities',
-  ACTIVITY_BY_ID: (id) => `/activities/${id}`,
-  ACTIVITIES_STATS: '/activities/stats',
   
-  // Auth endpoints
-  AUTH_LOGIN: '/auth/login',
-  AUTH_LOGOUT: '/auth/logout',
-  AUTH_REFRESH: '/auth/refresh',
-  AUTH_PROFILE: '/auth/profile',
+  // Header
+  HEADER: '/header',
+  NOTIFICATIONS: '/header/notifications',
+  MESSAGES: '/header/messages',
+  
+  // Settings
+  SETTINGS: '/settings',
+  
+  // Invoices
+  INVOICES: '/invoices',
+  INVOICE_SEARCH: '/invoices/search',
+  INVOICE_STATS: '/invoices/stats',
+  INVOICE_SEND: '/invoices/send',
+  INVOICE_EXPORT: '/invoices/export'
 };
 
-// HTTP status codes
+// HTTP Status Codes
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
-  NO_CONTENT: 204,
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
   INTERNAL_SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503
 };
 
-export default API_CONFIG;
+// Request Methods
+export const REQUEST_METHODS = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  PATCH: 'PATCH',
+  DELETE: 'DELETE'
+};
+
+// Common Headers
+export const COMMON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
+};
+
+export default {
+  API_CONFIG,
+  API_ENDPOINTS,
+  HTTP_STATUS,
+  REQUEST_METHODS,
+  COMMON_HEADERS
+};
