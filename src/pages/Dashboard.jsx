@@ -1,18 +1,7 @@
 
 import React, { useState, Suspense } from 'react';
-import { 
-  Users, 
-  FileText, 
-  AlertTriangle, 
-  TrendingUp, 
-  Quote, 
-  RefreshCw,
-  Calendar,
-  DollarSign
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   useDashboardOverview, 
@@ -22,14 +11,17 @@ import {
   useQuickActions,
   useRefreshDashboard 
 } from '@/hooks/useDashboard';
+import DashboardStats from '@/components/dashboard/DashboardStats';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import DashboardNotifications from '@/components/dashboard/DashboardNotifications';
+import DashboardTasks from '@/components/dashboard/DashboardTasks';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivities from '@/components/dashboard/RecentActivities';
 
 const DashboardContent = ({ isMobile }) => {
   const [refreshing, setRefreshing] = useState(false);
   
-  // Real-time data hooks - these will work if QueryClientProvider is available
+  // Real-time data hooks
   const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivities(10);
   const { data: metrics, isLoading: metricsLoading } = usePerformanceMetrics('30d');
@@ -48,51 +40,6 @@ const DashboardContent = ({ isMobile }) => {
     }
   };
 
-  const statsCards = [
-    {
-      title: 'Total Clients',
-      value: overview?.clients?.total || 0,
-      active: overview?.clients?.active || 0,
-      trend: overview?.clients?.trend || '0',
-      icon: <Users className="h-5 w-5 text-blue-600" />,
-      color: 'blue'
-    },
-    {
-      title: 'Active Policies',
-      value: overview?.policies?.total || 0,
-      active: overview?.policies?.active || 0,
-      trend: overview?.policies?.trend || '0',
-      icon: <FileText className="h-5 w-5 text-green-600" />,
-      color: 'green'
-    },
-    {
-      title: 'Pending Claims',
-      value: overview?.claims?.total || 0,
-      active: overview?.claims?.pending || 0,
-      trend: overview?.claims?.trend || '0',
-      icon: <AlertTriangle className="h-5 w-5 text-orange-600" />,
-      color: 'orange'
-    },
-    {
-      title: 'Active Leads',
-      value: overview?.leads?.total || 0,
-      active: overview?.leads?.active || 0,
-      trend: overview?.leads?.trend || '0',
-      conversion: overview?.leads?.conversionRate || '0',
-      icon: <TrendingUp className="h-5 w-5 text-purple-600" />,
-      color: 'purple'
-    },
-    {
-      title: 'Quotations',
-      value: overview?.quotations?.total || 0,
-      active: overview?.quotations?.pending || 0,
-      trend: overview?.quotations?.trend || '0',
-      conversion: overview?.quotations?.conversionRate || '0',
-      icon: <Quote className="h-5 w-5 text-indigo-600" />,
-      color: 'indigo'
-    }
-  ];
-
   return (
     <>
       {/* Refresh Button */}
@@ -108,74 +55,30 @@ const DashboardContent = ({ isMobile }) => {
         </Button>
       </div>
 
-      {/* Performance Metrics */}
-      {metrics && !metricsLoading && (
-        <Card className="border-none shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Performance Overview (Last 30 Days)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{metrics.newClients}</div>
-                <div className="text-sm text-gray-500">New Clients</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{metrics.newPolicies}</div>
-                <div className="text-sm text-gray-500">New Policies</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">${metrics.totalRevenue}</div>
-                <div className="text-sm text-gray-500">Total Revenue</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">${metrics.averageDealSize}</div>
-                <div className="text-sm text-gray-500">Avg Deal Size</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Dashboard Stats */}
+      <DashboardStats 
+        overview={overview} 
+        metrics={metrics} 
+        isLoading={overviewLoading || metricsLoading} 
+      />
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {statsCards.map((card, index) => (
-          <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500">{card.title}</p>
-                  <div className="flex items-center mt-2">
-                    <h3 className="text-2xl font-bold">{card.value}</h3>
-                    {card.trend !== '0' && (
-                      <Badge variant="outline" className="ml-2 text-xs">
-                        {card.trend}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    Active: {card.active}
-                    {card.conversion && (
-                      <span className="ml-2">• Conv: {card.conversion}%</span>
-                    )}
-                  </div>
-                </div>
-                <div className="ml-4">{card.icon}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Charts and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <div className="lg:col-span-2">
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+        {/* Left Column - Charts */}
+        <div className="lg:col-span-2 space-y-6">
           <DashboardCharts 
             data={charts} 
             isLoading={chartsLoading}
           />
         </div>
-        <div>
+
+        {/* Right Column - Tasks and Notifications */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DashboardTasks />
+            <DashboardNotifications />
+          </div>
+          
           <QuickActions 
             data={quickActions} 
             isLoading={quickActionsLoading}
@@ -206,6 +109,12 @@ const Dashboard = () => {
           <p className="text-gray-600 text-sm md:text-base">
             Real-time overview of your insurance business
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <TrendingUp className="mr-2 h-4 w-4" />
+            Analytics
+          </Button>
         </div>
       </div>
 
