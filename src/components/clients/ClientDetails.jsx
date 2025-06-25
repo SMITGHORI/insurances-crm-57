@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -20,12 +19,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import ClientDetailTabs from './ClientDetailTabs';
 
-const ClientDetails = ({ client, onEditClient, onDeleteClient }) => {
+const ClientDetails = ({ client, onEditClient, onDeleteClient, showFullDetails = false }) => {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
   const navigate = useNavigate();
   
   if (!client) return null;
+  
+  // If showFullDetails is true, render the tabbed interface
+  if (showFullDetails) {
+    return <ClientDetailTabs client={client} />;
+  }
   
   const getClientTypeIcon = () => {
     switch (client.type) {
