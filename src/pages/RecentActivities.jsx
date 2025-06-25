@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,6 +7,7 @@ import {
   Star,
   Clock,
   AlertCircle,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,6 +20,9 @@ import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useDebouncedValue } from '@/hooks/useDebouncedSearch';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { recentActivitiesApi } from '@/services/api/recentActivitiesApi';
+import AdvancedActivityFilters from '@/components/activities/AdvancedActivityFilters';
+import ActivityAnalytics from '@/components/activities/ActivityAnalytics';
+import Button from '@/components/ui/button';
 
 const RecentActivities = () => {
   const navigate = useNavigate();
@@ -28,6 +31,7 @@ const RecentActivities = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [agentFilter, setAgentFilter] = useState('all');
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const isMobile = useIsMobile();
 
   // Performance monitoring
@@ -142,44 +146,61 @@ const RecentActivities = () => {
     <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
       <div className="flex justify-between items-center mb-4 md:mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Recent Activities</h1>
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-gray-500">Render time: {renderTime}ms</div>
-        )}
+        <div className="flex space-x-2">
+          <Button
+            variant={showAnalytics ? "default" : "outline"}
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            size="sm"
+          >
+            <TrendingUp className="mr-2 h-4 w-4" />
+            {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+          </Button>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-500">Render time: {renderTime}ms</div>
+          )}
+        </div>
       </div>
 
-      <ActivityFilters 
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        dateFilter={dateFilter}
-        setDateFilter={setDateFilter}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        agentFilter={agentFilter}
-        setAgentFilter={setAgentFilter}
-        uniqueAgents={uniqueAgents}
-        handleResetFilters={handleResetFilters}
-      />
-
-      <ActivityTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {error ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-8 text-center">
-            <p className="text-red-600">Error loading activities: {error.message}</p>
-          </div>
-        </div>
-      ) : isMobile ? (
-        <ActivitiesMobileView 
-          activities={filteredActivities} 
-          loading={isLoading} 
-        />
+      {/* Show Analytics or Activities */}
+      {showAnalytics ? (
+        <ActivityAnalytics activities={filteredActivities} />
       ) : (
-        <ActivitiesDesktopView 
-          activities={filteredActivities} 
-          loading={isLoading} 
-          getActivityIcon={getActivityIcon} 
-          formatDate={formatDate} 
-        />
+        <>
+          <AdvancedActivityFilters 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            agentFilter={agentFilter}
+            setAgentFilter={setAgentFilter}
+            uniqueAgents={uniqueAgents}
+            handleResetFilters={handleResetFilters}
+          />
+
+          <ActivityTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+
+          {error ? (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="p-8 text-center">
+                <p className="text-red-600">Error loading activities: {error.message}</p>
+              </div>
+            </div>
+          ) : isMobile ? (
+            <ActivitiesMobileView 
+              activities={filteredActivities} 
+              loading={isLoading} 
+            />
+          ) : (
+            <ActivitiesDesktopView 
+              activities={filteredActivities} 
+              loading={isLoading} 
+              getActivityIcon={getActivityIcon} 
+              formatDate={formatDate} 
+            />
+          )}
+        </>
       )}
     </div>
   );

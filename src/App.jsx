@@ -10,6 +10,9 @@ import Claims from './pages/Claims';
 import ClaimDetail from './pages/ClaimDetail';
 import Leads from './pages/Leads';
 import LeadDetail from './pages/LeadDetail';
+import Quotations from './pages/Quotations';
+import QuotationDetail from './pages/QuotationDetail';
+import RecentActivities from './pages/RecentActivities';
 
 function App() {
   return (
@@ -34,6 +37,13 @@ function App() {
         {/* Leads Routes */}  
         <Route path="/leads" element={<Leads />} />
         <Route path="/leads/:id" element={<LeadDetail />} />
+
+        {/* Quotations Routes */}
+        <Route path="/quotations" element={<Quotations />} />
+        <Route path="/quotations/:id" element={<QuotationDetail />} />
+        
+        {/* Recent Activities Route */}
+        <Route path="/recent-activities" element={<RecentActivities />} />
       </Routes>
     </Router>
   );
