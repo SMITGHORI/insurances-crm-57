@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -22,7 +23,7 @@ import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { recentActivitiesApi } from '@/services/api/recentActivitiesApi';
 import AdvancedActivityFilters from '@/components/activities/AdvancedActivityFilters';
 import ActivityAnalytics from '@/components/activities/ActivityAnalytics';
-import Button from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 
 const RecentActivities = () => {
   const navigate = useNavigate();

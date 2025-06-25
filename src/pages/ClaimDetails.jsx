@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,7 @@ import ClaimNotes from '@/components/claims/ClaimNotes';
 import { formatCurrency } from '@/lib/utils';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
-import * as claimsApi from '@/services/api/claimsApi';
+import { claimsApi } from '@/services/api/claimsApi';
 
 const ClaimDetails = () => {
   const { id } = useParams();
@@ -77,13 +76,13 @@ const ClaimDetails = () => {
 
         // If not found in localStorage, try API
         const response = await claimsApi.getClaimById(id);
-        if (response.success && response.claim) {
+        if (response) {
           // Ensure documents and timeline arrays exist
           const claimWithDefaults = {
-            ...response.claim,
-            documents: response.claim.documents || [],
-            timeline: response.claim.timeline || [],
-            notes: response.claim.notes || []
+            ...response,
+            documents: response.documents || [],
+            timeline: response.timeline || [],
+            notes: response.notes || []
           };
           setClaim(claimWithDefaults);
         } else {
