@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Protected from '../Protected';
 import * as usePermissionsHook from '../../hooks/usePermissions';
@@ -23,13 +23,13 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByTestId } = render(
       <Protected module="clients" action="view">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+    expect(getByTestId('protected-content')).toBeDefined();
   });
 
   it('renders AccessDenied when user lacks permission', () => {
@@ -42,14 +42,14 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByText, queryByTestId } = render(
       <Protected module="clients" action="edit">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(screen.getByText('Access Denied')).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByText('Access Denied')).toBeDefined();
+    expect(queryByTestId('protected-content')).toBeNull();
   });
 
   it('renders custom fallback when provided', () => {
@@ -62,7 +62,7 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByTestId, queryByTestId } = render(
       <Protected 
         module="clients" 
         action="delete" 
@@ -72,8 +72,8 @@ describe('Protected Component', () => {
       </Protected>
     );
 
-    expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByTestId('custom-fallback')).toBeDefined();
+    expect(queryByTestId('protected-content')).toBeNull();
   });
 
   it('handles branch checking correctly', () => {
@@ -89,14 +89,14 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByText, queryByTestId } = render(
       <Protected module="clients" action="view" recordBranch="branch-b">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
     expect(mockIsSameBranch).toHaveBeenCalledWith('branch-b');
-    expect(screen.getByText('Access Denied')).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByText('Access Denied')).toBeDefined();
+    expect(queryByTestId('protected-content')).toBeNull();
   });
 });
