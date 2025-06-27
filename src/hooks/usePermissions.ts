@@ -1,6 +1,7 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Permission } from '@/types/auth';
 
 /**
  * Interface for the usePermissions hook return type
