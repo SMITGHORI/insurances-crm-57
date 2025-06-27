@@ -1,58 +1,41 @@
 
+import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export const usePermissions = () => {
+/**
+ * Interface for the usePermissions hook return type
+ */
+export interface UsePermissionsResult {
+  hasPermission(module: string, action: string): boolean;
+  hasAnyPermission(permissions: string[]): boolean;
+  isSameBranch(recordBranch: string): boolean;
+  userBranch: string | undefined;
+  userRole: string | undefined;
+  userPermissions: Permission[];
+}
+
+/**
+ * Custom hook that provides memoized permission checking utilities
+ * Consumes AuthContext and exposes permission validation methods
+ */
+export const usePermissions = (): UsePermissionsResult => {
   const { hasPermission, hasAnyPermission, isSameBranch, user } = useAuth();
 
-  /**
-   * Component wrapper for permission-based rendering
-   */
-  const canRender = (module: string, action: string): boolean => {
-    return hasPermission(module, action);
-  };
-
-  /**
-   * Check multiple permissions at once
-   */
-  const canPerformActions = (permissions: string[]): boolean => {
-    return hasAnyPermission(permissions);
-  };
-
-  /**
-   * Get user's branch-filtered data
-   */
-  const filterByBranch = <T extends { branch?: string }>(data: T[]): T[] => {
-    if (!user) return [];
-    
-    // Super admin sees all data
-    if (user.role === 'super_admin') return data;
-    
-    // Filter by user's branch
-    return data.filter(item => 
-      !item.branch || 
-      item.branch === user.branch || 
-      item.branch === 'all'
-    );
-  };
-
-  /**
-   * Check if user can edit specific record based on branch
-   */
-  const canEditRecord = (recordBranch?: string): boolean => {
-    if (!recordBranch) return true;
-    return isSameBranch(recordBranch);
-  };
-
-  return {
-    hasPermission,
-    hasAnyPermission,
-    isSameBranch,
-    canRender,
-    canPerformActions,
-    filterByBranch,
-    canEditRecord,
+  // Memoize permission methods for performance
+  const memoizedPermissions = useMemo(() => ({
+    hasPermission: (module: string, action: string): boolean => {
+      return hasPermission(module, action);
+    },
+    hasAnyPermission: (permissions: string[]): boolean => {
+      return hasAnyPermission(permissions);
+    },
+    isSameBranch: (recordBranch: string): boolean => {
+      return isSameBranch(recordBranch);
+    },
     userBranch: user?.branch,
     userRole: user?.role,
     userPermissions: user?.permissions || []
-  };
+  }), [hasPermission, hasAnyPermission, isSameBranch, user]);
+
+  return memoizedPermissions;
 };

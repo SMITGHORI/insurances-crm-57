@@ -1,4 +1,3 @@
-
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -86,11 +85,7 @@ function App() {
                     </ProtectedRoute>
                   }>
                     {/* Dashboard */}
-                    <Route path="dashboard" element={
-                      <RouteGuard route="/dashboard">
-                        <Dashboard />
-                      </RouteGuard>
-                    } />
+                    <Route path="dashboard" element={<Dashboard />} />
 
                     {/* Communication */}
                     <Route path="communication" element={

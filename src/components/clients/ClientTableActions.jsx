@@ -10,6 +10,8 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import Protected from '@/components/Protected';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const ClientTableActions = ({ 
   client, 
@@ -20,12 +22,13 @@ const ClientTableActions = ({
   userRole,
   userId 
 }) => {
+  const { hasPermission } = usePermissions();
   const isAssignedAgent = client.assignedAgentId === userId;
   const isAgent = userRole === 'agent';
   
   // Determine if actions are available based on role and assignment
   const canEditClient = canEdit && (!isAgent || isAssignedAgent);
-  const canDeleteClient = canDelete && !isAgent;
+  const canDeleteClient = canDelete && !isAgent && hasPermission('clients', 'delete');
 
   return (
     <DropdownMenu>
@@ -36,30 +39,36 @@ const ClientTableActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {canEditClient && (
-          <DropdownMenuItem onClick={() => onEdit(client._id)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Client
-          </DropdownMenuItem>
-        )}
-        
-        <DropdownMenuItem onClick={() => onView(`${client._id}/documents`)}>
-          <FileText className="mr-2 h-4 w-4" />
-          View Documents
-        </DropdownMenuItem>
-        
-        {canDeleteClient && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => onDelete(client._id)}
-              className="text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Client
+        <Protected module="clients" action="edit" recordBranch={client.branch}>
+          {canEditClient && (
+            <DropdownMenuItem onClick={() => onEdit(client._id)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Client
             </DropdownMenuItem>
-          </>
-        )}
+          )}
+        </Protected>
+        
+        <Protected module="clients" action="view" recordBranch={client.branch}>
+          <DropdownMenuItem onClick={() => onView(`${client._id}/documents`)}>
+            <FileText className="mr-2 h-4 w-4" />
+            View Documents
+          </DropdownMenuItem>
+        </Protected>
+        
+        <Protected module="clients" action="delete" recordBranch={client.branch}>
+          {canDeleteClient && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onDelete(client._id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Client
+              </DropdownMenuItem>
+            </>
+          )}
+        </Protected>
       </DropdownMenuContent>
     </DropdownMenu>
   );

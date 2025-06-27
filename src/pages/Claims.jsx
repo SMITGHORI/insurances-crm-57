@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Download } from 'lucide-react';
@@ -15,6 +14,7 @@ import ClaimExportDialog from '@/components/claims/ClaimExportDialog';
 import ClaimsReports from '@/components/claims/ClaimsReports';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BarChart } from 'lucide-react';
+import Protected from '@/components/Protected';
 
 const Claims = () => {
   const navigate = useNavigate();
@@ -129,31 +129,37 @@ const Claims = () => {
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Claims Management</h1>
         <div className="flex gap-2">
-          <Dialog open={showReports} onOpenChange={setShowReports}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className={isMobile ? "w-full" : ""}>
-                <BarChart className="mr-2 h-4 w-4" /> Reports
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-6xl h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Claims Reports & Analytics</DialogTitle>
-              </DialogHeader>
-              <ClaimsReports />
-            </DialogContent>
-          </Dialog>
+          <Protected module="claims" action="view">
+            <Dialog open={showReports} onOpenChange={setShowReports}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className={isMobile ? "w-full" : ""}>
+                  <BarChart className="mr-2 h-4 w-4" /> Reports
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-6xl h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Claims Reports & Analytics</DialogTitle>
+                </DialogHeader>
+                <ClaimsReports />
+              </DialogContent>
+            </Dialog>
+          </Protected>
           
-          <ClaimExportDialog 
-            trigger={
-              <Button variant="outline" className={isMobile ? "w-full" : ""}>
-                <Download className="mr-2 h-4 w-4" /> Import
-              </Button>
-            }
-          />
+          <Protected module="claims" action="export">
+            <ClaimExportDialog 
+              trigger={
+                <Button variant="outline" className={isMobile ? "w-full" : ""}>
+                  <Download className="mr-2 h-4 w-4" /> Import
+                </Button>
+              }
+            />
+          </Protected>
           
-          <Button onClick={handleCreateClaim} className={isMobile ? "w-full" : ""}>
-            <Plus className="mr-2 h-4 w-4" /> Create Claim
-          </Button>
+          <Protected module="claims" action="create">
+            <Button onClick={handleCreateClaim} className={isMobile ? "w-full" : ""}>
+              <Plus className="mr-2 h-4 w-4" /> Create Claim
+            </Button>
+          </Protected>
         </div>
       </div>
 

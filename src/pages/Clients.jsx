@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, Building, User, Group } from 'lucide-react';
@@ -17,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import RouteGuard from '../components/RouteGuard';
+import Protected from '@/components/Protected';
 
 /**
  * Clients page with role-based permissions
@@ -204,7 +204,7 @@ const Clients = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Client Management</h1>
-          {hasPermission('createClient') && (
+          <Protected module="clients" action="create">
             <Button
               onClick={handleAddClient}
               className="inline-flex items-center px-4 py-2 bg-amba-blue text-white rounded-md hover:bg-amba-lightblue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amba-blue"
@@ -213,7 +213,7 @@ const Clients = () => {
               <Plus className="h-5 w-5 mr-2" />
               {createClientMutation.isLoading ? 'Adding...' : 'Add Client'}
             </Button>
-          )}
+          </Protected>
         </div>
 
         {/* Client Statistics Cards */}
@@ -335,39 +335,41 @@ const Clients = () => {
         </div>
 
         {/* Add Client Modal */}
-        {showAddModal && hasPermission('createClient') && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-              </div>
+        {showAddModal && (
+          <Protected module="clients" action="create">
+            <div className="fixed inset-0 z-50 overflow-y-auto">
+              <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+                  <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
 
-              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-              <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-500"
-                      onClick={() => setShowAddModal(false)}
-                    >
-                      <span className="sr-only">Close</span>
-                      <span className="text-xl font-medium">&times;</span>
-                    </button>
+                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+                  <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Add New Client</h3>
+                      <button
+                        type="button"
+                        className="text-gray-400 hover:text-gray-500"
+                        onClick={() => setShowAddModal(false)}
+                      >
+                        <span className="sr-only">Close</span>
+                        <span className="text-xl font-medium">&times;</span>
+                      </button>
+                    </div>
+                    <ClientForm 
+                      onClose={() => setShowAddModal(false)}
+                      onSuccess={handleClientFormSuccess}
+                      isLoading={createClientMutation.isLoading}
+                      userRole={user?.role}
+                      userId={user?.id}
+                    />
                   </div>
-                  <ClientForm 
-                    onClose={() => setShowAddModal(false)}
-                    onSuccess={handleClientFormSuccess}
-                    isLoading={createClientMutation.isLoading}
-                    userRole={user?.role}
-                    userId={user?.id}
-                  />
                 </div>
               </div>
             </div>
-          </div>
+          </Protected>
         )}
       </div>
     </RouteGuard>
