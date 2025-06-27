@@ -1,6 +1,7 @@
 
 import React, { ReactNode } from 'react';
 import { usePermissions } from '@/hooks/usePermissions';
+import AccessDenied from './AccessDenied';
 
 /**
  * Props interface for the Protected component
@@ -18,10 +19,13 @@ export interface ProtectedProps {
   recordBranch?: string;
   /** Children to render when access is granted */
   children: ReactNode;
+  /** Custom access denied message */
+  accessDeniedMessage?: string;
 }
 
 /**
  * Protected component that conditionally renders children based on user permissions
+ * Enhanced version with improved fallback handling and branch checking
  * 
  * Usage:
  * <Protected module="policies" action="create">
@@ -36,9 +40,10 @@ export const Protected: React.FC<ProtectedProps> = ({
   module,
   action,
   branchCheck = true,
-  fallback = null,
+  fallback,
   recordBranch,
-  children
+  children,
+  accessDeniedMessage
 }) => {
   const { hasPermission, isSameBranch } = usePermissions();
 
@@ -53,8 +58,18 @@ export const Protected: React.FC<ProtectedProps> = ({
     return <>{children}</>;
   }
 
-  // Render fallback or null when access is denied
-  return <>{fallback}</>;
+  // Render custom fallback or default AccessDenied component
+  if (fallback !== undefined) {
+    return <>{fallback}</>;
+  }
+
+  // Default fallback with AccessDenied component
+  return (
+    <AccessDenied 
+      message={accessDeniedMessage || `You need ${module}:${action} permission to access this resource.`}
+      showHomeButton={false}
+    />
+  );
 };
 
 export default Protected;

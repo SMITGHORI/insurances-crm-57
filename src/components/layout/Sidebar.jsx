@@ -16,40 +16,102 @@ import {
   Clock,
   Gift
 } from 'lucide-react';
-import { usePermissions } from '@/contexts/PermissionsContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const Sidebar = ({ onNavItemClick }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { canAccessRoute, isAgent, isSuperAdmin } = usePermissions();
+  const { hasPermission, userRole } = usePermissions();
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // Define menu items with their access requirements
+  // Define menu items with their permission requirements
   const allMenuItems = [
-    { path: '/dashboard', icon: <Home size={20} />, name: 'Dashboard' },
-    { path: '/clients', icon: <Users size={20} />, name: 'Clients' },
-    { path: '/policies', icon: <FileText size={20} />, name: 'Policies' },
-    { path: '/claims', icon: <ShieldCheck size={20} />, name: 'Claims' },
-    { path: '/leads', icon: <Star size={20} />, name: 'Leads' },
-    { path: '/quotations', icon: <FileEdit size={20} />, name: 'Quotations' },
-    { path: '/offers', icon: <Gift size={20} />, name: 'Offers & Broadcasts' },
-    { path: '/agents', icon: <Users size={20} />, name: 'Agents', adminOnly: true },
-    { path: '/invoices', icon: <Receipt size={20} />, name: 'Invoices', adminOnly: true },
-    { path: '/recent-activities', icon: <Clock size={20} />, name: 'Recent Activities' },
-    { path: '/settings', icon: <Settings size={20} />, name: 'Settings' },
+    { 
+      path: '/dashboard', 
+      icon: <Home size={20} />, 
+      name: 'Dashboard',
+      requiredPermission: null // Dashboard is always accessible
+    },
+    { 
+      path: '/clients', 
+      icon: <Users size={20} />, 
+      name: 'Clients',
+      requiredPermission: { module: 'clients', action: 'view' }
+    },
+    { 
+      path: '/policies', 
+      icon: <FileText size={20} />, 
+      name: 'Policies',
+      requiredPermission: { module: 'policies', action: 'view' }
+    },
+    { 
+      path: '/claims', 
+      icon: <ShieldCheck size={20} />, 
+      name: 'Claims',
+      requiredPermission: { module: 'claims', action: 'view' }
+    },
+    { 
+      path: '/leads', 
+      icon: <Star size={20} />, 
+      name: 'Leads',
+      requiredPermission: { module: 'leads', action: 'view' }
+    },
+    { 
+      path: '/quotations', 
+      icon: <FileEdit size={20} />, 
+      name: 'Quotations',
+      requiredPermission: { module: 'quotations', action: 'view' }
+    },
+    { 
+      path: '/offers', 
+      icon: <Gift size={20} />, 
+      name: 'Offers & Broadcasts',
+      requiredPermission: { module: 'offers', action: 'view' }
+    },
+    { 
+      path: '/agents', 
+      icon: <Users size={20} />, 
+      name: 'Agents',
+      requiredPermission: { module: 'agents', action: 'view' },
+      adminOnly: true
+    },
+    { 
+      path: '/invoices', 
+      icon: <Receipt size={20} />, 
+      name: 'Invoices',
+      requiredPermission: { module: 'invoices', action: 'view' },
+      adminOnly: true
+    },
+    { 
+      path: '/recent-activities', 
+      icon: <Clock size={20} />, 
+      name: 'Recent Activities',
+      requiredPermission: { module: 'activities', action: 'view' }
+    },
+    { 
+      path: '/settings', 
+      icon: <Settings size={20} />, 
+      name: 'Settings',
+      requiredPermission: null // Settings is always accessible
+    },
   ];
 
   // Filter menu items based on user permissions
   const menuItems = allMenuItems.filter(item => {
-    // Hide admin-only items from agents
-    if (item.adminOnly && isAgent()) {
+    // Hide admin-only items from non-admin users
+    if (item.adminOnly && userRole !== 'super_admin' && userRole !== 'admin') {
       return false;
     }
     
-    // Check if user can access the route
-    return canAccessRoute(item.path);
+    // Check permission if required
+    if (item.requiredPermission) {
+      return hasPermission(item.requiredPermission.module, item.requiredPermission.action);
+    }
+    
+    // Show item if no permission required
+    return true;
   });
 
   return (
@@ -79,7 +141,7 @@ const Sidebar = ({ onNavItemClick }) => {
       {!isCollapsed && (
         <div className="px-4 py-2 border-b border-amba-lightblue/30">
           <span className="text-xs text-amba-lightblue/80 uppercase tracking-wide">
-            {isSuperAdmin() ? 'Super Admin' : isAgent() ? 'Agent' : 'User'}
+            {userRole?.replace('_', ' ') || 'User'}
           </span>
         </div>
       )}
@@ -93,7 +155,7 @@ const Sidebar = ({ onNavItemClick }) => {
                 to={item.path}
                 onClick={onNavItemClick}
                 className={({ isActive }) =>
-                  `flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 ${
+                  `flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 transition-colors ${
                     isActive ? 'bg-amba-lightblue/30 font-medium' : ''
                   }`
                 }
@@ -110,7 +172,7 @@ const Sidebar = ({ onNavItemClick }) => {
       <div className="p-3 border-t border-amba-lightblue/30">
         <NavLink
           to="/auth"
-          className="flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 text-white/80 hover:text-white"
+          className="flex items-center p-2 rounded-md hover:bg-amba-lightblue/20 text-white/80 hover:text-white transition-colors"
         >
           <LogOut size={20} className={`${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
           {!isCollapsed && <span>Logout</span>}

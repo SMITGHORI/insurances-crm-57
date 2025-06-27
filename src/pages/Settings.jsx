@@ -10,6 +10,8 @@ import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, UserCog } fro
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import PermissionOverview from '@/components/settings/PermissionOverview';
+import Protected from '@/components/Protected';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
@@ -126,6 +128,16 @@ const Settings = () => {
                   <Shield className="mr-2 h-4 w-4" />
                   Security
                 </Button>
+                <Protected module="settings" action="view_permissions">
+                  <Button 
+                    variant={activeTab === "permissions" ? "default" : "ghost"} 
+                    className="w-full justify-start" 
+                    onClick={() => setActiveTab("permissions")}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Permissions
+                  </Button>
+                </Protected>
                 <Button 
                   variant={activeTab === "appearance" ? "default" : "ghost"} 
                   className="w-full justify-start" 
@@ -353,6 +365,12 @@ const Settings = () => {
                 </form>
               </CardContent>
             </Card>
+          )}
+          
+          {activeTab === "permissions" && (
+            <Protected module="settings" action="view_permissions">
+              <PermissionOverview />
+            </Protected>
           )}
           
           {activeTab === "appearance" && (

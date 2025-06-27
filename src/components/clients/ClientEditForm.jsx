@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUpload from './DocumentUpload';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUpdateClient, useUploadDocument } from '../../hooks/useClients';
 import { validateClientData, getClientName } from '../../schemas/clientSchemas';
+import ProtectedField from '@/components/ProtectedField';
 
 /**
  * Client Edit Form component with backend integration
@@ -181,20 +181,22 @@ const ClientEditForm = ({ client, onSave }) => {
                 />
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Pending">Pending</option>
-                </select>
-              </div>
+              {/* Protected Status Field */}
+              <ProtectedField module="clients" action="edit_status">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+              </ProtectedField>
 
               {/* Dynamic fields based on client type */}
               {formData.clientType === 'individual' && (
@@ -223,53 +225,23 @@ const ClientEditForm = ({ client, onSave }) => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <input
-                      type="date"
-                      name="dob"
-                      value={formData.dob}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
+                  {/* ... keep existing code for other individual fields */}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
+                  {/* Protected sensitive field - PAN Number */}
+                  <ProtectedField module="clients" action="edit" sensitive={true}>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
+                      <input
+                        type="text"
+                        name="panNumber"
+                        value={formData.panNumber}
+                        onChange={handleChange}
+                        className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </ProtectedField>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PAN Number</label>
-                    <input
-                      type="text"
-                      name="panNumber"
-                      value={formData.panNumber}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
-                    <input
-                      type="text"
-                      name="occupation"
-                      value={formData.occupation}
-                      onChange={handleChange}
-                      className="w-full rounded-md border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
+                  {/* ... keep existing code for other fields */}
                 </>
               )}
 

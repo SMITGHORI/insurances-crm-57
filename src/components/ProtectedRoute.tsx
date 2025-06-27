@@ -3,6 +3,9 @@ import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import AccessDenied from './AccessDenied';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   /** Children to render when authenticated and authorized */
@@ -15,13 +18,15 @@ interface ProtectedRouteProps {
   branchCheck?: boolean;
   /** Record branch for branch-based access control */
   recordBranch?: string;
-  /** Redirect path when access is denied (default: '/auth') */
+  /** Redirect path when access is denied (default: renders AccessDenied component) */
   redirectTo?: string;
+  /** Custom access denied message */
+  accessDeniedMessage?: string;
 }
 
 /**
- * ProtectedRoute component that handles both authentication and authorization
- * Redirects to auth page if not authenticated or to dashboard if not authorized
+ * Enhanced ProtectedRoute component that handles authentication, authorization, and loading states
+ * Now renders AccessDenied component by default instead of redirecting
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
@@ -29,7 +34,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   action,
   branchCheck = true,
   recordBranch,
-  redirectTo = '/auth'
+  redirectTo,
+  accessDeniedMessage
 }) => {
   const { user, loading } = useAuth();
   const { hasPermission, isSameBranch } = usePermissions();
@@ -38,24 +44,55 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="text-center space-y-4">
+          <LoadingSpinner size="lg" />
+          <p className="text-gray-600">Checking permissions...</p>
+        </div>
       </div>
     );
   }
 
   // Redirect to auth if not authenticated
   if (!user) {
-    return <Navigate to={redirectTo} replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   // If module and action are specified, check permissions
   if (module && action) {
-    const hasRequiredPermission = hasPermission(module, action);
-    const hasBranchAccess = !branchCheck || !recordBranch || isSameBranch(recordBranch);
+    try {
+      const hasRequiredPermission = hasPermission(module, action);
+      const hasBranchAccess = !branchCheck || !recordBranch || isSameBranch(recordBranch);
 
-    // Redirect to dashboard if not authorized
-    if (!hasRequiredPermission || !hasBranchAccess) {
-      return <Navigate to="/dashboard" replace />;
+      // Handle authorization failure
+      if (!hasRequiredPermission || !hasBranchAccess) {
+        // Show toast notification for better UX
+        if (!hasRequiredPermission) {
+          toast.error(`Access denied: You need ${module}:${action} permission`);
+        } else if (!hasBranchAccess) {
+          toast.error('Access denied: Branch restriction applies');
+        }
+
+        // Use custom redirect or render AccessDenied component
+        if (redirectTo) {
+          return <Navigate to={redirectTo} replace />;
+        }
+
+        return (
+          <AccessDenied 
+            message={accessDeniedMessage || `You need ${module}:${action} permission to access this page.`}
+          />
+        );
+      }
+    } catch (error) {
+      // Handle permission check errors
+      console.error('Permission check failed:', error);
+      toast.error('Failed to verify permissions. Please try again.');
+      
+      return (
+        <AccessDenied 
+          message="Unable to verify permissions. Please refresh the page or contact support."
+        />
+      );
     }
   }
 
