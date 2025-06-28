@@ -26,10 +26,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Initialize WebSocket connection for real-time permission updates
    */
   const initializeWebSocket = useCallback((userId: string) => {
-    const wsUrl = `${process.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+    const fullWsUrl = `${wsUrl}/realtime`;
     
     try {
-      wsConnection.current = new WebSocket(wsUrl);
+      wsConnection.current = new WebSocket(fullWsUrl);
       
       wsConnection.current.onopen = () => {
         console.log('WebSocket connected for real-time permissions');
@@ -82,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (userData) {
           setUser(userData);
           // Only initialize WebSocket if we have a real backend connection
-          if (process.env.VITE_WS_URL) {
+          if (import.meta.env.VITE_WS_URL) {
             initializeWebSocket(userData.id);
           }
         }

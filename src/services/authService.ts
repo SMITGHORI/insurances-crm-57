@@ -82,25 +82,30 @@ class AuthService {
       }
 
       // If not demo credentials, try the actual API (if available)
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (apiUrl) {
+        const response = await fetch(`${apiUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.message || 'Invalid credentials' };
+        if (!response.ok) {
+          const errorData = await response.json();
+          return { success: false, error: errorData.message || 'Invalid credentials' };
+        }
+
+        const { token, user } = await response.json();
+        
+        // Store token
+        localStorage.setItem('authToken', token);
+        
+        return { success: true };
       }
 
-      const { token, user } = await response.json();
-      
-      // Store token
-      localStorage.setItem('authToken', token);
-      
-      return { success: true };
+      return { success: false, error: 'Invalid credentials. Please try the demo credentials.' };
     } catch (error) {
       console.error('Login failed:', error);
       
@@ -134,32 +139,37 @@ class AuthService {
       }
 
       // Try to fetch from API
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (apiUrl) {
+        const response = await fetch(`${apiUrl}/api/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
         }
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
+        const userData = await response.json();
+        
+        // Ensure the user object has all required properties
+        const user: User = {
+          id: userData.data.id,
+          email: userData.data.email,
+          name: userData.data.name,
+          role: userData.data.role,
+          permissions: userData.data.permissions || [],
+          flatPermissions: userData.data.flatPermissions || [],
+          branch: userData.data.branch,
+          lastUpdated: userData.data.lastUpdated ? new Date(userData.data.lastUpdated) : new Date(),
+        };
+
+        return user;
       }
-
-      const userData = await response.json();
       
-      // Ensure the user object has all required properties
-      const user: User = {
-        id: userData.data.id,
-        email: userData.data.email,
-        name: userData.data.name,
-        role: userData.data.role,
-        permissions: userData.data.permissions || [],
-        flatPermissions: userData.data.flatPermissions || [],
-        branch: userData.data.branch,
-        lastUpdated: userData.data.lastUpdated ? new Date(userData.data.lastUpdated) : new Date(),
-      };
-
-      return user;
+      return null;
     } catch (error) {
       console.error('Failed to fetch current user:', error);
       
