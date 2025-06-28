@@ -11,12 +11,15 @@ import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import PermissionOverview from '@/components/settings/PermissionOverview';
+import PermissionEditor from '@/components/settings/PermissionEditor';
 import Protected from '@/components/Protected';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -369,7 +372,10 @@ const Settings = () => {
           
           {activeTab === "permissions" && (
             <Protected module="settings" action="view_permissions">
-              <PermissionOverview />
+              <div className="space-y-6">
+                <PermissionOverview />
+                {user?.role === 'super_admin' && <PermissionEditor />}
+              </div>
             </Protected>
           )}
           
