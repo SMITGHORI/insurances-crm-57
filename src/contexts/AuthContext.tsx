@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType } from '@/types/auth';
 
@@ -20,11 +21,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const wsConnection = useRef<WebSocket | null>(null);
 
-  // Get API URL with fallback
-  const getApiUrl = () => {
-    return import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  };
-
   /**
    * Fetch current user with full role permissions from backend
    */
@@ -33,7 +29,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
-      const response = await fetch(`${getApiUrl()}/api/users/me`, {
+      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -56,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Initialize WebSocket connection for real-time permission updates
    */
   const initializeWebSocket = useCallback((userId: string) => {
-    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
+    const wsUrl = `${process.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
     
     try {
       wsConnection.current = new WebSocket(wsUrl);
@@ -140,9 +136,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      console.log('Attempting login with API URL:', getApiUrl());
 
-      const response = await fetch(`${getApiUrl()}/api/auth/login`, {
+      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,21 +145,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('Login response status:', response.status);
-
       if (!response.ok) {
-        let errorMessage = 'Login failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          console.log('Could not parse error response as JSON');
-        }
-        return { success: false, error: errorMessage };
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Login failed' };
       }
 
-      const responseData = await response.json();
-      const { token, user: userData } = responseData;
+      const { token, user: userData } = await response.json();
       
       // Store token and fetch full user data
       localStorage.setItem('authToken', token);

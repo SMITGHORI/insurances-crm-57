@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { render } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
+import { fireEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,59 +17,6 @@ vi.mock('@/hooks/useQuotes', () => ({
     isPending: false,
   }),
 }));
-
-// Mock screen and waitFor since they're not available in the current testing-library version
-const screen = {
-  getByLabelText: (text: string | RegExp) => {
-    const labels = Array.from(document.querySelectorAll('label'));
-    const label = labels.find(l => {
-      const content = l.textContent || '';
-      if (typeof text === 'string') {
-        return content.includes(text);
-      }
-      return text.test(content);
-    });
-    if (label) {
-      const forAttr = label.getAttribute('for');
-      if (forAttr) {
-        return document.getElementById(forAttr);
-      }
-    }
-    return null;
-  },
-  getByRole: (role: string, options?: { name?: string | RegExp }) => {
-    const elements = Array.from(document.querySelectorAll(`[role="${role}"]`));
-    if (options?.name) {
-      return elements.find(el => {
-        const content = el.textContent || '';
-        if (typeof options.name === 'string') {
-          return content.includes(options.name);
-        }
-        return options.name?.test(content);
-      });
-    }
-    return elements[0];
-  },
-  getByText: (text: string | RegExp) => {
-    const elements = Array.from(document.querySelectorAll('*'));
-    return elements.find(el => {
-      const content = el.textContent || '';
-      if (typeof text === 'string') {
-        return content.includes(text);
-      }
-      return text.test(content);
-    });
-  }
-};
-
-const waitFor = async (callback: () => void, options?: { timeout?: number }) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      callback();
-      resolve(true);
-    }, options?.timeout || 100);
-  });
-};
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -114,15 +62,13 @@ describe('QuoteForm Component', () => {
   });
 
   it('should validate required fields', async () => {
-    const user = userEvent.setup();
-    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
     );
 
     const submitButton = screen.getByRole('button', { name: /create quote/i });
-    await user.click(submitButton);
+    await fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText(/carrier is required/i)).toBeInTheDocument();
@@ -150,8 +96,6 @@ describe('QuoteForm Component', () => {
   });
 
   it('should calculate value score correctly', async () => {
-    const user = userEvent.setup();
-    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
@@ -160,10 +104,8 @@ describe('QuoteForm Component', () => {
     const premiumInput = screen.getByLabelText(/premium/i);
     const coverageInput = screen.getByLabelText(/coverage amount/i);
 
-    await user.clear(premiumInput);
-    await user.type(premiumInput, '1000');
-    await user.clear(coverageInput);
-    await user.type(coverageInput, '100000');
+    await fireEvent.change(premiumInput, { target: { value: '1000' } });
+    await fireEvent.change(coverageInput, { target: { value: '100000' } });
 
     await waitFor(() => {
       expect(screen.getByText(/value score: 100/i)).toBeInTheDocument();
@@ -171,8 +113,6 @@ describe('QuoteForm Component', () => {
   });
 
   it('should handle file upload correctly', async () => {
-    const user = userEvent.setup();
-    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
@@ -181,7 +121,7 @@ describe('QuoteForm Component', () => {
     const fileInput = screen.getByLabelText(/quote document/i);
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
 
-    await user.upload(fileInput, file);
+    await fireEvent.change(fileInput, { target: { files: [file] } });
 
     // File name should be displayed
     expect(screen.getByText('test.pdf')).toBeInTheDocument();

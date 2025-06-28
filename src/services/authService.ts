@@ -11,16 +11,9 @@ class AuthService {
     return AuthService.instance;
   }
 
-  // Get API URL with fallback
-  private getApiUrl(): string {
-    return import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  }
-
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('AuthService login with API URL:', this.getApiUrl());
-      
-      const response = await fetch(`${this.getApiUrl()}/api/auth/login`, {
+      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,17 +21,9 @@ class AuthService {
         body: JSON.stringify({ email, password }),
       });
 
-      console.log('AuthService login response status:', response.status);
-
       if (!response.ok) {
-        let errorMessage = 'Login failed';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          console.log('Could not parse error response as JSON');
-        }
-        return { success: false, error: errorMessage };
+        const errorData = await response.json();
+        return { success: false, error: errorData.message || 'Login failed' };
       }
 
       const { token, user } = await response.json();
@@ -58,7 +43,7 @@ class AuthService {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
-      const response = await fetch(`${this.getApiUrl()}/api/users/me`, {
+      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

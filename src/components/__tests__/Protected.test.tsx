@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { render } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import Protected from '../Protected';
@@ -8,32 +8,6 @@ import { usePermissions } from '@/hooks/usePermissions';
 
 // Mock usePermissions
 vi.mock('@/hooks/usePermissions');
-
-// Mock screen since it's not available in the current testing-library version
-const screen = {
-  getByTestId: (testId: string) => document.querySelector(`[data-testid="${testId}"]`),
-  getByText: (text: string | RegExp) => {
-    const elements = Array.from(document.querySelectorAll('*'));
-    return elements.find(el => {
-      const content = el.textContent || '';
-      if (typeof text === 'string') {
-        return content.includes(text);
-      }
-      return text.test(content);
-    });
-  },
-  queryByTestId: (testId: string) => document.querySelector(`[data-testid="${testId}"]`),
-  queryByText: (text: string | RegExp) => {
-    const elements = Array.from(document.querySelectorAll('*'));
-    return elements.find(el => {
-      const content = el.textContent || '';
-      if (typeof text === 'string') {
-        return content.includes(text);
-      }
-      return text.test(content);
-    }) || null;
-  }
-};
 
 describe('Protected Component', () => {
   it('should render children when permission is granted', () => {
