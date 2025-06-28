@@ -24,10 +24,10 @@ const QuotationsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('quotes');
 
   const { 
-    quotes, 
-    loading, 
-    error, 
-    refreshQuotes 
+    data: quotes = [],
+    isLoading: loading,
+    error,
+    refetch: refreshQuotes 
   } = useQuotes(leadId || '');
 
   const handleQuoteSelect = (quoteId: string) => {

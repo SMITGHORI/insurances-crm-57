@@ -28,7 +28,7 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
   onQuoteUpdate,
 }) => {
   const { hasPermission } = usePermissions();
-  const { data: quote, loading, error } = useQuoteById(quoteId);
+  const { data: quote, isLoading, error } = useQuoteById(quoteId);
   const updateQuoteStatusMutation = useUpdateQuoteStatus();
 
   const handleAcceptQuote = async () => {
@@ -76,7 +76,7 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
           </SheetDescription>
         </SheetHeader>
 
-        {loading && (
+        {isLoading && (
           <div className="flex items-center justify-center py-8">
             <LoadingSpinner size="lg" />
           </div>
@@ -268,11 +268,11 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
                 <Protected module="quotations" action="approve">
                   <Button
                     onClick={handleAcceptQuote}
-                    disabled={updateQuoteStatusMutation.isLoading}
+                    disabled={updateQuoteStatusMutation.isPending}
                     className="w-full bg-green-600 hover:bg-green-700"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
-                    {updateQuoteStatusMutation.isLoading ? 'Processing...' : 'Accept Quote'}
+                    {updateQuoteStatusMutation.isPending ? 'Processing...' : 'Accept Quote'}
                   </Button>
                 </Protected>
               )}

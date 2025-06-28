@@ -2,6 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import QuoteForm from './QuoteForm';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -11,7 +12,7 @@ vi.mock('@/hooks/usePermissions');
 vi.mock('@/hooks/useQuotes', () => ({
   useCreateQuote: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
-    isLoading: false,
+    isPending: false,
   }),
 }));
 

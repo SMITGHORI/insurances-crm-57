@@ -2,6 +2,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import QuoteComparisonTable from './QuoteComparisonTable';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -11,11 +12,11 @@ vi.mock('@/hooks/usePermissions');
 vi.mock('@/hooks/useQuotes', () => ({
   useUpdateQuoteStatus: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
-    isLoading: false,
+    isPending: false,
   }),
   useExportQuotes: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
-    isLoading: false,
+    isPending: false,
   }),
 }));
 

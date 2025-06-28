@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Download, FileText, CheckCircle, MoreHorizontal, Eye, Export } from 'lucide-react';
+import { Download, FileText, CheckCircle, MoreHorizontal, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -130,7 +130,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
               disabled={exportingQuotes}
               className="flex items-center"
             >
-              <Export className="mr-2 h-4 w-4" />
+              <Download className="mr-2 h-4 w-4" />
               {exportingQuotes ? 'Exporting...' : 'Export CSV'}
             </Button>
           </Protected>
