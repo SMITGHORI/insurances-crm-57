@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { render } from '@testing-library/react';
-import { screen } from '@testing-library/dom';
-import { fireEvent } from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -120,6 +119,8 @@ describe('QuoteComparisonTable Component', () => {
   });
 
   it('should conditionally render action buttons based on permissions', async () => {
+    const user = userEvent.setup();
+    
     vi.mocked(usePermissions).mockReturnValue({
       hasPermission: vi.fn((module, action) => {
         if (module === 'quotations' && action === 'approve') return false;
@@ -148,7 +149,7 @@ describe('QuoteComparisonTable Component', () => {
     );
     
     if (menuButton) {
-      await fireEvent.click(menuButton);
+      await user.click(menuButton);
       
       // Should see View Details but not Approve Quote
       expect(screen.getByText('View Details')).toBeInTheDocument();
@@ -171,6 +172,8 @@ describe('QuoteComparisonTable Component', () => {
   });
 
   it('should handle quote selection', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QuoteComparisonTable
         quotes={mockQuotes}
@@ -187,9 +190,9 @@ describe('QuoteComparisonTable Component', () => {
     );
     
     if (menuButton) {
-      await fireEvent.click(menuButton);
+      await user.click(menuButton);
       const viewButton = screen.getByText('View Details');
-      await fireEvent.click(viewButton);
+      await user.click(viewButton);
       
       expect(mockOnQuoteSelect).toHaveBeenCalledWith('1');
     }

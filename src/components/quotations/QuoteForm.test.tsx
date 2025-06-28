@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
-import { screen } from '@testing-library/dom';
-import { fireEvent } from '@testing-library/user-event';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -62,13 +61,15 @@ describe('QuoteForm Component', () => {
   });
 
   it('should validate required fields', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
     );
 
     const submitButton = screen.getByRole('button', { name: /create quote/i });
-    await fireEvent.click(submitButton);
+    await user.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText(/carrier is required/i)).toBeInTheDocument();
@@ -96,6 +97,8 @@ describe('QuoteForm Component', () => {
   });
 
   it('should calculate value score correctly', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
@@ -104,8 +107,10 @@ describe('QuoteForm Component', () => {
     const premiumInput = screen.getByLabelText(/premium/i);
     const coverageInput = screen.getByLabelText(/coverage amount/i);
 
-    await fireEvent.change(premiumInput, { target: { value: '1000' } });
-    await fireEvent.change(coverageInput, { target: { value: '100000' } });
+    await user.clear(premiumInput);
+    await user.type(premiumInput, '1000');
+    await user.clear(coverageInput);
+    await user.type(coverageInput, '100000');
 
     await waitFor(() => {
       expect(screen.getByText(/value score: 100/i)).toBeInTheDocument();
@@ -113,6 +118,8 @@ describe('QuoteForm Component', () => {
   });
 
   it('should handle file upload correctly', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
@@ -121,7 +128,7 @@ describe('QuoteForm Component', () => {
     const fileInput = screen.getByLabelText(/quote document/i);
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
 
-    await fireEvent.change(fileInput, { target: { files: [file] } });
+    await user.upload(fileInput, file);
 
     // File name should be displayed
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
