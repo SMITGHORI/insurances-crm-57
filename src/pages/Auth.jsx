@@ -20,16 +20,44 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    const result = login(email, password);
-    
-    if (result.success) {
-      toast.success('Login successful!');
-      navigate('/dashboard');
-    } else {
-      toast.error(result.error || 'Login failed');
+    try {
+      const result = await login(email, password);
+      
+      if (result.success) {
+        toast.success('Login successful!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
+  };
+
+  // Quick login function for demo credentials
+  const handleDemoLogin = async (demoEmail, demoPassword) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setLoading(true);
+
+    try {
+      const result = await login(demoEmail, demoPassword);
+      
+      if (result.success) {
+        toast.success('Demo login successful!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.error || 'Demo login failed');
+      }
+    } catch (error) {
+      console.error('Demo login error:', error);
+      toast.error('Demo login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -150,6 +178,15 @@ const Auth = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-gray-700">Super Admin:</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDemoLogin('admin@ambainsurance.com', 'admin123')}
+                      disabled={loading}
+                      className="text-xs"
+                    >
+                      Use These
+                    </Button>
                   </div>
                   <div className="text-xs text-gray-600 space-y-1">
                     <div>Email: admin@ambainsurance.com</div>
@@ -159,6 +196,15 @@ const Auth = () => {
                 <div className="border-t border-blue-100 pt-3 space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium text-gray-700">Agent:</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDemoLogin('agent@ambainsurance.com', 'agent123')}
+                      disabled={loading}
+                      className="text-xs"
+                    >
+                      Use These
+                    </Button>
                   </div>
                   <div className="text-xs text-gray-600 space-y-1">
                     <div>Email: agent@ambainsurance.com</div>
@@ -194,7 +240,7 @@ const Auth = () => {
                 <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
                   <Award className="w-5 h-5 text-amba-blue" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-700">Performance</h3>
+                <h3 className="text-sm font-semibold text-amba-blue">Performance</h3>
               </div>
             </div>
           </div>
