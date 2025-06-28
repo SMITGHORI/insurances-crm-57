@@ -1,6 +1,8 @@
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
+import { fireEvent } from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -66,7 +68,7 @@ describe('QuoteForm Component', () => {
     );
 
     const submitButton = screen.getByRole('button', { name: /create quote/i });
-    fireEvent.click(submitButton);
+    await fireEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText(/carrier is required/i)).toBeInTheDocument();
@@ -102,15 +104,15 @@ describe('QuoteForm Component', () => {
     const premiumInput = screen.getByLabelText(/premium/i);
     const coverageInput = screen.getByLabelText(/coverage amount/i);
 
-    fireEvent.change(premiumInput, { target: { value: '1000' } });
-    fireEvent.change(coverageInput, { target: { value: '100000' } });
+    await fireEvent.change(premiumInput, { target: { value: '1000' } });
+    await fireEvent.change(coverageInput, { target: { value: '100000' } });
 
     await waitFor(() => {
       expect(screen.getByText(/value score: 100/i)).toBeInTheDocument();
     });
   });
 
-  it('should handle file upload correctly', () => {
+  it('should handle file upload correctly', async () => {
     render(
       <QuoteForm leadId="test-lead-123" onQuoteCreated={mockOnQuoteCreated} />,
       { wrapper: createWrapper() }
@@ -119,7 +121,7 @@ describe('QuoteForm Component', () => {
     const fileInput = screen.getByLabelText(/quote document/i);
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
 
-    fireEvent.change(fileInput, { target: { files: [file] } });
+    await fireEvent.change(fileInput, { target: { files: [file] } });
 
     // File name should be displayed
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
