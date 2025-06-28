@@ -1,0 +1,380 @@
+
+openapi: 3.0.0
+info:
+  title: RBAC Roles API
+  description: Role-Based Access Control API for managing roles and permissions
+  version: 1.0.0
+  contact:
+    name: Insurance CRM API
+    email: support@insurancecrm.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.insurancecrm.com/api
+    description: Production server
+
+paths:
+  /roles:
+    get:
+      summary: List all roles
+      description: Retrieve all roles with optional permission details
+      tags:
+        - Roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: include_permissions
+          in: query
+          description: Include permission details in response
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Roles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Roles retrieved successfully"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+                  total:
+                    type: integer
+                    example: 4
+                  timestamp:
+                    type: string
+                    format: date-time
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /roles/{id}:
+    get:
+      summary: Get role by ID
+      description: Retrieve a specific role with all details
+      tags:
+        - Roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Role ID
+          required: true
+          schema:
+            type: string
+            format: objectid
+      responses:
+        '200':
+          description: Role retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Role retrieved successfully"
+                  data:
+                    $ref: '#/components/schemas/Role'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /roles/{id}/permissions:
+    get:
+      summary: Get role permissions
+      description: Retrieve permissions for a specific role
+      tags:
+        - Roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Role ID
+          required: true
+          schema:
+            type: string
+            format: objectid
+      responses:
+        '200':
+          description: Role permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Role permissions retrieved successfully"
+                  data:
+                    type: object
+                    properties:
+                      roleId:
+                        type: string
+                        format: objectid
+                      name:
+                        type: string
+                        enum: [agent, manager, admin, super_admin]
+                      displayName:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Permission'
+                  timestamp:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      summary: Update role permissions
+      description: Replace the permissions array for a specific role
+      tags:
+        - Roles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Role ID
+          required: true
+          schema:
+            type: string
+            format: objectid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permissions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Permission'
+              required:
+                - permissions
+            example:
+              permissions:
+                - module: "clients"
+                  actions: ["view", "create", "edit"]
+                - module: "policies"
+                  actions: ["view", "create"]
+      responses:
+        '200':
+          description: Permissions updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Agent permissions updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      roleId:
+                        type: string
+                        format: objectid
+                      name:
+                        type: string
+                        enum: [agent, manager, admin, super_admin]
+                      displayName:
+                        type: string
+                      permissions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Permission'
+                      permissionCount:
+                        type: integer
+                  timestamp:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Forbidden - Cannot modify super_admin role or insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                success: false
+                message: "Cannot modify super_admin role permissions"
+                timestamp: "2024-01-15T10:30:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  schemas:
+    Role:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: objectid
+          description: Unique role identifier
+        name:
+          type: string
+          enum: [agent, manager, admin, super_admin]
+          description: Internal role name
+        displayName:
+          type: string
+          description: Human-readable role name
+          example: "Sales Manager"
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        isDefault:
+          type: boolean
+          description: Whether this is a default system role
+        permissionCount:
+          type: integer
+          description: Total number of individual permissions (virtual field)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - _id
+        - name
+        - displayName
+        - permissions
+        - isDefault
+
+    Permission:
+      type: object
+      properties:
+        module:
+          type: string
+          enum: [clients, leads, quotations, policies, claims, invoices, agents, reports, settings, activities, offers]
+          description: System module name
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [view, create, edit, delete, export, approve, edit_sensitive, edit_status]
+          description: Allowed actions for this module
+          minItems: 1
+      required:
+        - module
+        - actions
+      example:
+        module: "clients"
+        actions: ["view", "create", "edit"]
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Error message
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - success
+        - message
+        - timestamp
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: "Authentication required"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: "Insufficient permissions"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: "Role not found"
+            timestamp: "2024-01-15T10:30:00Z"
+
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            success: false
+            message: "Validation error: permissions is required"
+            timestamp: "2024-01-15T10:30:00Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login endpoint
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Roles
+    description: Role and permission management endpoints

@@ -1,753 +1,497 @@
+# Insurance CRM - Full Stack Application
 
-# Amba Insurance CRM - Full Stack Progress Report
+A comprehensive Customer Relationship Management system built specifically for insurance agencies, featuring policy management, claims processing, lead tracking, and commission calculations.
 
-## Project Overview
+## 🚀 Features
 
-The Amba Insurance CRM is a comprehensive customer relationship management system designed specifically for insurance agencies. This platform streamlines client management, policy tracking, claims processing, and sales activities to enhance operational efficiency.
+- **Client Management**: Complete customer profiles with policy history
+- **Policy Administration**: Multi-product policy management with renewals
+- **Claims Processing**: End-to-end claims workflow with document management
+- **Lead Tracking**: Sales pipeline with conversion analytics
+- **Commission Management**: Automated commission calculations and reporting
+- **Agent Portal**: Dedicated interface for insurance agents
+- **Analytics Dashboard**: Real-time business intelligence and reporting
+- **Document Management**: Secure document storage and retrieval
+- **Role-Based Access Control**: Granular permissions system
 
-## Technology Stack
+## 🛠️ Tech Stack
 
 ### Frontend
-- ✅ React 18 with TypeScript
-- ✅ Vite build tool
-- ✅ Tailwind CSS for styling
-- ✅ Shadcn/UI component library
-- ✅ React Router for navigation
-- ✅ TanStack Query for data fetching
-- ✅ Recharts for analytics
-- ✅ React Hook Form for form handling
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **Tailwind CSS** for styling
+- **Shadcn/ui** component library
+- **React Router** for navigation
+- **React Query** for data fetching
+- **Zustand** for state management
 
 ### Backend
-- ✅ Node.js with Express.js
-- ✅ MongoDB with Mongoose ODM
-- ✅ JWT Authentication
-- ✅ Role-based middleware
-- ✅ File upload handling (Multer)
-- ✅ Joi validation
-- ✅ Jest testing framework
-
-## Module-wise Progress Report
-
----
-
-## 1. Authentication & Authorization Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/auth/*`
-- **Database Schema**: User model with roles
-- **Frontend**: Login/logout functionality
-- **Features**:
-  - JWT token-based authentication
-  - Role-based access control (Super Admin, Manager, Agent)
-  - Password hashing with bcrypt
-  - Protected routes implementation
-  - User session management
-
-### **API Endpoints**
-```
-POST /api/auth/login          ✅ Implemented
-POST /api/auth/logout         ✅ Implemented
-POST /api/auth/register       ✅ Implemented
-GET  /api/auth/me            ✅ Implemented
-POST /api/auth/forgot-password ✅ Implemented
-POST /api/auth/reset-password  ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-User {
-  name: String ✅
-  email: String ✅
-  password: String (hashed) ✅
-  role: enum['super_admin', 'manager', 'agent'] ✅
-  status: enum['active', 'inactive', 'suspended'] ✅
-  lastLogin: Date ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Two-factor authentication
-- OAuth integration (Google, Microsoft)
-- Advanced password policies
-- Account lockout mechanisms
-
----
-
-## 2. Client Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/clients/*`
-- **Database Schema**: Client model with embedded schemas
-- **Frontend**: Complete client management interface
-- **Features**:
-  - CRUD operations for all client types
-  - Document upload and management
-  - Role-based data access
-  - Search and filtering
-  - Data export (CSV/Excel)
-  - Client assignment to agents
-
-### **API Endpoints**
-```
-GET    /api/clients                    ✅ Implemented
-GET    /api/clients/:id                ✅ Implemented
-POST   /api/clients                    ✅ Implemented
-PUT    /api/clients/:id                ✅ Implemented
-DELETE /api/clients/:id                ✅ Implemented
-POST   /api/clients/:id/documents      ✅ Implemented
-GET    /api/clients/:id/documents      ✅ Implemented
-DELETE /api/clients/:id/documents/:docId ✅ Implemented
-GET    /api/clients/search/:query      ✅ Implemented
-GET    /api/clients/agent/:agentId     ✅ Implemented
-PUT    /api/clients/:id/assign         ✅ Implemented
-GET    /api/clients/stats/summary      ✅ Implemented
-POST   /api/clients/export             ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Client {
-  clientId: String ✅
-  clientType: enum['individual', 'corporate', 'group'] ✅
-  email: String ✅
-  phone: String ✅
-  address: String ✅
-  city: String ✅
-  state: String ✅
-  pincode: String ✅
-  status: enum['Active', 'Inactive', 'Pending'] ✅
-  
-  // Type-specific data
-  individualData: IndividualSchema ✅
-  corporateData: CorporateSchema ✅
-  groupData: GroupSchema ✅
-  
-  // System fields
-  assignedAgentId: ObjectId ✅
-  communicationPreferences: Object ✅
-  documents: [DocumentSchema] ✅
-  createdBy: ObjectId ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Client portal for self-service
-- Advanced analytics dashboard
-- Bulk client import functionality
-- Client merge/duplicate detection
-
----
-
-## 3. Lead Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/leads/*`
-- **Database Schema**: Lead model with tracking
-- **Frontend**: Lead management interface
-- **Features**:
-  - Lead capture from multiple sources
-  - Status tracking and workflow
-  - Follow-up scheduling
-  - Lead-to-client conversion
-  - Notes and activity logging
-
-### **API Endpoints**
-```
-GET    /api/leads                      ✅ Implemented
-GET    /api/leads/:id                  ✅ Implemented
-POST   /api/leads                      ✅ Implemented
-PUT    /api/leads/:id                  ✅ Implemented
-DELETE /api/leads/:id                  ✅ Implemented
-POST   /api/leads/:id/convert          ✅ Implemented
-POST   /api/leads/:id/notes            ✅ Implemented
-GET    /api/leads/search/:query        ✅ Implemented
-GET    /api/leads/agent/:agentId       ✅ Implemented
-GET    /api/leads/stats/summary        ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Lead {
-  leadId: String ✅
-  source: enum['Website', 'Referral', 'Cold Call', 'Social Media', 'Advertisement'] ✅
-  status: enum['new', 'contacted', 'qualified', 'converted', 'lost'] ✅
-  priority: enum['low', 'medium', 'high'] ✅
-  name: String ✅
-  email: String ✅
-  phone: String ✅
-  interestArea: String ✅
-  assignedAgent: ObjectId ✅
-  followUps: [FollowUpSchema] ✅
-  notes: [NoteSchema] ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Lead scoring algorithm
-- Automated lead distribution
-- Email integration for lead capture
-- Advanced lead analytics
-
----
-
-## 4. Quotation Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/quotations/*`
-- **Database Schema**: Quotation model
-- **Frontend**: Quotation management interface
-- **Features**:
-  - Quote generation for multiple insurance types
-  - Email delivery of quotations
-  - Status tracking
-  - Quote comparison
-  - Validity management
-
-### **API Endpoints**
-```
-GET    /api/quotations                 ✅ Implemented
-GET    /api/quotations/:id             ✅ Implemented
-POST   /api/quotations                 ✅ Implemented
-PUT    /api/quotations/:id             ✅ Implemented
-DELETE /api/quotations/:id             ✅ Implemented
-POST   /api/quotations/:id/send        ✅ Implemented
-PUT    /api/quotations/:id/status      ✅ Implemented
-GET    /api/quotations/stats           ✅ Implemented
-GET    /api/quotations/search/:query   ✅ Implemented
-POST   /api/quotations/export          ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Quotation {
-  quotationId: String ✅
-  clientId: ObjectId ✅
-  agentId: ObjectId ✅
-  insuranceType: String ✅
-  subType: String ✅
-  status: enum['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired'] ✅
-  premiumAmount: Number ✅
-  coverageAmount: Number ✅
-  validUntil: Date ✅
-  terms: String ✅
-  benefits: [String] ✅
-  exclusions: [String] ✅
-  sentAt: Date ✅
-  viewedAt: Date ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- PDF generation for quotations
-- Digital signature integration
-- Template customization
-- Advanced pricing algorithms
-
----
-
-## 5. Policy Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/policies/*`
-- **Database Schema**: Policy model with embedded schemas
-- **Frontend**: Policy management interface
-- **Features**:
-  - Policy creation and management
-  - Premium tracking
-  - Renewal management
-  - Document management
-  - Commission tracking
-
-### **API Endpoints**
-```
-GET    /api/policies                   ✅ Implemented
-GET    /api/policies/:id               ✅ Implemented
-POST   /api/policies                   ✅ Implemented
-PUT    /api/policies/:id               ✅ Implemented
-DELETE /api/policies/:id               ✅ Implemented
-POST   /api/policies/:id/documents     ✅ Implemented
-GET    /api/policies/:id/documents     ✅ Implemented
-POST   /api/policies/:id/payments      ✅ Implemented
-GET    /api/policies/:id/payments      ✅ Implemented
-POST   /api/policies/:id/renew         ✅ Implemented
-GET    /api/policies/expiring/:days    ✅ Implemented
-GET    /api/policies/renewals/due      ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Policy {
-  policyNumber: String ✅
-  clientId: ObjectId ✅
-  type: String ✅
-  subType: String ✅
-  status: enum['active', 'pending', 'expired', 'cancelled'] ✅
-  company: String ✅
-  premium: PremiumSchema ✅
-  coverage: CoverageSchema ✅
-  startDate: Date ✅
-  endDate: Date ✅
-  assignedAgentId: ObjectId ✅
-  commission: CommissionSchema ✅
-  documents: [DocumentSchema] ✅
-  paymentHistory: [PaymentSchema] ✅
-  renewalHistory: [RenewalSchema] ✅
-  notes: [NoteSchema] ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Payment gateway integration
-- Automated renewal processing
-- Policy certificate generation
-- Endorsement management
-
----
-
-## 6. Claims Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/claims/*`
-- **Database Schema**: Claim model with workflow
-- **Frontend**: Claims processing interface
-- **Features**:
-  - Claim reporting and processing
-  - Document upload and management
-  - Status tracking
-  - Timeline management
-  - Risk assessment indicators
-
-### **API Endpoints**
-```
-GET    /api/claims                     ✅ Implemented
-GET    /api/claims/:id                 ✅ Implemented
-POST   /api/claims                     ✅ Implemented
-PUT    /api/claims/:id                 ✅ Implemented
-DELETE /api/claims/:id                 ✅ Implemented
-POST   /api/claims/:id/documents       ✅ Implemented
-GET    /api/claims/:id/documents       ✅ Implemented
-POST   /api/claims/:id/notes           ✅ Implemented
-GET    /api/claims/:id/timeline        ✅ Implemented
-PUT    /api/claims/:id/status          ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Claim {
-  claimId: String ✅
-  policyId: ObjectId ✅
-  clientId: ObjectId ✅
-  claimType: String ✅
-  status: enum['reported', 'under_review', 'approved', 'rejected', 'settled', 'closed'] ✅
-  claimAmount: Number ✅
-  approvedAmount: Number ✅
-  incidentDate: Date ✅
-  reportedDate: Date ✅
-  description: String ✅
-  documents: [DocumentSchema] ✅
-  timeline: [TimelineSchema] ✅
-  notes: [NoteSchema] ✅
-  riskIndicators: [String] ✅
-  assignedAdjuster: ObjectId ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Fraud detection algorithms
-- Integration with external assessors
-- Automated claim processing rules
-- Settlement payment processing
-
----
-
-## 7. Agent Management Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/agents/*`
-- **Database Schema**: Agent model with performance tracking
-- **Frontend**: Agent management interface
-- **Features**:
-  - Agent profile management
-  - Performance tracking
-  - Commission management
-  - Client assignment
-
-### **API Endpoints**
-```
-GET    /api/agents                     ✅ Implemented
-GET    /api/agents/:id                 ✅ Implemented
-POST   /api/agents                     ✅ Implemented
-PUT    /api/agents/:id                 ✅ Implemented
-DELETE /api/agents/:id                 ✅ Implemented
-GET    /api/agents/:id/clients         ✅ Implemented
-GET    /api/agents/:id/performance     ✅ Implemented
-GET    /api/agents/:id/commissions     ✅ Implemented
-GET    /api/agents/stats/summary       ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Agent {
-  agentId: String ✅
-  userId: ObjectId ✅
-  name: String ✅
-  email: String ✅
-  phone: String ✅
-  status: enum['active', 'inactive', 'suspended'] ✅
-  department: String ✅
-  joinDate: Date ✅
-  performance: PerformanceSchema ✅
-  commissions: [CommissionSchema] ✅
-  targets: TargetSchema ✅
-  createdAt: Date ✅
-  updatedAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Advanced performance analytics
-- Goal setting and tracking
-- Agent training module
-- Territory management
-
----
-
-## 8. Communication & Marketing Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/communication/*`, `/api/broadcast/*`
-- **Database Schema**: Communication and Broadcast models
-- **Frontend**: Communication management interface
-- **Features**:
-  - Automated birthday/anniversary wishes
-  - Broadcast messaging system
-  - Client communication preferences
-  - Loyalty points management
-  - Offers management
-
-### **API Endpoints**
-```
-GET    /api/communication              ✅ Implemented
-POST   /api/communication              ✅ Implemented
-GET    /api/communication/stats        ✅ Implemented
-GET    /api/communication/loyalty/:clientId ✅ Implemented
-POST   /api/communication/loyalty/:clientId ✅ Implemented
-GET    /api/communication/offers       ✅ Implemented
-POST   /api/communication/offers       ✅ Implemented
-
-GET    /api/broadcast                  ✅ Implemented
-POST   /api/broadcast                  ✅ Implemented
-POST   /api/broadcast/eligible-clients ✅ Implemented
-GET    /api/broadcast/:id/stats        ✅ Implemented
-PUT    /api/broadcast/clients/:id/preferences ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Communication {
-  clientId: ObjectId ✅
-  type: enum['birthday', 'anniversary', 'offer', 'reminder', 'custom'] ✅
-  channel: enum['email', 'whatsapp', 'sms'] ✅
-  status: enum['pending', 'sent', 'delivered', 'failed'] ✅
-  subject: String ✅
-  content: String ✅
-  sentAt: Date ✅
-  deliveredAt: Date ✅
-  createdAt: Date ✅
-}
-
-Broadcast {
-  title: String ✅
-  description: String ✅
-  type: enum['offer', 'festival', 'announcement', 'promotion'] ✅
-  channels: [String] ✅
-  subject: String ✅
-  content: String ✅
-  targetAudience: Object ✅
-  status: enum['draft', 'scheduled', 'sending', 'sent', 'failed'] ✅
-  stats: Object ✅
-  createdAt: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- WhatsApp Business API integration
-- SMS gateway integration
-- Advanced campaign analytics
-- A/B testing for campaigns
-
----
-
-## 9. Dashboard & Analytics Module
-
-### ✅ **COMPLETED**
-- **Backend API**: `/api/dashboard/*`
-- **Database Schema**: Activity logging model
-- **Frontend**: Comprehensive dashboard interface
-- **Features**:
-  - Real-time metrics and KPIs
-  - Role-based dashboard views
-  - Activity logging and audit trails
-  - Performance charts and graphs
-
-### **API Endpoints**
-```
-GET    /api/dashboard/overview         ✅ Implemented
-GET    /api/dashboard/activities       ✅ Implemented
-GET    /api/dashboard/performance      ✅ Implemented
-GET    /api/dashboard/charts           ✅ Implemented
-GET    /api/dashboard/quick-actions    ✅ Implemented
-```
-
-### **Database Schema**
-```javascript
-Activity {
-  userId: ObjectId ✅
-  action: String ✅
-  entityType: String ✅
-  entityId: ObjectId ✅
-  details: Object ✅
-  ipAddress: String ✅
-  userAgent: String ✅
-  timestamp: Date ✅
-}
-```
-
-### ❌ **PENDING**
-- Advanced business intelligence
-- Custom report builder
-- Data visualization enhancements
-- Automated reporting
-
----
-
-## 10. Data Export Module
-
-### ✅ **COMPLETED**
-- **Backend Service**: Export service utility
-- **Features**:
-  - CSV and Excel export functionality
-  - Multiple export types (all, filtered, selected, date range)
-  - Role-based data filtering
-  - Custom field selection
-
-### **Export Capabilities**
-```
-Clients Export       ✅ Implemented
-Quotations Export    ✅ Implemented
-Leads Export         ✅ Implemented
-Policies Export      ✅ Implemented
-Claims Export        ✅ Implemented
-Agents Export        ✅ Implemented
-```
-
-### ❌ **PENDING**
-- Scheduled exports
-- Email delivery of exports
-- Advanced export templates
-- Data archiving features
-
----
-
-## 11. Settings & Configuration Module
-
-### ⚠️ **PARTIALLY COMPLETED**
-- **Backend API**: `/api/settings/*`
-- **Frontend**: Basic settings interface
-
-### ✅ **Implemented**
-- User profile management
-- Basic system settings
-- Notification preferences
-
-### ❌ **PENDING**
-- Company branding customization
-- Insurance product configuration
-- Workflow customization
-- Integration settings
-
----
-
-## 12. Invoice Management Module
-
-### ⚠️ **PARTIALLY COMPLETED**
-- **Frontend**: Invoice interface with templates
-- **Features**: Invoice generation, templates, payment tracking
-
-### ❌ **PENDING**
-- Backend API implementation
-- Database schema design
-- Payment gateway integration
-- Automated invoice generation
-
----
-
-## Overall System Status
-
-### ✅ **FULLY IMPLEMENTED (9/12 modules)**
-1. Authentication & Authorization ✅
-2. Client Management ✅
-3. Lead Management ✅
-4. Quotation Management ✅
-5. Policy Management ✅
-6. Claims Management ✅
-7. Agent Management ✅
-8. Communication & Marketing ✅
-9. Dashboard & Analytics ✅
-
-### ⚠️ **PARTIALLY IMPLEMENTED (2/12 modules)**
-10. Settings & Configuration ⚠️
-11. Invoice Management ⚠️
-
-### ❌ **NOT IMPLEMENTED (1/12 modules)**
-12. Data Export (Backend complete, some frontend features pending) ⚠️
-
-## Database Collections Status
-
-### ✅ **Implemented Collections**
-- users ✅
-- clients ✅
-- leads ✅
-- quotations ✅
-- policies ✅
-- claims ✅
-- agents ✅
-- communications ✅
-- broadcasts ✅
-- activities ✅
-- settings ✅
-
-### ❌ **Missing Collections**
-- invoices ❌
-- payments ❌
-- notifications ❌
-- templates ❌
-
-## Security & Performance
-
-### ✅ **Implemented**
-- JWT authentication ✅
-- Role-based access control ✅
-- Input validation with Joi ✅
-- File upload security ✅
-- Password hashing ✅
-- CORS configuration ✅
-- Rate limiting preparation ✅
-
-### ❌ **Pending**
-- API rate limiting implementation ❌
-- Advanced security headers ❌
-- Data encryption at rest ❌
-- Audit logging enhancements ❌
-
-## Testing Status
-
-### ✅ **Implemented**
-- Unit tests for all major controllers ✅
-- API endpoint testing ✅
-- Authentication testing ✅
-- Export functionality testing ✅
-
-### ❌ **Pending**
-- Integration tests ❌
-- Frontend component testing ❌
-- End-to-end testing ❌
-- Performance testing ❌
-
-## Deployment Readiness
-
-### ✅ **Production Ready Modules**
-- Core CRUD operations for all entities ✅
-- Authentication and authorization ✅
-- Data export functionality ✅
-- Basic dashboard and analytics ✅
-
-### ❌ **Requires Completion**
-- Payment processing integration ❌
-- WhatsApp/SMS integrations ❌
-- Advanced reporting features ❌
-- Invoice management completion ❌
-
-## Next Steps for Full Stack Completion
-
-### **Priority 1 (Critical)**
-1. Complete Invoice Management backend API
-2. Implement payment gateway integration
-3. Add WhatsApp Business API integration
-4. Complete Settings module backend
-
-### **Priority 2 (Important)**
-1. Advanced security implementation
-2. Performance optimization
-3. Enhanced testing coverage
-4. Advanced analytics features
-
-### **Priority 3 (Nice to have)**
-1. Mobile app development
-2. Advanced integrations
-3. AI/ML features for fraud detection
-4. Advanced workflow automation
-
-## Getting Started
+- **Node.js** with Express.js
+- **TypeScript** for type safety
+- **MongoDB** with Mongoose ODM
+- **JWT** for authentication
+- **Joi** for validation
+- **Multer** for file uploads
+
+### Development Tools
+- **Storybook** for component development
+- **Vitest** for testing
+- **ESLint** & **Prettier** for code quality
+- **Husky** for git hooks
+
+## 📦 Installation
 
 ### Prerequisites
-- Node.js v16+
-- MongoDB v4+
-- NPM or Yarn
+- Node.js 18+ 
+- MongoDB 5.0+
+- npm or yarn
 
-### Installation
+### Clone Repository
 ```bash
-# Clone the repository
-git clone <YOUR_GIT_URL>
+git clone https://github.com/your-org/insurance-crm.git
+cd insurance-crm
+```
 
+### Install Dependencies
+```bash
 # Install frontend dependencies
-cd amba-insurance-crm
 npm install
 
 # Install backend dependencies
 cd backend
 npm install
-
-# Set environment variables
-cp .env.example .env
-
-# Start development servers
-npm run dev        # Frontend
-npm run server     # Backend
 ```
 
-### Environment Variables Required
-```
+### Environment Setup
+```bash
+# Frontend (.env)
+VITE_API_URL=http://localhost:3000/api
+VITE_APP_NAME="Amba Insurance CRM"
+
+# Backend (.env)
 NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/insurance_crm
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=1d
-UPLOAD_DIR=uploads
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/insurance-crm
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
 ```
 
-## Current System Capabilities
+### Database Setup
+```bash
+# Start MongoDB service
+sudo systemctl start mongod
 
-The system currently supports **80% of planned functionality** and is capable of handling:
-- Complete client lifecycle management
-- Lead tracking and conversion
-- Policy and claims processing
-- Agent performance tracking
-- Automated communications
-- Comprehensive reporting and analytics
-- Role-based access control
-- Data export capabilities
+# Run database migrations
+cd backend
+npm run migrate
 
-This represents a **production-ready insurance CRM** with room for enhancements and additional integrations.
+# Seed initial data
+npm run seed
+```
+
+## 🚀 Development
+
+### Start Development Servers
+```bash
+# Terminal 1: Backend server
+cd backend
+npm run dev
+
+# Terminal 2: Frontend server  
+npm run dev
+
+# Terminal 3: Storybook (optional)
+npm run storybook
+```
+
+### Available Scripts
+```bash
+# Frontend
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run test         # Run tests
+npm run storybook    # Start Storybook
+
+# Backend
+npm run dev          # Start with nodemon
+npm run build        # Compile TypeScript
+npm run start        # Start production server
+npm run test         # Run tests
+npm run migrate      # Run database migrations
+npm run seed         # Seed database
+```
+
+## Role-Based Access Control (RBAC)
+
+### Overview
+
+Our RBAC system provides comprehensive permission management across all CRM modules with a three-tier architecture:
+
+- **Frontend**: React components with `<Protected>` wrappers and `usePermissions()` hooks
+- **Backend**: Express.js APIs with role validation middleware
+- **Database**: MongoDB with Role and User collections for dynamic permission management
+
+### Role Schema Structure
+
+#### Role Model (`backend/models/Role.ts`)
+
+```typescript
+interface IRole {
+  name: 'agent' | 'manager' | 'admin' | 'super_admin';      // Unique role identifier
+  displayName: string;                                       // Human-readable name
+  permissions: IPermission[];                                // Module-action matrix
+  isDefault: boolean;                                        // System default role
+  createdAt: Date;                                          // Auto-managed timestamp
+  updatedAt: Date;                                          // Auto-managed timestamp
+  permissionCount: number;                                  // Virtual field
+}
+
+interface IPermission {
+  module: 'clients' | 'leads' | 'quotations' | 'policies' | 'claims' | 
+          'invoices' | 'agents' | 'reports' | 'settings' | 'activities' | 'offers';
+  actions: ('view' | 'create' | 'edit' | 'delete' | 'export' | 
+           'approve' | 'edit_sensitive' | 'edit_status')[];
+}
+```
+
+#### User Schema Updates (`backend/models/User.ts`)
+
+```typescript
+interface IUser {
+  // ... existing fields
+  role: ObjectId;                    // Reference to Role collection
+  branch: 'main' | 'north' | 'south' | 'east' | 'west';  // Branch assignment
+  flatPermissions: string[];         // Virtual: ['clients:view', 'policies:create', ...]
+}
+```
+
+**Key Features:**
+- Pre-find hook automatically populates `role` with permissions
+- `flatPermissions` virtual provides optimized permission checking
+- Branch-based access control for multi-location operations
+
+### API Endpoints
+
+#### Role Management (`/api/roles`)
+
+```http
+GET    /api/roles                    # List all roles (+ ?include_permissions=true)
+GET    /api/roles/:id                # Get specific role details  
+GET    /api/roles/:id/permissions    # Get role's permission matrix
+PUT    /api/roles/:id/permissions    # Update role's permissions
+```
+
+**Authentication & Authorization:**
+- All endpoints require valid JWT token (`Authorization: Bearer <token>`)
+- All endpoints restricted to `super_admin` role only
+- Cannot modify `super_admin` role permissions (system protection)
+
+**Example Usage:**
+
+```javascript
+// Get all roles with permissions
+const response = await fetch('/api/roles?include_permissions=true', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+// Update agent permissions
+await fetch('/api/roles/agent-role-id/permissions', {
+  method: 'PUT',
+  headers: { 
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    permissions: [
+      { module: 'clients', actions: ['view', 'create', 'edit'] },
+      { module: 'policies', actions: ['view', 'create'] }
+    ]
+  })
+});
+```
+
+### Frontend Integration
+
+#### Permission Checking
+
+```jsx
+import { usePermissions } from '@/hooks/usePermissions';
+import Protected from '@/components/Protected';
+
+// Hook usage
+const { hasPermission, userRole, flatPermissions } = usePermissions();
+
+// Component protection
+<Protected module="clients" action="delete">
+  <DeleteButton />
+</Protected>
+
+// Field-level protection  
+<ProtectedField module="clients" action="edit_sensitive">
+  <Input name="panNumber" />
+</ProtectedField>
+
+// Route protection
+<ProtectedRoute module="agents" action="view">
+  <AgentsPage />
+</ProtectedRoute>
+```
+
+#### PermissionEditor Component
+
+The `PermissionEditor` component (`/src/components/settings/PermissionEditor.tsx`) provides a visual matrix interface for super admins to:
+
+- Select any role from a dropdown
+- View current permissions in a module × action grid
+- Toggle individual permissions via checkboxes
+- Save changes with real-time validation
+- View permission summaries and counts
+
+**Integration in Settings:**
+```jsx
+// Settings.jsx - Permissions tab
+{activeTab === "permissions" && (
+  <Protected module="settings" action="view_permissions">
+    <div className="space-y-6">
+      <PermissionOverview />
+      {user?.role === 'super_admin' && <PermissionEditor />}
+    </div>
+  </Protected>
+)}
+```
+
+### Role Hierarchy & Default Permissions
+
+1. **Agent**: Basic CRUD on assigned records
+   - Clients: view, create, edit (assigned only)
+   - Policies: view, create (own quotations)
+   - Claims: view, create (assigned clients)
+
+2. **Manager**: Team management + full module access
+   - All Agent permissions
+   - Full CRUD on team records
+   - Approval workflows
+   - Export capabilities
+
+3. **Admin**: System operations + user management
+   - All Manager permissions
+   - User account management
+   - System configuration
+   - Cross-branch access
+
+4. **Super Admin**: Complete system control
+   - All Admin permissions
+   - Role permission management
+   - System critical operations
+   - RBAC configuration
+
+### Setup & Migration
+
+1. **Initialize Default Roles:**
+   ```bash
+   npm run seed:roles  # Creates default role documents
+   ```
+
+2. **Migrate Existing Users:**
+   ```bash
+   npm run migrate:user-roles  # Updates User.role references
+   ```
+
+3. **Test Permission Matrix:**
+   ```bash
+   npm test -- --grep "RBAC"  # Runs RBAC-specific tests
+   ```
+
+### Development Notes
+
+- Role permissions are cached in JWT tokens for performance
+- Permission changes trigger real-time updates via WebSocket events
+- Branch-based access control supports multi-location deployments
+- All sensitive operations require explicit permission checks
+- Frontend components gracefully degrade when permissions are insufficient
+
+For detailed API documentation, see [`docs/api/roles.yaml`](docs/api/roles.yaml).
+
+## 📁 Project Structure
+
+```
+insurance-crm/
+├── src/                          # Frontend source code
+│   ├── components/               # Reusable UI components
+│   │   ├── ui/                  # Base UI components (shadcn/ui)
+│   │   ├── forms/               # Form components
+│   │   ├── charts/              # Chart components
+│   │   └── __stories__/         # Storybook stories
+│   ├── pages/                   # Page components
+│   ├── hooks/                   # Custom React hooks
+│   ├── contexts/                # React contexts
+│   ├── lib/                     # Utility functions
+│   ├── types/                   # TypeScript type definitions
+│   └── assets/                  # Static assets
+├── backend/                     # Backend source code
+│   ├── controllers/             # Route controllers
+│   ├── models/                  # Database models
+│   ├── routes/                  # API routes
+│   ├── middleware/              # Express middleware
+│   ├── utils/                   # Utility functions
+│   └── config/                  # Configuration files
+├── docs/                        # Documentation
+│   ├── api/                     # API documentation
+│   └── deployment/              # Deployment guides
+└── tests/                       # Test files
+```
+
+## 🧪 Testing
+
+### Frontend Testing
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run specific test file
+npm run test -- AccessDenied.test.tsx
+```
+
+### Backend Testing
+```bash
+cd backend
+
+# Run all tests
+npm run test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run integration tests
+npm run test:integration
+```
+
+### E2E Testing
+```bash
+# Run Playwright tests
+npm run test:e2e
+
+# Run tests in headed mode
+npm run test:e2e:headed
+```
+
+## 📚 API Documentation
+
+### Authentication
+All API endpoints require authentication via JWT tokens:
+
+```javascript
+// Login to get token
+const response = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password })
+});
+
+const { token } = await response.json();
+
+// Use token in subsequent requests
+const apiResponse = await fetch('/api/clients', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+```
+
+### Core Endpoints
+
+#### Clients
+- `GET /api/clients` - List clients
+- `POST /api/clients` - Create client
+- `GET /api/clients/:id` - Get client details
+- `PUT /api/clients/:id` - Update client
+- `DELETE /api/clients/:id` - Delete client
+
+#### Policies
+- `GET /api/policies` - List policies
+- `POST /api/policies` - Create policy
+- `GET /api/policies/:id` - Get policy details
+- `PUT /api/policies/:id` - Update policy
+- `DELETE /api/policies/:id` - Delete policy
+
+#### Claims
+- `GET /api/claims` - List claims
+- `POST /api/claims` - Create claim
+- `GET /api/claims/:id` - Get claim details
+- `PUT /api/claims/:id` - Update claim
+- `DELETE /api/claims/:id` - Delete claim
+
+For complete API documentation, see the OpenAPI specs in `/docs/api/`.
+
+## 🚀 Deployment
+
+### Production Build
+```bash
+# Build frontend
+npm run build
+
+# Build backend
+cd backend
+npm run build
+```
+
+### Docker Deployment
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+### Environment Variables (Production)
+```bash
+# Frontend
+VITE_API_URL=https://api.yourdomain.com/api
+VITE_APP_NAME="Your Insurance CRM"
+
+# Backend
+NODE_ENV=production
+PORT=3000
+MONGODB_URI=mongodb://your-mongo-host:27017/insurance-crm
+JWT_SECRET=your-production-jwt-secret
+JWT_EXPIRES_IN=7d
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Write tests for new features
+- Update documentation as needed
+- Follow the existing code style
+- Use conventional commit messages
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Create an issue on GitHub
+- Email: support@insurancecrm.com
+- Documentation: [docs.insurancecrm.com](https://docs.insurancecrm.com)
+
+## 🙏 Acknowledgments
+
+- [Shadcn/ui](https://ui.shadcn.com/) for the component library
+- [Lucide](https://lucide.dev/) for icons
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- All contributors who helped build this project
