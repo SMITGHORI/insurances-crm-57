@@ -10,6 +10,7 @@ export interface User {
   name: string;
   role: string;
   permissions: Permission[];
+  flatPermissions: string[]; // New: flattened permissions from backend
   branch: string;
   lastUpdated?: Date;
 }
@@ -33,6 +34,7 @@ export interface JWTPayload {
   name: string;
   role: string;
   permissions: Permission[];
+  flatPermissions: string[]; // New: for optimized permission checking
   branch: string;
   exp: number;
   iat: number;

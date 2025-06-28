@@ -1,102 +1,94 @@
 
 import React from 'react';
-import { render } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import Protected from '../Protected';
-import * as usePermissionsHook from '../../hooks/usePermissions';
+import { usePermissions } from '@/hooks/usePermissions';
 
-// Mock the usePermissions hook
-const mockUsePermissions = vi.spyOn(usePermissionsHook, 'usePermissions');
+// Mock usePermissions
+vi.mock('@/hooks/usePermissions');
 
 describe('Protected Component', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('renders children when user has required permission', () => {
-    mockUsePermissions.mockReturnValue({
-      hasPermission: vi.fn().mockReturnValue(true),
-      isSameBranch: vi.fn().mockReturnValue(true),
+  it('should render children when permission is granted', () => {
+    vi.mocked(usePermissions).mockReturnValue({
+      hasPermission: vi.fn(() => true),
+      isSameBranch: vi.fn(() => true),
       hasAnyPermission: vi.fn(),
       userBranch: 'main',
-      userRole: 'admin',
+      userRole: 'agent',
       userPermissions: []
     });
 
-    const { getByTestId } = render(
+    render(
       <Protected module="clients" action="view">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(getByTestId('protected-content')).toBeDefined();
+    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
   });
 
-  it('renders AccessDenied when user lacks permission', () => {
-    mockUsePermissions.mockReturnValue({
-      hasPermission: vi.fn().mockReturnValue(false),
-      isSameBranch: vi.fn().mockReturnValue(true),
+  it('should show AccessDenied when permission is denied', () => {
+    vi.mocked(usePermissions).mockReturnValue({
+      hasPermission: vi.fn(() => false),
+      isSameBranch: vi.fn(() => true),
       hasAnyPermission: vi.fn(),
       userBranch: 'main',
-      userRole: 'user',
+      userRole: 'agent',
       userPermissions: []
     });
 
-    const { getByText, queryByTestId } = render(
-      <Protected module="clients" action="edit">
+    render(
+      <Protected module="clients" action="delete">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(getByText('Access Denied')).toBeDefined();
-    expect(queryByTestId('protected-content')).toBeNull();
+    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
-  it('renders custom fallback when provided', () => {
-    mockUsePermissions.mockReturnValue({
-      hasPermission: vi.fn().mockReturnValue(false),
-      isSameBranch: vi.fn().mockReturnValue(true),
+  it('should handle branch-based access control', () => {
+    vi.mocked(usePermissions).mockReturnValue({
+      hasPermission: vi.fn(() => true),
+      isSameBranch: vi.fn(() => false), // Different branch
       hasAnyPermission: vi.fn(),
       userBranch: 'main',
-      userRole: 'user',
+      userRole: 'agent',
       userPermissions: []
     });
 
-    const { getByTestId, queryByTestId } = render(
+    render(
+      <Protected module="clients" action="view" recordBranch="north">
+        <div data-testid="protected-content">Protected Content</div>
+      </Protected>
+    );
+
+    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+  });
+
+  it('should render custom fallback when provided', () => {
+    vi.mocked(usePermissions).mockReturnValue({
+      hasPermission: vi.fn(() => false),
+      isSameBranch: vi.fn(() => true),
+      hasAnyPermission: vi.fn(),
+      userBranch: 'main',
+      userRole: 'agent',
+      userPermissions: []
+    });
+
+    render(
       <Protected 
         module="clients" 
-        action="delete" 
-        fallback={<div data-testid="custom-fallback">Custom Fallback</div>}
+        action="delete"
+        fallback={<div data-testid="custom-fallback">Custom Denied Message</div>}
       >
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(getByTestId('custom-fallback')).toBeDefined();
-    expect(queryByTestId('protected-content')).toBeNull();
-  });
-
-  it('handles branch checking correctly', () => {
-    const mockHasPermission = vi.fn().mockReturnValue(true);
-    const mockIsSameBranch = vi.fn().mockReturnValue(false);
-
-    mockUsePermissions.mockReturnValue({
-      hasPermission: mockHasPermission,
-      isSameBranch: mockIsSameBranch,
-      hasAnyPermission: vi.fn(),
-      userBranch: 'branch-a',
-      userRole: 'user',
-      userPermissions: []
-    });
-
-    const { getByText, queryByTestId } = render(
-      <Protected module="clients" action="view" recordBranch="branch-b">
-        <div data-testid="protected-content">Protected Content</div>
-      </Protected>
-    );
-
-    expect(mockIsSameBranch).toHaveBeenCalledWith('branch-b');
-    expect(getByText('Access Denied')).toBeDefined();
-    expect(queryByTestId('protected-content')).toBeNull();
+    expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+
 # Insurance CRM - Full Stack Application
 
 A comprehensive Customer Relationship Management system built specifically for insurance agencies, featuring policy management, claims processing, lead tracking, and commission calculations.
@@ -131,6 +132,7 @@ Our RBAC system provides comprehensive permission management across all CRM modu
 - **Frontend**: React components with `<Protected>` wrappers and `usePermissions()` hooks
 - **Backend**: Express.js APIs with role validation middleware
 - **Database**: MongoDB with Role and User collections for dynamic permission management
+- **Real-time**: WebSocket integration for instant permission updates
 
 ### Role Schema Structure
 
@@ -261,6 +263,87 @@ The `PermissionEditor` component (`/src/components/settings/PermissionEditor.tsx
 )}
 ```
 
+### Real-Time Permission Sync
+
+#### WebSocket Integration
+
+The system includes real-time permission synchronization:
+
+```javascript
+// AuthContext automatically connects to WebSocket
+const wsUrl = `${process.env.VITE_WS_URL}/realtime`;
+ws.send(JSON.stringify({
+  type: 'SUBSCRIBE',
+  channel: `permissions-updated:${userId}`
+}));
+
+// On permission update
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  if (data.type === 'PERMISSION_UPDATE') {
+    await refreshPermissions(); // Updates UI immediately
+  }
+};
+```
+
+#### Environment Variables
+
+```bash
+# Frontend (.env)
+VITE_API_URL=http://localhost:3000/api
+VITE_WS_URL=ws://localhost:3001
+VITE_APP_NAME="Amba Insurance CRM"
+
+# Backend (.env)
+NODE_ENV=development
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/insurance-crm
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
+WS_PORT=3001
+```
+
+### RBAC Setup & Migration
+
+#### 1. Initialize Default Roles
+
+```bash
+# Run the seed script (automatically runs on first app start)
+npm run seed:roles
+
+# Or manually trigger seeding
+node backend/migrations/seedRoles.js
+```
+
+This creates four default roles:
+- **Agent**: Basic CRUD on assigned records
+- **Manager**: Full CRUD + team management + approvals
+- **Admin**: All operations + user management + system config
+- **Super Admin**: Complete system control + role management
+
+#### 2. Database Migration
+
+```bash
+# Update existing users to reference roles
+npm run migrate:user-roles
+
+# Verify migration
+npm run verify:rbac
+```
+
+#### 3. Test Permission Matrix
+
+```bash
+# Run RBAC-specific tests
+npm run test:rbac
+
+# Run full test suite with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e:rbac
+```
+
 ### Role Hierarchy & Default Permissions
 
 1. **Agent**: Basic CRUD on assigned records
@@ -286,21 +369,43 @@ The `PermissionEditor` component (`/src/components/settings/PermissionEditor.tsx
    - System critical operations
    - RBAC configuration
 
-### Setup & Migration
+### How Real-Time Sync Works
 
-1. **Initialize Default Roles:**
-   ```bash
-   npm run seed:roles  # Creates default role documents
+1. **Permission Update Trigger**: Super Admin changes role permissions via PermissionEditor
+2. **Backend Event**: Controller emits `permissions-updated` event with affected user IDs
+3. **WebSocket Broadcast**: Event is sent to all connected clients for affected users
+4. **Frontend Update**: AuthContext receives event and calls `refreshPermissions()`
+5. **UI Re-render**: All `<Protected>` components automatically re-evaluate permissions
+6. **Immediate Effect**: UI updates without page reload or manual refresh
+
+### Adding New Modules/Actions
+
+To extend the RBAC system with new modules or actions:
+
+1. **Update Role Model** (`backend/models/Role.ts`):
+   ```typescript
+   module: 'new_module' | 'existing_modules...';
+   actions: ('new_action' | 'existing_actions...')[];
    ```
 
-2. **Migrate Existing Users:**
-   ```bash
-   npm run migrate:user-roles  # Updates User.role references
+2. **Update Permission Matrix** (`src/components/settings/PermissionEditor.tsx`):
+   ```javascript
+   const modules = [...existingModules, 'new_module'];
+   const actions = [...existingActions, 'new_action'];
    ```
 
-3. **Test Permission Matrix:**
-   ```bash
-   npm test -- --grep "RBAC"  # Runs RBAC-specific tests
+3. **Add Protection** to new components:
+   ```jsx
+   <Protected module="new_module" action="new_action">
+     <NewComponent />
+   </Protected>
+   ```
+
+4. **Update Tests** with new permission scenarios:
+   ```javascript
+   test('should handle new_module:new_action permission', () => {
+     // Test implementation
+   });
    ```
 
 ### Development Notes
