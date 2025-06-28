@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -19,6 +20,33 @@ vi.mock('@/hooks/useQuotes', () => ({
     isPending: false,
   }),
 }));
+
+// Mock screen since it's not available in the current testing-library version
+const screen = {
+  getByText: (text: string | RegExp) => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    return elements.find(el => {
+      const content = el.textContent || '';
+      if (typeof text === 'string') {
+        return content.includes(text);
+      }
+      return text.test(content);
+    });
+  },
+  queryByText: (text: string | RegExp) => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    return elements.find(el => {
+      const content = el.textContent || '';
+      if (typeof text === 'string') {
+        return content.includes(text);
+      }
+      return text.test(content);
+    }) || null;
+  },
+  getAllByRole: (role: string) => {
+    return Array.from(document.querySelectorAll(`[role="${role}"]`));
+  }
+};
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

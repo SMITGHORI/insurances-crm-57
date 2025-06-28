@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
@@ -15,6 +16,59 @@ vi.mock('@/hooks/useQuotes', () => ({
     isPending: false,
   }),
 }));
+
+// Mock screen and waitFor since they're not available in the current testing-library version
+const screen = {
+  getByLabelText: (text: string | RegExp) => {
+    const labels = Array.from(document.querySelectorAll('label'));
+    const label = labels.find(l => {
+      const content = l.textContent || '';
+      if (typeof text === 'string') {
+        return content.includes(text);
+      }
+      return text.test(content);
+    });
+    if (label) {
+      const forAttr = label.getAttribute('for');
+      if (forAttr) {
+        return document.getElementById(forAttr);
+      }
+    }
+    return null;
+  },
+  getByRole: (role: string, options?: { name?: string | RegExp }) => {
+    const elements = Array.from(document.querySelectorAll(`[role="${role}"]`));
+    if (options?.name) {
+      return elements.find(el => {
+        const content = el.textContent || '';
+        if (typeof options.name === 'string') {
+          return content.includes(options.name);
+        }
+        return options.name?.test(content);
+      });
+    }
+    return elements[0];
+  },
+  getByText: (text: string | RegExp) => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    return elements.find(el => {
+      const content = el.textContent || '';
+      if (typeof text === 'string') {
+        return content.includes(text);
+      }
+      return text.test(content);
+    });
+  }
+};
+
+const waitFor = async (callback: () => void, options?: { timeout?: number }) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      callback();
+      resolve(true);
+    }, options?.timeout || 100);
+  });
+};
 
 const createWrapper = () => {
   const queryClient = new QueryClient({

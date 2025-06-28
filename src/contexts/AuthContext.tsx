@@ -20,6 +20,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const wsConnection = useRef<WebSocket | null>(null);
 
+  // Get API URL with fallback
+  const getApiUrl = () => {
+    return import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  };
+
   /**
    * Fetch current user with full role permissions from backend
    */
@@ -28,7 +33,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
+      const response = await fetch(`${getApiUrl()}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -135,8 +140,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Attempting login with API URL:', getApiUrl());
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const response = await fetch(`${getApiUrl()}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,12 +150,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('Login response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.message || 'Login failed' };
+        let errorMessage = 'Login failed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          console.log('Could not parse error response as JSON');
+        }
+        return { success: false, error: errorMessage };
       }
 
-      const { token, user: userData } = await response.json();
+      const responseData = await response.json();
+      const { token, user: userData } = responseData;
       
       // Store token and fetch full user data
       localStorage.setItem('authToken', token);
