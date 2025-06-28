@@ -13,7 +13,7 @@ class AuthService {
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ class AuthService {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

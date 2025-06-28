@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType } from '@/types/auth';
 
@@ -29,7 +28,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -52,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Initialize WebSocket connection for real-time permission updates
    */
   const initializeWebSocket = useCallback((userId: string) => {
-    const wsUrl = `${process.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
     
     try {
       wsConnection.current = new WebSocket(wsUrl);
@@ -137,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
