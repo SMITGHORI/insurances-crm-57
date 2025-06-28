@@ -1,6 +1,59 @@
 
 import { User, JWTPayload } from '@/types/auth';
 
+// Mock user data for demo purposes
+const DEMO_USERS = {
+  'admin@ambainsurance.com': {
+    id: '1',
+    email: 'admin@ambainsurance.com',
+    name: 'Super Admin',
+    role: 'super_admin',
+    permissions: [
+      { module: 'clients', actions: ['view', 'create', 'edit', 'delete'] },
+      { module: 'policies', actions: ['view', 'create', 'edit', 'delete'] },
+      { module: 'claims', actions: ['view', 'create', 'edit', 'delete'] },
+      { module: 'quotations', actions: ['view', 'create', 'edit', 'delete', 'approve'] },
+      { module: 'agents', actions: ['view', 'create', 'edit', 'delete'] },
+      { module: 'settings', actions: ['view', 'edit'] }
+    ],
+    flatPermissions: [
+      'clients:view', 'clients:create', 'clients:edit', 'clients:delete',
+      'policies:view', 'policies:create', 'policies:edit', 'policies:delete',
+      'claims:view', 'claims:create', 'claims:edit', 'claims:delete',
+      'quotations:view', 'quotations:create', 'quotations:edit', 'quotations:delete', 'quotations:approve',
+      'agents:view', 'agents:create', 'agents:edit', 'agents:delete',
+      'settings:view', 'settings:edit'
+    ],
+    branch: 'main',
+    lastUpdated: new Date(),
+  },
+  'agent@ambainsurance.com': {
+    id: '2',
+    email: 'agent@ambainsurance.com',
+    name: 'Insurance Agent',
+    role: 'agent',
+    permissions: [
+      { module: 'clients', actions: ['view', 'create', 'edit'] },
+      { module: 'policies', actions: ['view', 'create', 'edit'] },
+      { module: 'claims', actions: ['view', 'create'] },
+      { module: 'quotations', actions: ['view', 'create', 'edit'] }
+    ],
+    flatPermissions: [
+      'clients:view', 'clients:create', 'clients:edit',
+      'policies:view', 'policies:create', 'policies:edit',
+      'claims:view', 'claims:create',
+      'quotations:view', 'quotations:create', 'quotations:edit'
+    ],
+    branch: 'main',
+    lastUpdated: new Date(),
+  }
+};
+
+const DEMO_PASSWORDS = {
+  'admin@ambainsurance.com': 'admin123',
+  'agent@ambainsurance.com': 'agent123'
+};
+
 class AuthService {
   private static instance: AuthService;
   
@@ -13,6 +66,22 @@ class AuthService {
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Check if this is a demo credential
+      if (DEMO_USERS[email as keyof typeof DEMO_USERS] && DEMO_PASSWORDS[email as keyof typeof DEMO_PASSWORDS] === password) {
+        // Mock JWT token for demo
+        const mockToken = btoa(JSON.stringify({
+          userId: DEMO_USERS[email as keyof typeof DEMO_USERS].id,
+          email: email,
+          exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+        }));
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('demoUser', JSON.stringify(DEMO_USERS[email as keyof typeof DEMO_USERS]));
+        
+        return { success: true };
+      }
+
+      // If not demo credentials, try the actual API (if available)
       const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -23,7 +92,7 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json();
-        return { success: false, error: errorData.message || 'Login failed' };
+        return { success: false, error: errorData.message || 'Invalid credentials' };
       }
 
       const { token, user } = await response.json();
@@ -34,7 +103,22 @@ class AuthService {
       return { success: true };
     } catch (error) {
       console.error('Login failed:', error);
-      return { success: false, error: 'Login failed. Please try again.' };
+      
+      // If API is not available, check demo credentials as fallback
+      if (DEMO_USERS[email as keyof typeof DEMO_USERS] && DEMO_PASSWORDS[email as keyof typeof DEMO_PASSWORDS] === password) {
+        const mockToken = btoa(JSON.stringify({
+          userId: DEMO_USERS[email as keyof typeof DEMO_USERS].id,
+          email: email,
+          exp: Date.now() + (24 * 60 * 60 * 1000)
+        }));
+        
+        localStorage.setItem('authToken', mockToken);
+        localStorage.setItem('demoUser', JSON.stringify(DEMO_USERS[email as keyof typeof DEMO_USERS]));
+        
+        return { success: true };
+      }
+      
+      return { success: false, error: 'Invalid credentials. Please try the demo credentials.' };
     }
   }
 
@@ -43,6 +127,13 @@ class AuthService {
       const token = localStorage.getItem('authToken');
       if (!token) return null;
 
+      // Check if we have a demo user stored
+      const demoUser = localStorage.getItem('demoUser');
+      if (demoUser) {
+        return JSON.parse(demoUser);
+      }
+
+      // Try to fetch from API
       const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -71,12 +162,20 @@ class AuthService {
       return user;
     } catch (error) {
       console.error('Failed to fetch current user:', error);
+      
+      // If API fails, try to use demo user data
+      const demoUser = localStorage.getItem('demoUser');
+      if (demoUser) {
+        return JSON.parse(demoUser);
+      }
+      
       return null;
     }
   }
 
   logout(): void {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('demoUser');
   }
 }
 

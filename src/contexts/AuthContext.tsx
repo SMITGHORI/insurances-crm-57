@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType } from '@/types/auth';
+import { authService } from '@/services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -20,33 +21,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const wsConnection = useRef<WebSocket | null>(null);
-
-  /**
-   * Fetch current user with full role permissions from backend
-   */
-  const fetchCurrentUser = async (): Promise<User | null> => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return null;
-
-      const response = await fetch(`${process.env.VITE_API_URL}/api/users/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const userData = await response.json();
-      return userData.data;
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-      return null;
-    }
-  };
 
   /**
    * Initialize WebSocket connection for real-time permission updates
@@ -103,17 +77,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const userData = await fetchCurrentUser();
+        const userData = await authService.fetchCurrentUser();
         
         if (userData) {
           setUser(userData);
-          // Initialize WebSocket for real-time updates
-          initializeWebSocket(userData.id);
+          // Only initialize WebSocket if we have a real backend connection
+          if (process.env.VITE_WS_URL) {
+            initializeWebSocket(userData.id);
+          }
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
         // Clear invalid token
         localStorage.removeItem('authToken');
+        localStorage.removeItem('demoUser');
       } finally {
         setLoading(false);
       }
@@ -131,38 +108,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [initializeWebSocket]);
 
   /**
-   * Enhanced login with backend integration
+   * Enhanced login with backend integration and demo support
    */
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
 
-      const response = await fetch(`${process.env.VITE_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        return { success: false, error: errorData.message || 'Login failed' };
+      const result = await authService.login(email, password);
+      
+      if (result.success) {
+        const userData = await authService.fetchCurrentUser();
+        
+        if (userData) {
+          setUser(userData);
+          // Only initialize WebSocket if we have a real backend connection
+          if (process.env.VITE_WS_URL) {
+            initializeWebSocket(userData.id);
+          }
+        }
       }
 
-      const { token, user: userData } = await response.json();
-      
-      // Store token and fetch full user data
-      localStorage.setItem('authToken', token);
-      const fullUserData = await fetchCurrentUser();
-      
-      if (fullUserData) {
-        setUser(fullUserData);
-        // Initialize WebSocket for real-time updates
-        initializeWebSocket(fullUserData.id);
-      }
-
-      return { success: true };
+      return result;
     } catch (error) {
       console.error('Login failed:', error);
       return { success: false, error: 'Login failed. Please try again.' };
@@ -182,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     // Clear stored data
-    localStorage.removeItem('authToken');
+    authService.logout();
     
     // Clear user state
     setUser(null);
@@ -193,7 +159,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const refreshPermissions = async () => {
     try {
-      const userData = await fetchCurrentUser();
+      const userData = await authService.fetchCurrentUser();
       
       if (userData) {
         setUser(userData);
