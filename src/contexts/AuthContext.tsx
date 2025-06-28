@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User, AuthContextType } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,7 +19,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  private wsConnection: WebSocket | null = null;
+  const wsConnection = useRef<WebSocket | null>(null);
 
   /**
    * Fetch current user with full role permissions from backend
@@ -55,18 +55,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const wsUrl = `${process.env.VITE_WS_URL || 'ws://localhost:3001'}/realtime`;
     
     try {
-      this.wsConnection = new WebSocket(wsUrl);
+      wsConnection.current = new WebSocket(wsUrl);
       
-      this.wsConnection.onopen = () => {
+      wsConnection.current.onopen = () => {
         console.log('WebSocket connected for real-time permissions');
         // Subscribe to user-specific permission updates
-        this.wsConnection?.send(JSON.stringify({
+        wsConnection.current?.send(JSON.stringify({
           type: 'SUBSCRIBE',
           channel: `permissions-updated:${userId}`
         }));
       };
       
-      this.wsConnection.onmessage = async (event) => {
+      wsConnection.current.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
           
@@ -79,11 +79,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       };
       
-      this.wsConnection.onerror = (error) => {
+      wsConnection.current.onerror = (error) => {
         console.error('WebSocket error:', error);
       };
       
-      this.wsConnection.onclose = () => {
+      wsConnection.current.onclose = () => {
         console.log('WebSocket disconnected');
         // Attempt to reconnect after 5 seconds
         setTimeout(() => {
@@ -123,9 +123,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Cleanup WebSocket on unmount
     return () => {
-      if (this.wsConnection) {
-        this.wsConnection.close();
-        this.wsConnection = null;
+      if (wsConnection.current) {
+        wsConnection.current.close();
+        wsConnection.current = null;
       }
     };
   }, [initializeWebSocket]);
@@ -176,9 +176,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const logout = useCallback(() => {
     // Close WebSocket connection
-    if (this.wsConnection) {
-      this.wsConnection.close();
-      this.wsConnection = null;
+    if (wsConnection.current) {
+      wsConnection.current.close();
+      wsConnection.current = null;
     }
     
     // Clear stored data
