@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,20 +12,7 @@ import Protected from '@/components/Protected';
 import ProtectedRow from '@/components/ProtectedRow';
 import { useUpdateQuoteStatus, useExportQuotes } from '@/hooks/useQuotes';
 import { toast } from 'sonner';
-
-interface Quote {
-  id: string;
-  carrier: string;
-  premium: number;
-  coverageAmount: number;
-  valueScore: number;
-  validUntil: string;
-  status: 'draft' | 'active' | 'approved' | 'expired' | 'rejected';
-  documentUrl?: string;
-  branch: string;
-  createdAt: string;
-  notes?: string;
-}
+import { Quote } from '@/__mocks__/quotes';
 
 interface QuoteComparisonTableProps {
   quotes: Quote[];
@@ -60,10 +46,12 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
   const getStatusColor = (status: Quote['status']) => {
     const colors = {
       draft: 'text-gray-600',
-      active: 'text-blue-600',
-      approved: 'text-green-600',
-      expired: 'text-red-600',
+      ready: 'text-blue-600',
+      sent: 'text-blue-600',
+      viewed: 'text-purple-600',
+      accepted: 'text-green-600',
       rejected: 'text-red-600',
+      expired: 'text-red-600',
     };
     return colors[status] || 'text-gray-600';
   };
@@ -72,7 +60,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
     try {
       await updateQuoteStatusMutation.mutateAsync({
         quoteId,
-        status: 'accepted', // Changed from 'approved' to 'accepted'
+        status: 'accepted',
       });
       toast.success('Quote approved successfully');
       onQuoteUpdate();
@@ -228,7 +216,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
                             </Protected>
                           )}
                           
-                          {quote.status === 'active' && (
+                          {quote.status === 'sent' && (
                             <Protected module="quotations" action="approve">
                               <DropdownMenuItem
                                 onClick={() => handleApproveQuote(quote.id)}

@@ -37,7 +37,7 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
     try {
       await updateQuoteStatusMutation.mutateAsync({
         quoteId: quote.id,
-        status: 'accepted', // Changed from 'approved' to 'accepted'
+        status: 'accepted',
       });
       toast.success('Quote accepted successfully');
       onQuoteUpdate();
@@ -51,10 +51,12 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
   const getStatusColor = (status: string) => {
     const colors = {
       draft: 'text-gray-600 bg-gray-100',
-      active: 'text-blue-600 bg-blue-100',
-      approved: 'text-green-600 bg-green-100',
-      expired: 'text-red-600 bg-red-100',
+      ready: 'text-blue-600 bg-blue-100',
+      sent: 'text-blue-600 bg-blue-100',
+      viewed: 'text-purple-600 bg-purple-100',
+      accepted: 'text-green-600 bg-green-100',
       rejected: 'text-red-600 bg-red-100',
+      expired: 'text-red-600 bg-red-100',
     };
     return colors[status as keyof typeof colors] || 'text-gray-600 bg-gray-100';
   };
@@ -264,7 +266,7 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
                 </Protected>
               )}
 
-              {quote.status === 'active' && (
+              {quote.status === 'sent' && (
                 <Protected module="quotations" action="approve">
                   <Button
                     onClick={handleAcceptQuote}
