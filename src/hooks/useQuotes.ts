@@ -1,138 +1,158 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { quotationsApi } from '@/services/api/quotationsApi';
+import { mockQuotes, Quote } from '@/__mocks__/quotes';
 import { toast } from 'sonner';
 
-// Fetch quotes for a specific lead
-export const useQuotes = (leadId: string) => {
+// Simulate API delays
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Mock API functions
+const quotesApi = {
+  getQuotes: async (params?: {
+    status?: string;
+    branch?: string;
+    agentId?: string;
+    search?: string;
+  }): Promise<Quote[]> => {
+    await delay(500);
+    let filtered = [...mockQuotes];
+    
+    if (params?.status && params.status !== 'all') {
+      filtered = filtered.filter(q => q.status === params.status);
+    }
+    if (params?.branch && params.branch !== 'all') {
+      filtered = filtered.filter(q => q.branch === params.branch);
+    }
+    if (params?.agentId && params.agentId !== 'all') {
+      filtered = filtered.filter(q => q.agentId === params.agentId);
+    }
+    if (params?.search) {
+      const search = params.search.toLowerCase();
+      filtered = filtered.filter(q => 
+        q.leadName.toLowerCase().includes(search) ||
+        q.carrier.toLowerCase().includes(search) ||
+        q.quoteId.toLowerCase().includes(search)
+      );
+    }
+    
+    return filtered;
+  },
+
+  updateQuoteStatus: async (quoteId: string, status: Quote['status']): Promise<Quote> => {
+    await delay(300);
+    const quote = mockQuotes.find(q => q.id === quoteId);
+    if (!quote) throw new Error('Quote not found');
+    
+    quote.status = status;
+    if (status === 'sent') quote.sentAt = new Date().toISOString();
+    if (status === 'viewed') quote.viewedAt = new Date().toISOString();
+    if (status === 'accepted') quote.acceptedAt = new Date().toISOString();
+    if (status === 'rejected') quote.rejectedAt = new Date().toISOString();
+    
+    return quote;
+  },
+
+  sendWhatsApp: async (quoteIds: string[], message: string): Promise<void> => {
+    await delay(800);
+    quoteIds.forEach(id => {
+      const quote = mockQuotes.find(q => q.id === id);
+      if (quote) quote.whatsappSent = true;
+    });
+  },
+
+  sendEmail: async (quoteIds: string[], template: string): Promise<void> => {
+    await delay(600);
+    quoteIds.forEach(id => {
+      const quote = mockQuotes.find(q => q.id === id);
+      if (quote) quote.emailSent = true;
+    });
+  },
+
+  bulkUpdateStatus: async (quoteIds: string[], status: Quote['status']): Promise<void> => {
+    await delay(400);
+    quoteIds.forEach(id => {
+      const quote = mockQuotes.find(q => q.id === id);
+      if (quote) {
+        quote.status = status;
+        if (status === 'sent') quote.sentAt = new Date().toISOString();
+      }
+    });
+  }
+};
+
+export const useQuotes = (params?: {
+  status?: string;
+  branch?: string;
+  agentId?: string;
+  search?: string;
+}) => {
   return useQuery({
-    queryKey: ['quotes', leadId],
-    queryFn: () => quotationsApi.getQuotations({ clientId: leadId }),
-    enabled: !!leadId,
+    queryKey: ['quotes', params],
+    queryFn: () => quotesApi.getQuotes(params),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
 
-// Fetch single quote by ID
-export const useQuoteById = (quoteId: string | null) => {
-  return useQuery({
-    queryKey: ['quote', quoteId],
-    queryFn: () => quotationsApi.getQuotationById(quoteId!),
-    enabled: !!quoteId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Create new quote
-export const useCreateQuote = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (quoteData: FormData) => quotationsApi.createQuotation(quoteData),
-    onSuccess: (data, variables) => {
-      // Extract leadId from FormData
-      const leadId = variables.get('leadId') as string;
-      
-      // Invalidate and refetch quotes for this lead
-      queryClient.invalidateQueries({ queryKey: ['quotes', leadId] });
-      
-      toast.success('Quote created successfully');
-    },
-    onError: (error: any) => {
-      console.error('Failed to create quote:', error);
-      toast.error(error.message || 'Failed to create quote');
-    },
-  });
-};
-
-// Update quote status
 export const useUpdateQuoteStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ quoteId, status, additionalData }: { 
-      quoteId: string; 
-      status: string; 
-      additionalData?: any 
-    }) => quotationsApi.updateQuotationStatus(quoteId, status, additionalData),
-    onSuccess: (data) => {
-      // Invalidate all quote-related queries
+    mutationFn: ({ quoteId, status }: { quoteId: string; status: Quote['status'] }) =>
+      quotesApi.updateQuoteStatus(quoteId, status),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
-      queryClient.invalidateQueries({ queryKey: ['quote'] });
-      
       toast.success('Quote status updated successfully');
     },
     onError: (error: any) => {
-      console.error('Failed to update quote status:', error);
       toast.error(error.message || 'Failed to update quote status');
     },
   });
 };
 
-// Export quotes to CSV
-export const useExportQuotes = () => {
-  return useMutation({
-    mutationFn: (quotes: any[]) => {
-      // Generate CSV content
-      const headers = ['Carrier', 'Premium', 'Coverage', 'Value Score', 'Valid Until', 'Status'];
-      const csvContent = [
-        headers.join(','),
-        ...quotes.map(quote => [
-          quote.carrier,
-          quote.premium,
-          quote.coverageAmount,
-          quote.valueScore || (quote.coverageAmount / quote.premium),
-          quote.validUntil,
-          quote.status
-        ].join(','))
-      ].join('\n');
-
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `quotes-export-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      return Promise.resolve();
-    },
-    onSuccess: () => {
-      toast.success('Quotes exported successfully');
-    },
-    onError: (error: any) => {
-      console.error('Failed to export quotes:', error);
-      toast.error('Failed to export quotes');
-    },
-  });
-};
-
-// Send quote via email
-export const useSendQuote = () => {
+export const useSendWhatsApp = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ quoteId, emailData }: { quoteId: string; emailData: any }) => 
-      quotationsApi.sendQuotation(quoteId, emailData),
+    mutationFn: ({ quoteIds, message }: { quoteIds: string[]; message: string }) =>
+      quotesApi.sendWhatsApp(quoteIds, message),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
-      toast.success('Quote sent successfully');
+      toast.success('WhatsApp messages sent successfully');
     },
     onError: (error: any) => {
-      console.error('Failed to send quote:', error);
-      toast.error(error.message || 'Failed to send quote');
+      toast.error(error.message || 'Failed to send WhatsApp messages');
     },
   });
 };
 
-// Get quote statistics
-export const useQuoteStats = (params?: any) => {
-  return useQuery({
-    queryKey: ['quote-stats', params],
-    queryFn: () => quotationsApi.getQuotationsStats(params),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+export const useSendEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ quoteIds, template }: { quoteIds: string[]; template: string }) =>
+      quotesApi.sendEmail(quoteIds, template),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Emails sent successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send emails');
+    },
+  });
+};
+
+export const useBulkUpdateQuotes = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ quoteIds, status }: { quoteIds: string[]; status: Quote['status'] }) =>
+      quotesApi.bulkUpdateStatus(quoteIds, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Quotes updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update quotes');
+    },
   });
 };
