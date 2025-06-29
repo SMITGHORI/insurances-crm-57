@@ -222,24 +222,33 @@ const ROLE_PERMISSIONS = {
 export const PermissionsProvider = ({ children }) => {
   const { user } = useAuth();
 
-  const hasPermission = (permission) => {
+  const hasPermission = (module, action) => {
     if (!user || !user.role) return false;
+    
+    // Handle the new module-action format for quotations
+    if (module === 'quotations' && action === 'view') {
+      const rolePermissions = ROLE_PERMISSIONS[user.role];
+      return rolePermissions ? (rolePermissions['viewAllQuotations'] || rolePermissions['createQuotation']) : false;
+    }
+    
+    // Handle other module-action combinations
+    const permissionKey = `${action}${module.charAt(0).toUpperCase() + module.slice(1)}` + (action === 'view' ? 's' : '');
     const rolePermissions = ROLE_PERMISSIONS[user.role];
-    return rolePermissions ? rolePermissions[permission] : false;
+    return rolePermissions ? rolePermissions[permissionKey] : false;
   };
 
   const canAccessRoute = (route) => {
     const routePermissions = {
-      '/dashboard': hasPermission('viewDashboard'),
-      '/clients': hasPermission('viewAllClients') || hasPermission('viewAssignedClients'),
-      '/agents': hasPermission('viewAllAgents'),
-      '/policies': hasPermission('viewAllPolicies') || user?.role === 'agent',
-      '/claims': hasPermission('viewAllClaims') || user?.role === 'agent',
-      '/leads': hasPermission('viewAllLeads') || user?.role === 'agent',
-      '/quotations': hasPermission('viewAllQuotations') || user?.role === 'agent',
-      '/invoices': hasPermission('viewAllInvoices'),
-      '/settings': hasPermission('manageSettings') || user?.role === 'agent',
-      '/recent-activities': hasPermission('viewDashboard'),
+      '/dashboard': hasPermission('dashboard', 'view') || true, // Always accessible
+      '/clients': hasPermission('clients', 'view') || user?.role === 'agent',
+      '/agents': hasPermission('agents', 'view'),
+      '/policies': hasPermission('policies', 'view') || user?.role === 'agent',
+      '/claims': hasPermission('claims', 'view') || user?.role === 'agent',
+      '/leads': hasPermission('leads', 'view') || user?.role === 'agent',
+      '/quotations': hasPermission('quotations', 'view') || user?.role === 'agent',
+      '/invoices': hasPermission('invoices', 'view'),
+      '/settings': hasPermission('settings', 'manage') || user?.role === 'agent',
+      '/recent-activities': hasPermission('activities', 'view') || true,
     };
     
     return routePermissions[route] !== false;
@@ -280,18 +289,18 @@ export const PermissionsProvider = ({ children }) => {
 
   // Client-specific permission checks
   const canEditClient = (client) => {
-    if (hasPermission('editAnyClient')) return true;
-    if (hasPermission('editAssignedClients') && client.assignedAgentId === user.id) return true;
+    if (hasPermission('clients', 'editAny')) return true;
+    if (hasPermission('clients', 'editAssigned') && client.assignedAgentId === user.id) return true;
     return false;
   };
 
   const canDeleteClient = (client) => {
-    return hasPermission('deleteClient');
+    return hasPermission('clients', 'delete');
   };
 
   const canViewClient = (client) => {
-    if (hasPermission('viewAllClients')) return true;
-    if (hasPermission('viewAssignedClients') && client.assignedAgentId === user.id) return true;
+    if (hasPermission('clients', 'viewAll')) return true;
+    if (hasPermission('clients', 'viewAssigned') && client.assignedAgentId === user.id) return true;
     return false;
   };
 
