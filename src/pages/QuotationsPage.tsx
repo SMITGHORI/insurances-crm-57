@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,7 +27,7 @@ const QuotationsPage: React.FC = () => {
     isLoading: loading,
     error,
     refetch: refreshQuotes 
-  } = useQuotes(leadId || '');
+  } = useQuotes({ search: leadId || '' }); // Fixed: pass object instead of string
 
   const handleQuoteSelect = (quoteId: string) => {
     setSelectedQuoteId(quoteId);
@@ -113,7 +112,7 @@ const QuotationsPage: React.FC = () => {
             <TabsContent value="client-portal" className="space-y-4">
               <ClientQuotePortal
                 leadId={leadId || ''}
-                quotes={quotes.filter(q => q.status === 'active')}
+                quotes={quotes.filter(q => q.status === 'sent')} {/* Changed from 'active' to 'sent' */}
               />
             </TabsContent>
           )}

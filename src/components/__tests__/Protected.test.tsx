@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import Protected from '../Protected';
@@ -19,13 +19,13 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByTestId } = render(
       <Protected module="clients" action="view">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+    expect(getByTestId('protected-content')).toBeInTheDocument();
   });
 
   it('should show AccessDenied when permission is denied', () => {
@@ -38,14 +38,14 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByText, queryByTestId } = render(
       <Protected module="clients" action="delete">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByText(/access denied/i)).toBeInTheDocument();
+    expect(queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
   it('should handle branch-based access control', () => {
@@ -58,14 +58,14 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByText, queryByTestId } = render(
       <Protected module="clients" action="view" recordBranch="north">
         <div data-testid="protected-content">Protected Content</div>
       </Protected>
     );
 
-    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByText(/access denied/i)).toBeInTheDocument();
+    expect(queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 
   it('should render custom fallback when provided', () => {
@@ -78,7 +78,7 @@ describe('Protected Component', () => {
       userPermissions: []
     });
 
-    render(
+    const { getByTestId, queryByTestId } = render(
       <Protected 
         module="clients" 
         action="delete"
@@ -88,7 +88,7 @@ describe('Protected Component', () => {
       </Protected>
     );
 
-    expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
-    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+    expect(getByTestId('custom-fallback')).toBeInTheDocument();
+    expect(queryByTestId('protected-content')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mockQuotes, Quote } from '@/__mocks__/quotes';
 import { toast } from 'sonner';
@@ -90,6 +89,69 @@ export const useQuotes = (params?: {
     queryKey: ['quotes', params],
     queryFn: () => quotesApi.getQuotes(params),
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+export const useQuoteById = (quoteId: string | null) => {
+  return useQuery({
+    queryKey: ['quote', quoteId],
+    queryFn: async () => {
+      if (!quoteId) return null;
+      await delay(300);
+      const quote = mockQuotes.find(q => q.id === quoteId);
+      if (!quote) throw new Error('Quote not found');
+      return quote;
+    },
+    enabled: !!quoteId,
+  });
+};
+
+export const useCreateQuote = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      await delay(800);
+      // Mock quote creation
+      const newQuote = {
+        id: Math.random().toString(),
+        quoteId: `QT-2025-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`,
+        leadId: formData.get('leadId') as string,
+        carrier: formData.get('carrier') as string,
+        premium: parseFloat(formData.get('premium') as string),
+        coverageAmount: parseFloat(formData.get('coverageAmount') as string),
+        validUntil: formData.get('validUntil') as string,
+        status: 'draft' as const,
+        // ... other fields would be filled from formData
+      };
+      return newQuote;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Quote created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create quote');
+    },
+  });
+};
+
+export const useExportQuotes = () => {
+  return useMutation({
+    mutationFn: async (quotes: Quote[]) => {
+      await delay(500);
+      // Mock CSV export
+      const csvData = quotes.map(q => ({
+        'Quote ID': q.quoteId,
+        'Lead Name': q.leadName,
+        'Carrier': q.carrier,
+        'Premium': q.premium,
+        'Coverage': q.coverageAmount,
+        'Status': q.status,
+      }));
+      console.log('Exporting quotes:', csvData);
+      return csvData;
+    },
   });
 };
 

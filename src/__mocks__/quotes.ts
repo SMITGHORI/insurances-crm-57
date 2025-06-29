@@ -10,21 +10,31 @@ export interface Quote {
   planName: string;
   validityStart: string;
   validityEnd: string;
+  validUntil: string; // Add this field that components expect
   insuranceType: 'Health Insurance' | 'Life Insurance' | 'Motor Insurance' | 'Home Insurance' | 'Travel Insurance';
   status: 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
   agentId: string;
   agentName: string;
   branch: string;
   createdAt: string;
+  updatedAt?: string;
   sentAt?: string;
   viewedAt?: string;
   acceptedAt?: string;
   rejectedAt?: string;
+  approvedAt?: string;
   notes?: string;
   documentUrl?: string;
   commissionAmount?: number;
   whatsappSent?: boolean;
   emailSent?: boolean;
+  valueScore: number; // Add this field
+  riskProfile?: {
+    age?: number;
+    location?: string;
+    vehicleType?: string;
+    healthStatus?: string;
+  };
   followUpReminders: Array<{
     type: 'email' | 'call' | 'whatsapp';
     scheduledFor: string;
@@ -44,6 +54,7 @@ export const mockQuotes: Quote[] = [
     planName: 'Family Health Plus',
     validityStart: '2025-01-01',
     validityEnd: '2025-02-01',
+    validUntil: '2025-02-01',
     insuranceType: 'Health Insurance',
     status: 'sent',
     agentId: '2',
@@ -54,6 +65,7 @@ export const mockQuotes: Quote[] = [
     commissionAmount: 2500,
     emailSent: true,
     whatsappSent: false,
+    valueScore: 20,
     followUpReminders: [
       { type: 'call', scheduledFor: '2025-01-20T10:00:00Z', completed: false },
       { type: 'email', scheduledFor: '2025-01-25T09:00:00Z', completed: false }
@@ -70,6 +82,7 @@ export const mockQuotes: Quote[] = [
     planName: 'Comprehensive Motor Plan',
     validityStart: '2025-01-10',
     validityEnd: '2025-02-10',
+    validUntil: '2025-02-10',
     insuranceType: 'Motor Insurance',
     status: 'viewed',
     agentId: '2',
@@ -81,6 +94,7 @@ export const mockQuotes: Quote[] = [
     commissionAmount: 1500,
     emailSent: true,
     whatsappSent: true,
+    valueScore: 53,
     followUpReminders: [
       { type: 'whatsapp', scheduledFor: '2025-01-18T15:00:00Z', completed: false }
     ]
@@ -96,6 +110,7 @@ export const mockQuotes: Quote[] = [
     planName: 'Term Life Secure',
     validityStart: '2025-01-05',
     validityEnd: '2025-02-05',
+    validUntil: '2025-02-05',
     insuranceType: 'Life Insurance',
     status: 'accepted',
     agentId: '2',
@@ -108,6 +123,7 @@ export const mockQuotes: Quote[] = [
     commissionAmount: 1200,
     emailSent: true,
     whatsappSent: false,
+    valueScore: 83,
     followUpReminders: []
   }
 ];

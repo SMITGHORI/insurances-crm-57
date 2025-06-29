@@ -37,7 +37,7 @@ const QuoteDetailsDrawer: React.FC<QuoteDetailsDrawerProps> = ({
     try {
       await updateQuoteStatusMutation.mutateAsync({
         quoteId: quote.id,
-        status: 'approved',
+        status: 'accepted', // Changed from 'approved' to 'accepted'
       });
       toast.success('Quote accepted successfully');
       onQuoteUpdate();

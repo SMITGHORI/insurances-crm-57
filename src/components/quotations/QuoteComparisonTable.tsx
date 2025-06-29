@@ -47,10 +47,12 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
   const getStatusBadgeVariant = (status: Quote['status']) => {
     const variants = {
       draft: 'secondary' as const,
-      active: 'default' as const,
-      approved: 'default' as const,
-      expired: 'destructive' as const,
+      ready: 'outline' as const,
+      sent: 'default' as const,
+      viewed: 'default' as const,
+      accepted: 'default' as const,
       rejected: 'destructive' as const,
+      expired: 'secondary' as const,
     };
     return variants[status] || 'secondary';
   };
@@ -70,7 +72,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
     try {
       await updateQuoteStatusMutation.mutateAsync({
         quoteId,
-        status: 'approved',
+        status: 'accepted', // Changed from 'approved' to 'accepted'
       });
       toast.success('Quote approved successfully');
       onQuoteUpdate();
