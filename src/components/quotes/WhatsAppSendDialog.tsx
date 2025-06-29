@@ -94,7 +94,7 @@ Best regards,
               className="mt-1 min-h-[200px]"
             />
             <div className="text-xs text-gray-500 mt-1">
-              Available variables: {{`{clientName}, {planName}, {carrier}, {premium}, {coverage}, {validityEnd}, {agentName}, {quoteLink}`}}
+              Available variables: {"{clientName}, {planName}, {carrier}, {premium}, {coverage}, {validityEnd}, {agentName}, {quoteLink}"}
             </div>
           </div>
 
