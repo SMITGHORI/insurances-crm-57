@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,12 +23,22 @@ const QuotationsPage: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('quotes');
 
-  const { 
-    data: quotes = [],
-    isLoading: loading,
-    error,
-    refetch: refreshQuotes 
-  } = useQuotes({ search: leadId || '' });
+  // Add error boundary for the quotes hook
+  let quotes = [];
+  let loading = false;
+  let error = null;
+  let refreshQuotes = () => {};
+
+  try {
+    const quotesResult = useQuotes({ search: leadId || '' });
+    quotes = quotesResult.data || [];
+    loading = quotesResult.isLoading;
+    error = quotesResult.error;
+    refreshQuotes = quotesResult.refetch;
+  } catch (err) {
+    console.error('Error in useQuotes hook:', err);
+    error = err;
+  }
 
   const handleQuoteSelect = (quoteId: string) => {
     setSelectedQuoteId(quoteId);
@@ -54,7 +63,7 @@ const QuotationsPage: React.FC = () => {
       <Card className="mx-4">
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Error loading quotes: {error.message}
+            Error loading quotes: {error?.message || 'Unknown error occurred'}
           </div>
         </CardContent>
       </Card>
