@@ -16,12 +16,15 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { toast } from 'sonner';
 
 const QuotationsPage: React.FC = () => {
-  const { leadId } = useParams<{ leadId: string }>();
+  const { leadId, quotationId } = useParams<{ leadId?: string; quotationId?: string }>();
   const { hasPermission } = usePermissions();
   
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quotationId || null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(!!quotationId);
   const [activeTab, setActiveTab] = useState('quotes');
+
+  // Determine search parameter - if we have quotationId, search by that, otherwise use leadId
+  const searchParam = quotationId || leadId || '';
 
   // Add error boundary for the quotes hook
   let quotes = [];
@@ -30,7 +33,7 @@ const QuotationsPage: React.FC = () => {
   let refreshQuotes = () => {};
 
   try {
-    const quotesResult = useQuotes({ search: leadId || '' });
+    const quotesResult = useQuotes({ search: searchParam });
     quotes = quotesResult.data || [];
     loading = quotesResult.isLoading;
     error = quotesResult.error;
@@ -70,14 +73,32 @@ const QuotationsPage: React.FC = () => {
     );
   }
 
+  // If we have a quotationId but no quotes found, show appropriate message
+  if (quotationId && quotes.length === 0 && !loading) {
+    return (
+      <Card className="mx-4">
+        <CardContent className="pt-6">
+          <div className="text-center text-gray-600">
+            Quote not found or you don't have permission to view it.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const pageTitle = quotationId ? 'Quote Details' : 'Lead Quotations';
+  const pageDescription = quotationId 
+    ? `Managing quote ${quotationId}` 
+    : `Manage quotes for Lead #${leadId}`;
+
   return (
     <ProtectedRoute module="quotations" action="view">
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header with Lead Info */}
+        {/* Header with Lead/Quote Info */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Lead Quotations</h1>
-            <p className="text-gray-600">Manage quotes for Lead #{leadId}</p>
+            <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
+            <p className="text-gray-600">{pageDescription}</p>
           </div>
           <Badge variant="outline" className="text-sm">
             {quotes.length} Quote{quotes.length !== 1 ? 's' : ''}
