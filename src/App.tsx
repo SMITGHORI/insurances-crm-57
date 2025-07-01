@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -104,7 +105,8 @@ function App() {
                   <Route path="quotations/create" element={<QuotationForm />} />
                   <Route path="quotations/lead/:leadId" element={<QuotationsPage />} />
                   <Route path="quotations/quote/:quotationId" element={<QuotationsPage />} />
-                  <Route path="quotations/:id" element={<QuotationDetails />} />
+                  {/* Redirect old quotation detail route to new format */}
+                  <Route path="quotations/:id" element={<Navigate to={`/quotations/quote/${window.location.pathname.split('/').pop()}`} replace />} />
                   <Route path="quotations/:id/edit" element={<QuotationEdit />} />
                   
                   {/* Invoice routes */}

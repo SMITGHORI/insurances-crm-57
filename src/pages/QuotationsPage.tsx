@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,8 +23,13 @@ const QuotationsPage: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(!!quotationId);
   const [activeTab, setActiveTab] = useState('quotes');
 
+  console.log('QuotationsPage - Params:', { leadId, quotationId });
+  console.log('QuotationsPage - Initial state:', { selectedQuoteId, isDrawerOpen });
+
   // Determine search parameter - if we have quotationId, search by that, otherwise use leadId
   const searchParam = quotationId || leadId || '';
+
+  console.log('QuotationsPage - Search param:', searchParam);
 
   // Add error boundary for the quotes hook
   let quotes = [];
@@ -38,12 +43,24 @@ const QuotationsPage: React.FC = () => {
     loading = quotesResult.isLoading;
     error = quotesResult.error;
     refreshQuotes = quotesResult.refetch;
+    
+    console.log('QuotationsPage - Quotes result:', { quotes: quotes.length, loading, error });
   } catch (err) {
     console.error('Error in useQuotes hook:', err);
     error = err;
   }
 
+  // Update selectedQuoteId and drawer state when quotationId changes
+  useEffect(() => {
+    if (quotationId) {
+      console.log('QuotationsPage - Setting selected quote from URL:', quotationId);
+      setSelectedQuoteId(quotationId);
+      setIsDrawerOpen(true);
+    }
+  }, [quotationId]);
+
   const handleQuoteSelect = (quoteId: string) => {
+    console.log('QuotationsPage - Quote selected:', quoteId);
     setSelectedQuoteId(quoteId);
     setIsDrawerOpen(true);
   };
@@ -54,19 +71,24 @@ const QuotationsPage: React.FC = () => {
   };
 
   if (loading) {
+    console.log('QuotationsPage - Showing loading spinner');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner size="lg" />
+        <span className="ml-2">Loading quotations...</span>
       </div>
     );
   }
 
   if (error) {
+    console.error('QuotationsPage - Error state:', error);
     return (
       <Card className="mx-4">
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
             Error loading quotes: {error?.message || 'Unknown error occurred'}
+            <br />
+            <small>Search param: {searchParam}</small>
           </div>
         </CardContent>
       </Card>
@@ -75,11 +97,14 @@ const QuotationsPage: React.FC = () => {
 
   // If we have a quotationId but no quotes found, show appropriate message
   if (quotationId && quotes.length === 0 && !loading) {
+    console.log('QuotationsPage - No quotes found for quotationId:', quotationId);
     return (
       <Card className="mx-4">
         <CardContent className="pt-6">
           <div className="text-center text-gray-600">
             Quote not found or you don't have permission to view it.
+            <br />
+            <small>Looking for quotation ID: {quotationId}</small>
           </div>
         </CardContent>
       </Card>
@@ -90,6 +115,13 @@ const QuotationsPage: React.FC = () => {
   const pageDescription = quotationId 
     ? `Managing quote ${quotationId}` 
     : `Manage quotes for Lead #${leadId}`;
+
+  console.log('QuotationsPage - Rendering with:', { 
+    pageTitle, 
+    quotesCount: quotes.length, 
+    selectedQuoteId, 
+    isDrawerOpen 
+  });
 
   return (
     <ProtectedRoute module="quotations" action="view">
@@ -154,7 +186,10 @@ const QuotationsPage: React.FC = () => {
         <QuoteDetailsDrawer
           quoteId={selectedQuoteId}
           isOpen={isDrawerOpen}
-          onClose={() => setIsDrawerOpen(false)}
+          onClose={() => {
+            console.log('QuotationsPage - Closing drawer');
+            setIsDrawerOpen(false);
+          }}
           onQuoteUpdate={refreshQuotes}
         />
       </div>
