@@ -3,10 +3,18 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const http = require('http');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+
+// Import middleware
+const rateLimiter = require('./middleware/rateLimiter');
+const auditLogger = require('./middleware/auditLogger');
+const performanceMonitor = require('./middleware/performanceMonitor');
+const webSocketManager = require('./middleware/websocket');
+const { globalErrorHandler } = require('./utils/errorHandler');
 
 // Import route modules
 const authRoutes = require('./routes/auth');
@@ -24,20 +32,30 @@ const campaignRoutes = require('./routes/campaigns');
 const activitiesRoutes = require('./routes/activities');
 const headerRoutes = require('./routes/header');
 const settingsRoutes = require('./routes/settings');
-const invoiceRoutes = require('./routes/invoices'); // Add invoice routes
+const invoiceRoutes = require('./routes/invoices');
 
-// Middleware
+// Initialize WebSocket
+webSocketManager.initialize(server);
+
+// Security middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Performance monitoring (before other middleware)
+app.use(performanceMonitor.middleware());
+
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+app.use(rateLimiter.getGeneralLimiter());
+
+// Audit logging (after auth middleware in routes)
+app.use(auditLogger.middleware());
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance_system', {
@@ -45,53 +63,64 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance
   useUnifiedTopology: true,
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/policies', policyRoutes);
-app.use('/api/claims', claimRoutes);
-app.use('/api/leads', leadRoutes);
-app.use('/api/agents', agentRoutes);
-app.use('/api/quotations', quotationRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/communication', communicationRoutes);
-app.use('/api/broadcast', broadcastRoutes);
-app.use('/api/enhanced-broadcast', enhancedBroadcastRoutes);
-app.use('/api/campaigns', campaignRoutes);
-app.use('/api/activities', activitiesRoutes);
-app.use('/api/header', headerRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/invoices', invoiceRoutes); // Add invoice routes
+// Routes with specific rate limiting
+app.use('/api/auth', rateLimiter.getAuthLimiter(), authRoutes);
+app.use('/api/clients', rateLimiter.getAPILimiter(), clientRoutes);
+app.use('/api/policies', rateLimiter.getAPILimiter(), policyRoutes);
+app.use('/api/claims', rateLimiter.getAPILimiter(), claimRoutes);
+app.use('/api/leads', rateLimiter.getAPILimiter(), leadRoutes);
+app.use('/api/agents', rateLimiter.getAPILimiter(), agentRoutes);
+app.use('/api/quotations', rateLimiter.getAPILimiter(), quotationRoutes);
+app.use('/api/dashboard', rateLimiter.getAPILimiter(), dashboardRoutes);
+app.use('/api/communication', rateLimiter.getAPILimiter(), communicationRoutes);
+app.use('/api/broadcast', rateLimiter.getBulkOperationLimiter(), broadcastRoutes);
+app.use('/api/enhanced-broadcast', rateLimiter.getBulkOperationLimiter(), enhancedBroadcastRoutes);
+app.use('/api/campaigns', rateLimiter.getAPILimiter(), campaignRoutes);
+app.use('/api/activities', rateLimiter.getAPILimiter(), activitiesRoutes);
+app.use('/api/header', rateLimiter.getAPILimiter(), headerRoutes);
+app.use('/api/settings', rateLimiter.getAPILimiter(), settingsRoutes);
+app.use('/api/invoices', rateLimiter.getAPILimiter(), invoiceRoutes);
+
+// Performance metrics endpoint
+app.get('/api/metrics', rateLimiter.getAPILimiter(), (req, res) => {
+  if (req.user?.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
+  
+  const timeframe = req.query.timeframe || '1h';
+  const metrics = performanceMonitor.getMetrics(timeframe);
+  res.json(metrics);
+});
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    version: process.env.npm_package_version || '1.0.0'
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    details: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+// Global error handling middleware
+app.use(globalErrorHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    success: false,
+    error: 'Route not found',
+    path: req.originalUrl 
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`WebSocket server initialized`);
   });
 }
 
-module.exports = app;
+module.exports = { app, server };
