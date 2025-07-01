@@ -1,65 +1,137 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { dashboardApi } from '../services/api/dashboardApi';
+import useWebSocket from './useWebSocket';
 
 /**
- * Hook for dashboard overview data
+ * Hook for dashboard overview data with real-time updates
  */
 export const useDashboardOverview = () => {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const { lastMessage } = useWebSocket();
+
+  const query = useQuery({
     queryKey: ['dashboard', 'overview'],
     queryFn: () => dashboardApi.getDashboardOverview(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false
-  });
-};
-
-/**
- * Hook for recent activities
- */
-export const useRecentActivities = (limit = 10) => {
-  return useQuery({
-    queryKey: ['dashboard', 'activities', limit],
-    queryFn: () => dashboardApi.getRecentActivities(limit),
     staleTime: 1000 * 60 * 2, // 2 minutes
     refetchOnWindowFocus: false
   });
+
+  // Listen for real-time updates
+  useEffect(() => {
+    const handleDashboardRefresh = () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] });
+    };
+
+    window.addEventListener('dashboard-refresh', handleDashboardRefresh);
+    return () => window.removeEventListener('dashboard-refresh', handleDashboardRefresh);
+  }, [queryClient]);
+
+  // Auto-refresh on WebSocket messages
+  useEffect(() => {
+    if (lastMessage?.type === 'dashboard-update') {
+      query.refetch();
+    }
+  }, [lastMessage, query]);
+
+  return query;
+};
+
+/**
+ * Hook for recent activities with real-time updates
+ */
+export const useRecentActivities = (limit = 10) => {
+  const queryClient = useQueryClient();
+  const { lastMessage } = useWebSocket();
+
+  const query = useQuery({
+    queryKey: ['dashboard', 'activities', limit],
+    queryFn: () => dashboardApi.getRecentActivities(limit),
+    staleTime: 1000 * 60 * 1, // 1 minute
+    refetchOnWindowFocus: false
+  });
+
+  // Listen for entity updates
+  useEffect(() => {
+    const handleEntityUpdate = (event) => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'activities'] });
+    };
+
+    window.addEventListener('entity-updated', handleEntityUpdate);
+    return () => window.removeEventListener('entity-updated', handleEntityUpdate);
+  }, [queryClient]);
+
+  // Auto-refresh on WebSocket messages
+  useEffect(() => {
+    if (lastMessage?.type === 'entity-updated' || lastMessage?.type === 'activity-created') {
+      query.refetch();
+    }
+  }, [lastMessage, query]);
+
+  return query;
 };
 
 /**
  * Hook for performance metrics
  */
 export const usePerformanceMetrics = (period = '30d') => {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ['dashboard', 'performance', period],
     queryFn: () => dashboardApi.getPerformanceMetrics(period),
-    staleTime: 1000 * 60 * 10, // 10 minutes
-    refetchOnWindowFocus: false
-  });
-};
-
-/**
- * Hook for charts data
- */
-export const useChartsData = (type = 'all') => {
-  return useQuery({
-    queryKey: ['dashboard', 'charts', type],
-    queryFn: () => dashboardApi.getChartsData(type),
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false
   });
 };
 
 /**
- * Hook for quick actions
+ * Hook for charts data with real-time updates
  */
-export const useQuickActions = () => {
-  return useQuery({
-    queryKey: ['dashboard', 'quickActions'],
-    queryFn: () => dashboardApi.getQuickActions(),
+export const useChartsData = (type = 'all') => {
+  const queryClient = useQueryClient();
+  const { lastMessage } = useWebSocket();
+
+  const query = useQuery({
+    queryKey: ['dashboard', 'charts', type],
+    queryFn: () => dashboardApi.getChartsData(type),
     staleTime: 1000 * 60 * 3, // 3 minutes
     refetchOnWindowFocus: false
   });
+
+  // Auto-refresh on WebSocket messages
+  useEffect(() => {
+    if (lastMessage?.type === 'dashboard-update' || lastMessage?.type === 'data-changed') {
+      query.refetch();
+    }
+  }, [lastMessage, query]);
+
+  return query;
+};
+
+/**
+ * Hook for quick actions with real-time updates
+ */
+export const useQuickActions = () => {
+  const queryClient = useQueryClient();
+  const { lastMessage } = useWebSocket();
+
+  const query = useQuery({
+    queryKey: ['dashboard', 'quickActions'],
+    queryFn: () => dashboardApi.getQuickActions(),
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    refetchOnWindowFocus: false
+  });
+
+  // Auto-refresh on WebSocket messages
+  useEffect(() => {
+    if (lastMessage?.type === 'quick-action-update' || lastMessage?.type === 'entity-updated') {
+      query.refetch();
+    }
+  }, [lastMessage, query]);
+
+  return query;
 };
 
 /**
@@ -77,11 +149,21 @@ export const useRefreshDashboard = () => {
       const data = await dashboardApi.refreshDashboard();
       
       // Update query cache with fresh data
-      queryClient.setQueryData(['dashboard', 'overview'], data.overview);
-      queryClient.setQueryData(['dashboard', 'activities'], data.activities);
-      queryClient.setQueryData(['dashboard', 'performance'], data.metrics);
-      queryClient.setQueryData(['dashboard', 'charts'], data.charts);
-      queryClient.setQueryData(['dashboard', 'quickActions'], data.quickActions);
+      if (data.overview) {
+        queryClient.setQueryData(['dashboard', 'overview'], data.overview);
+      }
+      if (data.activities) {
+        queryClient.setQueryData(['dashboard', 'activities'], data.activities);
+      }
+      if (data.metrics) {
+        queryClient.setQueryData(['dashboard', 'performance'], data.metrics);
+      }
+      if (data.charts) {
+        queryClient.setQueryData(['dashboard', 'charts'], data.charts);
+      }
+      if (data.quickActions) {
+        queryClient.setQueryData(['dashboard', 'quickActions'], data.quickActions);
+      }
 
       return data;
     } catch (error) {
@@ -94,7 +176,7 @@ export const useRefreshDashboard = () => {
 };
 
 /**
- * Combined hook for all dashboard data
+ * Combined hook for all dashboard data with real-time updates
  */
 export const useDashboardData = () => {
   const overview = useDashboardOverview();
