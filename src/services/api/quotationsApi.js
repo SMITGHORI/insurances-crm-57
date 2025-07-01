@@ -1,4 +1,3 @@
-
 import { quotationsBackendApi } from './quotationsApiBackend';
 
 // Sample/Mock data for offline mode
@@ -121,6 +120,7 @@ class QuotationsApiService {
     if (params.search) {
       const searchTerm = params.search.toLowerCase();
       filteredQuotations = filteredQuotations.filter(quote =>
+        quote.id === params.search || // Search by exact ID match first
         quote.quoteId.toLowerCase().includes(searchTerm) ||
         quote.clientName.toLowerCase().includes(searchTerm) ||
         quote.insuranceCompany.toLowerCase().includes(searchTerm)
