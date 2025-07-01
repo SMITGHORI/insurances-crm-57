@@ -275,7 +275,7 @@ npm run test:coverage
 
 ### Prerequisites
 - Node.js v16+
-- MongoDB v4+
+- MongoDB Atlas account (or local MongoDB v4+)
 - NPM or Yarn
 
 ### Installation
@@ -297,14 +297,67 @@ npm start
 npm run dev
 ```
 
-### Environment Variables
+## Database Setup
+
+### MongoDB Atlas Configuration
+
+1. **Create MongoDB Atlas Account**
+   - Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+   - Create a new cluster (free tier available)
+   - Set up database user credentials
+   - Configure network access (add your IP or 0.0.0.0/0 for development)
+
+2. **Get Connection String**
+   - Navigate to your cluster in Atlas dashboard
+   - Click "Connect" → "Connect your application"
+   - Copy the connection string
+
+3. **Configure Environment Variables**
+   Update your `.env` file with the MongoDB Atlas connection string:
+   ```env
+   NODE_ENV=development
+   PORT=5000
+   MONGODB_URI=mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/insurance-crm?retryWrites=true&w=majority
+   JWT_SECRET=your-super-secret-jwt-key-here
+   JWT_EXPIRES_IN=7d
+   FRONTEND_URL=http://localhost:5173
+   WS_PORT=5001
+   ```
+
+4. **Replace Placeholders**
+   - `<USERNAME>`: Your MongoDB Atlas username
+   - `<PASSWORD>`: Your MongoDB Atlas password
+   - `<CLUSTER>`: Your cluster name
+   - Database name: `insurance-crm`
+
+5. **Test Connection**
+   ```bash
+   npm start
+   ```
+   You should see: "MongoDB Atlas connected successfully"
+
+### Local MongoDB Setup (Alternative)
+If you prefer local development:
+```env
+MONGODB_URI=mongodb://localhost:27017/insurance_crm
 ```
+
+### Environment Variables Reference
+```env
+# Server Configuration
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/insurance_crm
-MONGODB_TEST_URI=mongodb://localhost:27017/insurance_crm_test
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=1d
+FRONTEND_URL=http://localhost:5173
+WS_PORT=5001
+
+# Database Configuration
+MONGODB_URI=mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/insurance-crm?retryWrites=true&w=majority
+
+# Authentication
+JWT_SECRET=your-super-secret-jwt-key-here
+JWT_EXPIRES_IN=7d
+
+# File Upload
 UPLOAD_DIR=uploads
 ```
 
@@ -329,10 +382,87 @@ npm install pm2 -g
 pm2 start ecosystem.config.js
 ```
 
-## Documentation
-API documentation is available at:
-- [Swagger UI](http://localhost:5000/api-docs)
+## API Documentation
+
+### Swagger UI Integration
+
+This project includes comprehensive API documentation using Swagger UI with OpenAPI 3.0 specification.
+
+#### Features
+- **Interactive API Explorer**: Test endpoints directly from the browser
+- **JWT Authentication**: Built-in authentication testing with Bearer tokens
+- **Comprehensive Schemas**: Detailed request/response models
+- **RBAC Documentation**: Role-based access control examples
+- **Real-time Validation**: Request/response validation examples
+
+#### Accessing Swagger UI
+1. **Start the Development Server**
+   ```bash
+   npm run dev
+   ```
+
+2. **Open Swagger UI**
+   Navigate to: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
+
+3. **Authentication Setup**
+   - Click the "Authorize" button in Swagger UI
+   - Enter your JWT token in the format: `Bearer <your-token>`
+   - Get a token by calling `/api/auth/login` endpoint first
+
+#### Example API Documentation
+The following endpoints are fully documented with Swagger:
+
+**Leads Management**
+- `GET /api/leads` - Get all leads with filtering and pagination
+- `POST /api/leads` - Create a new lead (Agents, Managers, Super Admin)
+- `PUT /api/leads/{id}/assign` - Assign lead to agent (Managers, Super Admin only)
+
+**RBAC Examples**
+The documentation demonstrates Role-Based Access Control:
+- **Agents**: Can only access assigned leads
+- **Managers**: Can access all leads in their region
+- **Super Admins**: Full access to all resources
+
+#### Swagger Configuration
+The Swagger configuration is located in `/config/swagger.js` and includes:
+- OpenAPI 3.0 specification
+- JWT Bearer authentication scheme
+- Environment-based server URLs
+- Comprehensive error response schemas
+- Reusable components and schemas
+
+#### Adding Documentation to New Endpoints
+To document new API endpoints, add JSDoc comments above your route handlers:
+
+```javascript
+/**
+ * @swagger
+ * /api/your-endpoint:
+ *   get:
+ *     summary: Your endpoint description
+ *     tags: [YourTag]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/YourSchema'
+ */
+router.get('/your-endpoint', authMiddleware, yourController);
+```
+
+#### Production Notes
+- Swagger UI is automatically disabled in production environment
+- Set `NODE_ENV=production` to disable the `/api-docs` endpoint
+- API documentation remains accessible via exported OpenAPI spec
+
+### Additional Documentation
 - [Postman Collection](./docs/postman/insurance-crm-api.json)
+- [API Reference Guide](./docs/api-reference.md)
+- [Authentication Guide](./docs/authentication.md)
 
 ## Contributors
 - Your Name <your.email@example.com>

@@ -91,7 +91,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Failed to initialize auth:', error);
         // Clear invalid token
         localStorage.removeItem('authToken');
-        localStorage.removeItem('demoUser');
       } finally {
         setLoading(false);
       }
@@ -141,7 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Enhanced logout with cleanup
    */
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     // Close WebSocket connection
     if (wsConnection.current) {
       wsConnection.current.close();
@@ -149,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     // Clear stored data
-    authService.logout();
+    await authService.logout();
     
     // Clear user state
     setUser(null);

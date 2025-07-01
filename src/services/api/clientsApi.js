@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { ClientsBackendApiService } from './clientsApiBackend';
 
 // Base API configuration for Express backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -64,6 +65,8 @@ class ClientsApiService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/clients`;
     this.isOfflineMode = false;
+    this.backendApi = new ClientsBackendApiService();
+    this.hasShownOfflineNotice = false;
   }
 
   /**
@@ -131,72 +134,69 @@ class ClientsApiService {
   /**
    * Get mock clients data with filtering and pagination simulation
    */
-  getMockClients(endpoint) {
+  getMockClientsWithParams(params = {}) {
     let filteredClients = [...mockClients];
     
-    // Parse query parameters if present
-    if (endpoint.includes('?')) {
-      const url = new URL(`http://example.com${endpoint}`);
-      const params = url.searchParams;
-      
-      const search = params.get('search');
-      const type = params.get('type');
-      const status = params.get('status');
-      const sortField = params.get('sortField') || 'createdAt';
-      const sortDirection = params.get('sortDirection') || 'desc';
-      
-      // Apply search filter
-      if (search) {
-        filteredClients = filteredClients.filter(client =>
-          client.name.toLowerCase().includes(search.toLowerCase()) ||
-          client.email.toLowerCase().includes(search.toLowerCase()) ||
-          client.clientId.toLowerCase().includes(search.toLowerCase())
-        );
-      }
-      
-      // Apply type filter
-      if (type && type !== 'all') {
-        filteredClients = filteredClients.filter(client =>
-          client.type.toLowerCase() === type.toLowerCase()
-        );
-      }
-      
-      // Apply status filter
-      if (status && status !== 'All') {
-        filteredClients = filteredClients.filter(client =>
-          client.status === status
-        );
-      }
-      
-      // Apply sorting
-      filteredClients.sort((a, b) => {
-        let aValue = a[sortField];
-        let bValue = b[sortField];
-        
-        if (sortField === 'createdAt') {
-          aValue = new Date(aValue);
-          bValue = new Date(bValue);
-        }
-        
-        if (sortDirection === 'desc') {
-          return bValue > aValue ? 1 : -1;
-        } else {
-          return aValue > bValue ? 1 : -1;
-        }
-      });
+    const {
+      search,
+      type,
+      status,
+      sortField = 'createdAt',
+      sortDirection = 'desc',
+      page = 1,
+      limit = 10
+    } = params;
+    
+    // Apply search filter
+    if (search) {
+      filteredClients = filteredClients.filter(client =>
+        client.name.toLowerCase().includes(search.toLowerCase()) ||
+        client.email.toLowerCase().includes(search.toLowerCase()) ||
+        client.clientId.toLowerCase().includes(search.toLowerCase())
+      );
     }
     
-    // Show offline mode notification once
-    if (!this.hasShownOfflineNotice) {
-      toast.info('Working in offline mode with sample data');
-      this.hasShownOfflineNotice = true;
+    // Apply type filter
+    if (type && type !== 'all') {
+      filteredClients = filteredClients.filter(client =>
+        client.type.toLowerCase() === type.toLowerCase()
+      );
     }
+    
+    // Apply status filter
+    if (status && status !== 'All') {
+      filteredClients = filteredClients.filter(client =>
+        client.status === status
+      );
+    }
+    
+    // Apply sorting
+    filteredClients.sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+      
+      if (sortField === 'createdAt') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+      
+      if (sortDirection === 'desc') {
+        return bValue > aValue ? 1 : -1;
+      } else {
+        return aValue > bValue ? 1 : -1;
+      }
+    });
+    
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedClients = filteredClients.slice(startIndex, endIndex);
     
     return {
-      data: filteredClients,
+      data: paginatedClients,
       total: filteredClients.length,
-      totalPages: Math.ceil(filteredClients.length / 10),
-      currentPage: 1,
+      totalPages: Math.ceil(filteredClients.length / limit),
+      currentPage: page,
       success: true
     };
   }
@@ -205,25 +205,24 @@ class ClientsApiService {
    * Get all clients with optional filtering and pagination
    */
   async getClients(params = {}) {
-    const queryParams = new URLSearchParams();
-    
-    // Add pagination parameters
-    if (params.page) queryParams.append('page', params.page);
-    if (params.limit) queryParams.append('limit', params.limit);
-    
-    // Add filtering parameters
-    if (params.search) queryParams.append('search', params.search);
-    if (params.type && params.type !== 'all') queryParams.append('type', params.type);
-    if (params.status && params.status !== 'All') queryParams.append('status', params.status);
-    
-    // Add sorting parameters
-    if (params.sortField) queryParams.append('sortField', params.sortField);
-    if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
-
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `?${queryString}` : '';
-
-    return this.request(endpoint);
+    try {
+      // Try backend API first
+      const result = await this.backendApi.getClients(params);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
+      // Show offline mode notification once
+      if (!this.hasShownOfflineNotice) {
+        toast.info('Working in offline mode with sample data');
+        this.hasShownOfflineNotice = true;
+      }
+      
+      // Fall back to mock data
+      return this.getMockClientsWithParams(params);
+    }
   }
 
   /**
@@ -231,8 +230,14 @@ class ClientsApiService {
    */
   async getClientById(id) {
     try {
-      return await this.request(`/${id}`);
+      // Try backend API first
+      const result = await this.backendApi.getClientById(id);
+      this.isOfflineMode = false;
+      return result;
     } catch (error) {
+      console.warn('Backend API failed for getClientById, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
       // Return mock client if offline
       const mockClient = mockClients.find(c => c._id === id);
       if (mockClient) {
@@ -247,11 +252,14 @@ class ClientsApiService {
    */
   async createClient(clientData) {
     try {
-      return await this.request('', {
-        method: 'POST',
-        body: JSON.stringify(clientData),
-      });
+      // Try backend API first
+      const result = await this.backendApi.createClient(clientData);
+      this.isOfflineMode = false;
+      return result;
     } catch (error) {
+      console.warn('Backend API failed for createClient, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
       // Simulate successful creation in offline mode
       const newClient = {
         _id: Date.now().toString(),
@@ -278,11 +286,14 @@ class ClientsApiService {
    */
   async updateClient(id, clientData) {
     try {
-      return await this.request(`/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(clientData),
-      });
+      // Try backend API first
+      const result = await this.backendApi.updateClient(id, clientData);
+      this.isOfflineMode = false;
+      return result;
     } catch (error) {
+      console.warn('Backend API failed for updateClient, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
       // Simulate successful update in offline mode
       const clientIndex = mockClients.findIndex(c => c._id === id);
       if (clientIndex !== -1) {
@@ -305,10 +316,14 @@ class ClientsApiService {
    */
   async deleteClient(id) {
     try {
-      return await this.request(`/${id}`, {
-        method: 'DELETE',
-      });
+      // Try backend API first
+      const result = await this.backendApi.deleteClient(id);
+      this.isOfflineMode = false;
+      return result;
     } catch (error) {
+      console.warn('Backend API failed for deleteClient, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
       // Simulate successful deletion in offline mode
       const clientIndex = mockClients.findIndex(c => c._id === id);
       if (clientIndex !== -1) {
@@ -324,31 +339,148 @@ class ClientsApiService {
    * Upload client document
    */
   async uploadDocument(clientId, documentType, file) {
-    const formData = new FormData();
-    formData.append('document', file);
-    formData.append('documentType', documentType);
-
-    return this.request(`/${clientId}/documents`, {
-      method: 'POST',
-      headers: {}, // Remove Content-Type to let browser set it for FormData
-      body: formData,
-    });
+    try {
+      // Try backend API first
+      const result = await this.backendApi.uploadDocument(clientId, documentType, file);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for uploadDocument, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      throw error; // Document upload requires backend
+    }
   }
 
   /**
    * Get client documents
    */
   async getClientDocuments(clientId) {
-    return this.request(`/${clientId}/documents`);
+    try {
+      // Try backend API first
+      const result = await this.backendApi.getClientDocuments(clientId);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for getClientDocuments, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      return []; // Return empty array for offline mode
+    }
   }
 
   /**
    * Delete client document
    */
   async deleteDocument(clientId, documentId) {
-    return this.request(`/${clientId}/documents/${documentId}`, {
-      method: 'DELETE',
-    });
+    try {
+      // Try backend API first
+      const result = await this.backendApi.deleteDocument(clientId, documentId);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for deleteDocument, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      throw error; // Document deletion requires backend
+    }
+  }
+
+  /**
+   * Helper method to get client display name
+   */
+  getClientDisplayName(clientData) {
+    switch (clientData.clientType) {
+      case 'individual':
+        return `${clientData.firstName || ''} ${clientData.lastName || ''}`.trim();
+      case 'corporate':
+        return clientData.companyName || 'Corporate Client';
+      case 'group':
+        return clientData.groupName || 'Group Client';
+      default:
+        return 'Unknown Client';
+    }
+  }
+
+  /**
+   * Search clients
+   */
+  async searchClients(query, limit = 10) {
+    try {
+      // Try backend API first
+      const result = await this.backendApi.searchClients(query, limit);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for searchClients, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
+      // Search in mock data
+      const filteredClients = mockClients.filter(client =>
+        client.name.toLowerCase().includes(query.toLowerCase()) ||
+        client.email.toLowerCase().includes(query.toLowerCase()) ||
+        client.clientId.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, limit);
+      
+      return filteredClients;
+    }
+  }
+
+  /**
+   * Get clients by agent
+   */
+  async getClientsByAgent(agentId) {
+    try {
+      // Try backend API first
+      const result = await this.backendApi.getClientsByAgent(agentId);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for getClientsByAgent, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
+      // Filter mock clients by agent
+      return mockClients.filter(client => client.assignedAgentId === agentId);
+    }
+  }
+
+  /**
+   * Assign client to agent
+   */
+  async assignClientToAgent(clientId, agentId) {
+    try {
+      // Try backend API first
+      const result = await this.backendApi.assignClientToAgent(clientId, agentId);
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for assignClientToAgent, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      throw error; // Assignment requires backend
+    }
+  }
+
+  /**
+   * Get client statistics
+   */
+  async getClientStats() {
+    try {
+      // Try backend API first
+      const result = await this.backendApi.getClientStats();
+      this.isOfflineMode = false;
+      return result;
+    } catch (error) {
+      console.warn('Backend API failed for getClientStats, using offline mode:', error.message);
+      this.isOfflineMode = true;
+      
+      // Return mock stats
+      return {
+        totalClients: mockClients.length,
+        activeClients: mockClients.filter(c => c.status === 'Active').length,
+        pendingClients: mockClients.filter(c => c.status === 'Pending').length,
+        inactiveClients: mockClients.filter(c => c.status === 'Inactive').length,
+        individualClients: mockClients.filter(c => c.type === 'Individual').length,
+        corporateClients: mockClients.filter(c => c.type === 'Corporate').length,
+        groupClients: mockClients.filter(c => c.type === 'Group').length
+      };
+    }
   }
 
   /**

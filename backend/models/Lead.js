@@ -1,6 +1,209 @@
 
 const mongoose = require('mongoose');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     FollowUp:
+ *       type: object
+ *       required:
+ *         - date
+ *         - time
+ *         - type
+ *         - outcome
+ *         - createdBy
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: Unique identifier for the follow-up
+ *         date:
+ *           type: string
+ *           format: date
+ *           description: Date of the follow-up
+ *           example: "2024-01-15"
+ *         time:
+ *           type: string
+ *           description: Time of the follow-up
+ *           example: "10:00"
+ *         type:
+ *           type: string
+ *           enum: [Call, Email, Meeting, SMS, WhatsApp]
+ *           description: Type of follow-up communication
+ *           example: "Call"
+ *         outcome:
+ *           type: string
+ *           maxLength: 1000
+ *           description: Result or outcome of the follow-up
+ *           example: "Customer showed interest, scheduled another call"
+ *         nextAction:
+ *           type: string
+ *           maxLength: 500
+ *           description: Next action to be taken
+ *           example: "Send insurance quotes via email"
+ *         createdBy:
+ *           type: string
+ *           description: Name of the person who created the follow-up
+ *           example: "Agent Smith"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the follow-up was created
+ *     
+ *     Note:
+ *       type: object
+ *       required:
+ *         - content
+ *         - createdBy
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: Unique identifier for the note
+ *         content:
+ *           type: string
+ *           maxLength: 2000
+ *           description: Content of the note
+ *           example: "Customer prefers comprehensive health insurance coverage"
+ *         createdBy:
+ *           type: string
+ *           description: Name of the person who created the note
+ *           example: "Agent Smith"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the note was created
+ *     
+ *     LeadAssignment:
+ *       type: object
+ *       properties:
+ *         agentId:
+ *           type: string
+ *           description: MongoDB ObjectId of the assigned agent
+ *           example: "507f1f77bcf86cd799439012"
+ *         name:
+ *           type: string
+ *           description: Name of the assigned agent
+ *           example: "Agent Smith"
+ *     
+ *     Lead:
+ *       type: object
+ *       required:
+ *         - name
+ *         - phone
+ *         - email
+ *         - source
+ *         - product
+ *         - assignedTo
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: Unique MongoDB ObjectId
+ *           example: "507f1f77bcf86cd799439011"
+ *         leadId:
+ *           type: string
+ *           description: Auto-generated unique lead identifier
+ *           example: "LD000001"
+ *         name:
+ *           type: string
+ *           maxLength: 100
+ *           description: Full name of the lead
+ *           example: "John Doe"
+ *         phone:
+ *           type: string
+ *           pattern: '^\+?[\d\s\-\(\)]{10,15}$'
+ *           description: Phone number of the lead
+ *           example: "+1234567890"
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email address of the lead
+ *           example: "john.doe@email.com"
+ *         address:
+ *           type: string
+ *           maxLength: 500
+ *           description: Physical address of the lead
+ *           example: "123 Main St, City, State 12345"
+ *         source:
+ *           type: string
+ *           enum: [Website, Referral, Cold Call, Social Media, Event, Advertisement, Other]
+ *           description: Source from which the lead was generated
+ *           example: "Website"
+ *         product:
+ *           type: string
+ *           enum: [Health Insurance, Life Insurance, Motor Insurance, Home Insurance, Travel Insurance, Business Insurance]
+ *           description: Type of insurance product the lead is interested in
+ *           example: "Health Insurance"
+ *         status:
+ *           type: string
+ *           enum: [New, In Progress, Qualified, Not Interested, Converted, Lost]
+ *           description: Current status of the lead
+ *           example: "New"
+ *           default: "New"
+ *         budget:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 10000000
+ *           description: Budget range of the lead
+ *           example: 5000
+ *         assignedTo:
+ *           $ref: '#/components/schemas/LeadAssignment'
+ *         priority:
+ *           type: string
+ *           enum: [High, Medium, Low]
+ *           description: Priority level of the lead
+ *           example: "Medium"
+ *           default: "Medium"
+ *         additionalInfo:
+ *           type: string
+ *           maxLength: 1000
+ *           description: Additional information about the lead
+ *           example: "Customer is interested in family health insurance"
+ *         followUps:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/FollowUp'
+ *           description: Array of follow-up activities
+ *         notes:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Note'
+ *           description: Array of notes related to the lead
+ *         nextFollowUp:
+ *           type: string
+ *           format: date-time
+ *           description: Date and time of the next scheduled follow-up
+ *           example: "2024-01-15T10:00:00Z"
+ *         lastInteraction:
+ *           type: string
+ *           format: date-time
+ *           description: Date and time of the last interaction with the lead
+ *           example: "2024-01-10T14:30:00Z"
+ *         convertedToClientId:
+ *           type: string
+ *           description: MongoDB ObjectId of the client if lead was converted
+ *           example: "507f1f77bcf86cd799439015"
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *             maxLength: 50
+ *           description: Tags associated with the lead
+ *           example: ["hot-lead", "family-insurance"]
+ *         customFields:
+ *           type: object
+ *           additionalProperties:
+ *             type: string
+ *           description: Custom fields for additional lead information
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the lead was created
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the lead was last updated
+ */
+
 const followUpSchema = new mongoose.Schema({
   date: {
     type: Date,
@@ -148,7 +351,7 @@ const leadSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: true
+  versionKey: false
 });
 
 // Indexes for better query performance

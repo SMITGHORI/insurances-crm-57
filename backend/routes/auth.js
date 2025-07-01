@@ -7,10 +7,18 @@ const authMiddleware = require('../middleware/auth');
 
 // Import controllers
 const {
+  login,
   logout,
   getAuthenticatedUser,
   refreshSession
 } = require('../controllers/authController');
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Login user and return JWT token
+ * @access  Public
+ */
+router.post('/login', login);
 
 /**
  * @route   POST /api/auth/logout

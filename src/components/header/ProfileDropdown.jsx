@@ -30,10 +30,15 @@ const ProfileDropdown = () => {
   const { user, logout } = useAuth();
   const { isSuperAdmin, isAgent, hasPermission } = usePermissions();
 
-  const handleLogout = () => {
-    logout();
-    toast.success('Logged out successfully');
-    navigate('/auth');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error('Logout failed. Please try again.');
+    }
   };
 
   const handleProfileEdit = () => {

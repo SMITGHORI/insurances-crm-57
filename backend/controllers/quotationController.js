@@ -438,3 +438,68 @@ exports.searchQuotations = async (req, res) => {
     errorHandler(error, req, res);
   }
 };
+
+// Export quotations
+exports.exportQuotations = async (req, res) => {
+  try {
+    const { format = 'csv', filters = {} } = req.body;
+    
+    // Build filter object
+    const filter = {};
+    
+    // Role-based filtering
+    if (req.user.role === 'agent') {
+      filter.agentId = req.user.id;
+    } else if (filters.agentId && filters.agentId !== 'all') {
+      filter.agentId = filters.agentId;
+    }
+    
+    if (filters.status && filters.status !== 'all') {
+      filter.status = filters.status;
+    }
+    
+    if (filters.insuranceType && filters.insuranceType !== 'all') {
+      filter.insuranceType = filters.insuranceType;
+    }
+    
+    if (filters.dateFrom || filters.dateTo) {
+      filter.createdAt = {};
+      if (filters.dateFrom) filter.createdAt.$gte = new Date(filters.dateFrom);
+      if (filters.dateTo) filter.createdAt.$lte = new Date(filters.dateTo);
+    }
+    
+    const quotations = await Quotation.find(filter)
+      .populate('clientId', 'name email phone')
+      .populate('agentId', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+    
+    // Format data for export
+    const exportData = quotations.map(quotation => ({
+      quoteId: quotation.quoteId,
+      clientName: quotation.clientName,
+      clientEmail: quotation.clientId?.email || '',
+      clientPhone: quotation.clientId?.phone || '',
+      insuranceType: quotation.insuranceType,
+      insuranceCompany: quotation.insuranceCompany,
+      sumInsured: quotation.sumInsured,
+      premium: quotation.premium,
+      status: quotation.status,
+      agentName: quotation.agentName,
+      validUntil: quotation.validUntil,
+      createdAt: quotation.createdAt,
+      sentDate: quotation.sentDate,
+      acceptedAt: quotation.acceptedAt,
+      rejectedAt: quotation.rejectedAt
+    }));
+    
+    responseHandler.success(res, {
+      data: exportData,
+      format,
+      count: exportData.length
+    }, 'Quotations exported successfully');
+  } catch (error) {
+    console.error('Error exporting quotations:', error);
+    errorHandler(error, req, res);
+  }
+};

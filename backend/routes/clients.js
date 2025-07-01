@@ -4,7 +4,7 @@ const clientController = require('../controllers/clientController');
 const authMiddleware = require('../middleware/auth');
 const { roleMiddleware, clientAccessMiddleware } = require('../middleware/roleMiddleware');
 const uploadMiddleware = require('../middleware/upload');
-const validationMiddleware = require('../middleware/validation');
+const { validationMiddleware } = require('../middleware/validation');
 const { clientValidation, updateClientValidation, documentValidation } = require('../validations/clientValidation');
 const { clientExportValidation } = require('../validations/exportValidation');
 

@@ -37,28 +37,7 @@ const Auth = () => {
     }
   };
 
-  // Quick login function for demo credentials
-  const handleDemoLogin = async (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setLoading(true);
 
-    try {
-      const result = await login(demoEmail, demoPassword);
-      
-      if (result.success) {
-        toast.success('Demo login successful!');
-        navigate('/dashboard');
-      } else {
-        toast.error(result.error || 'Demo login failed');
-      }
-    } catch (error) {
-      console.error('Demo login error:', error);
-      toast.error('Demo login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -165,52 +144,10 @@ const Auth = () => {
                 </Button>
               </form>
               
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Demo Credentials</span>
-                </div>
-              </div>
-              
-              <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">Super Admin:</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDemoLogin('admin@ambainsurance.com', 'admin123')}
-                      disabled={loading}
-                      className="text-xs"
-                    >
-                      Use These
-                    </Button>
-                  </div>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>Email: admin@ambainsurance.com</div>
-                    <div>Password: admin123</div>
-                  </div>
-                </div>
-                <div className="border-t border-blue-100 pt-3 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">Agent:</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDemoLogin('agent@ambainsurance.com', 'agent123')}
-                      disabled={loading}
-                      className="text-xs"
-                    >
-                      Use These
-                    </Button>
-                  </div>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>Email: agent@ambainsurance.com</div>
-                    <div>Password: agent123</div>
-                  </div>
-                </div>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-600">
+                  Use your administrator credentials to access the system
+                </p>
               </div>
             </CardContent>
           </Card>

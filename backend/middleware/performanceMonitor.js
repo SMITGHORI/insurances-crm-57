@@ -39,15 +39,17 @@ class PerformanceMonitor {
       });
 
       const originalSend = res.send;
+      const performanceMonitor = this; // Store reference to PerformanceMonitor instance
+      
       res.send = function(data) {
         const endTime = Date.now();
         const duration = endTime - startTime;
         
-        // Record performance metrics
-        this.recordMetrics(req, res, duration);
+        // Record performance metrics using the stored reference
+        performanceMonitor.recordMetrics(req, res, duration);
         
         return originalSend.call(this, data);
-      }.bind(this);
+      };
 
       next();
     };

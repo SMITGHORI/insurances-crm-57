@@ -24,13 +24,13 @@ const authMiddleware = async (req, res, next) => {
     // Get user from database
     const user = await User.findById(decoded.userId)
       .select('-password')
-      .lean();
+      .populate('role');
 
     if (!user) {
       throw new AppError('Invalid token. User not found.', 401);
     }
 
-    if (user.status !== 'active') {
+    if (!user.isActive) {
       throw new AppError('Account is inactive. Contact administrator.', 401);
     }
 

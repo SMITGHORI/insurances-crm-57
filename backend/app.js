@@ -6,6 +6,10 @@ const helmet = require('helmet');
 const http = require('http');
 require('dotenv').config();
 
+// Swagger imports
+const swaggerUi = require('swagger-ui-express');
+const { swaggerSpec } = require('./config/swagger');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -33,6 +37,7 @@ const activitiesRoutes = require('./routes/activities');
 const headerRoutes = require('./routes/header');
 const settingsRoutes = require('./routes/settings');
 const invoiceRoutes = require('./routes/invoices');
+const roleRoutes = require('./routes/roleRoutes');
 
 // Initialize WebSocket
 webSocketManager.initialize(server);
@@ -61,7 +66,15 @@ app.use(auditLogger.middleware());
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance_system', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-});
+})
+.then(() => {
+  console.log("MongoDB Atlas connected successfully");
+  console.log(`Connected to database: ${mongoose.connection.name}`);
+  // Initialize roles on successful connection
+  const { initializeRoles } = require('./migrations/seedRoles');
+  initializeRoles().catch(err => console.error("Role initialization error:", err));
+})
+.catch(err => console.error("MongoDB connection error:", err));
 
 // Routes with specific rate limiting
 app.use('/api/auth', rateLimiter.getAuthLimiter(), authRoutes);
@@ -80,6 +93,7 @@ app.use('/api/activities', rateLimiter.getAPILimiter(), activitiesRoutes);
 app.use('/api/header', rateLimiter.getAPILimiter(), headerRoutes);
 app.use('/api/settings', rateLimiter.getAPILimiter(), settingsRoutes);
 app.use('/api/invoices', rateLimiter.getAPILimiter(), invoiceRoutes);
+app.use('/api/roles', rateLimiter.getAPILimiter(), roleRoutes);
 
 // Performance metrics endpoint
 app.get('/api/metrics', rateLimiter.getAPILimiter(), (req, res) => {
@@ -92,13 +106,25 @@ app.get('/api/metrics', rateLimiter.getAPILimiter(), (req, res) => {
   res.json(metrics);
 });
 
+// Swagger API documentation (only in non-production)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Insurance CRM API Documentation'
+  }));
+  console.log(`Swagger UI available at http://localhost:${process.env.PORT || 5000}/api-docs`);
+}
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    version: process.env.npm_package_version || '1.0.0'
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 

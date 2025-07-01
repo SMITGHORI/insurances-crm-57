@@ -140,7 +140,7 @@ const quotationSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: true
+  versionKey: false
 });
 
 // Indexes for better query performance

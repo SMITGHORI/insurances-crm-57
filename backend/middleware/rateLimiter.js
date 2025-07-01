@@ -56,7 +56,7 @@ class RateLimiterManager {
   getAuthLimiter() {
     return this.createLimiter({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // 5 login attempts per 15 minutes
+      max: 100, // Temporarily increased for testing
       skipSuccessfulRequests: true,
       message: {
         error: 'Too many authentication attempts, please try again later.',

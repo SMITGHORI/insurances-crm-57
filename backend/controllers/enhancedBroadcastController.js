@@ -95,7 +95,7 @@ class EnhancedBroadcastController {
   /**
    * Create enhanced broadcast with automation and A/B testing
    */
-  async createBroadcast(req, res, next) => {
+  async createBroadcast(req, res, next) {
     try {
       const broadcastData = {
         ...req.body,
@@ -511,10 +511,13 @@ class EnhancedBroadcastController {
             type: broadcast.type,
             channel,
             subject: personalizedContent.subject,
-            content: personal
+            content: personalizedContent.content
+          });
 
-        // Send message through appropriate channel
-        try {
+          await communication.save();
+
+          // Send message through appropriate channel
+          try {
           await this.sendMessage(recipient, personalizedContent, channel);
           recipient.status = 'sent';
           recipient.sentAt = new Date();

@@ -29,9 +29,11 @@ class AuditLogger {
         return originalJson.call(this, data);
       };
 
+      const auditLogger = this; // Store reference to AuditLogger instance
+      
       res.on('finish', async () => {
         try {
-          await this.logAuditEvent(req, res, {
+          await auditLogger.logAuditEvent(req, res, {
             originalBody,
             responseData,
             duration: Date.now() - startTime

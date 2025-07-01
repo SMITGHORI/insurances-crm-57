@@ -198,6 +198,7 @@ class ClientsBackendApiService {
   }
 }
 
-// Export singleton instance
+// Export both class and singleton instance
+export { ClientsBackendApiService };
 export const clientsBackendApi = new ClientsBackendApiService();
 export default clientsBackendApi;
