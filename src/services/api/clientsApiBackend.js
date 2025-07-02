@@ -34,9 +34,11 @@ class ClientsBackendApiService {
     }
 
     try {
+      console.log(`Making API request to: ${url}`, config);
       const response = await fetch(url, config);
       
       const responseData = await response.json();
+      console.log('API response:', responseData);
       
       if (!response.ok) {
         throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
@@ -75,9 +77,9 @@ class ClientsBackendApiService {
     
     return {
       data: response.data,
-      total: response.pagination.totalItems,
-      totalPages: response.pagination.totalPages,
-      currentPage: response.pagination.currentPage,
+      total: response.pagination?.totalItems || response.total || 0,
+      totalPages: response.pagination?.totalPages || response.totalPages || 1,
+      currentPage: response.pagination?.currentPage || response.currentPage || 1,
       success: true
     };
   }
@@ -195,6 +197,37 @@ class ClientsBackendApiService {
   async getClientStats() {
     const response = await this.request('/stats/summary');
     return response.data;
+  }
+
+  /**
+   * Export clients data
+   */
+  async exportClients(exportData) {
+    const response = await this.request('/export', {
+      method: 'POST',
+      body: JSON.stringify(exportData),
+    });
+
+    // Handle file download
+    if (response.data && response.data.downloadUrl) {
+      // If backend returns a download URL
+      window.open(response.data.downloadUrl, '_blank');
+    } else if (response.data && response.data.fileContent) {
+      // If backend returns file content directly
+      const blob = new Blob([response.data.fileContent], { 
+        type: exportData.format === 'csv' ? 'text/csv' : 'application/json' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `clients_export.${exportData.format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+
+    return response;
   }
 }
 

@@ -1,117 +1,138 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { clientsApi } from '../services/api/clientsApi';
+import { clientsQueryKeys } from './useClients';
 
 /**
- * Hook for client statistics
+ * Additional client feature hooks for MongoDB operations
  */
-export const useClientStats = () => {
-  return useQuery({
-    queryKey: ['clientStats'],
-    queryFn: () => clientsApi.getClientStats(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+
+/**
+ * Hook for client search functionality
+ */
+export const useClientSearch = () => {
+  return useMutation({
+    mutationFn: async ({ query, limit = 10 }) => {
+      console.log('Searching clients in MongoDB:', { query, limit });
+      const result = await clientsApi.searchClients(query, limit);
+      console.log('Client search results from MongoDB:', result);
+      return result;
+    },
     onError: (error) => {
-      console.error('Error fetching client stats:', error);
+      console.error('Error searching clients in MongoDB:', error);
+      toast.error(`Search failed: ${error.message}`);
     },
   });
 };
 
 /**
- * Hook for enhanced client search
+ * Hook for getting clients by agent
  */
-export const useClientSearch = (searchTerm, enabled = true) => {
+export const useClientsByAgent = (agentId) => {
   return useQuery({
-    queryKey: ['clientSearch', searchTerm],
-    queryFn: () => clientsApi.searchClients(searchTerm),
-    enabled: enabled && searchTerm && searchTerm.length >= 2,
-    staleTime: 30 * 1000, // 30 seconds
-    retry: 1,
+    queryKey: ['clients', 'agent', agentId],
+    queryFn: async () => {
+      console.log('Fetching clients by agent from MongoDB:', agentId);
+      const result = await clientsApi.getClientsByAgent(agentId);
+      console.log('Agent clients fetched from MongoDB:', result);
+      return result;
+    },
+    enabled: !!agentId,
+    staleTime: 30 * 1000,
+    onError: (error) => {
+      console.error('Error fetching agent clients from MongoDB:', error);
+      toast.error(`Failed to load agent clients: ${error.message}`);
+    },
   });
 };
 
 /**
- * Hook for client activities
+ * Hook for assigning clients to agents
  */
-export const useClientActivities = (clientId) => {
-  return useQuery({
-    queryKey: ['clientActivities', clientId],
-    queryFn: () => clientsApi.getClientActivities(clientId),
-    enabled: !!clientId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
-};
-
-/**
- * Hook for bulk client operations
- */
-export const useBulkClientOperations = () => {
+export const useAssignClient = () => {
   const queryClient = useQueryClient();
 
-  const bulkAssignMutation = useMutation({
-    mutationFn: ({ clientIds, agentId }) => clientsApi.bulkAssignClients(clientIds, agentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Clients assigned successfully');
+  return useMutation({
+    mutationFn: async ({ clientId, agentId }) => {
+      console.log('Assigning client to agent in MongoDB:', { clientId, agentId });
+      const result = await clientsApi.assignClientToAgent(clientId, agentId);
+      console.log('Client assigned to agent in MongoDB:', result);
+      return result;
+    },
+    onSuccess: (data, variables) => {
+      const { clientId, agentId } = variables;
+      console.log('Client successfully assigned to agent in MongoDB:', data);
+      
+      // Invalidate relevant queries to refresh data from database
+      queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: clientsQueryKeys.detail(clientId) });
+      queryClient.invalidateQueries({ queryKey: ['clients', 'agent', agentId] });
+      
+      toast.success('Client assigned successfully to agent in database');
     },
     onError: (error) => {
-      toast.error(`Failed to assign clients: ${error.message}`);
+      console.error('Error assigning client to agent in MongoDB:', error);
+      toast.error(`Failed to assign client: ${error.message}`);
     },
   });
-
-  const bulkStatusUpdateMutation = useMutation({
-    mutationFn: ({ clientIds, status }) => clientsApi.bulkUpdateStatus(clientIds, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Client status updated successfully');
-    },
-    onError: (error) => {
-      toast.error(`Failed to update status: ${error.message}`);
-    },
-  });
-
-  const bulkDeleteMutation = useMutation({
-    mutationFn: (clientIds) => clientsApi.bulkDeleteClients(clientIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Clients deleted successfully');
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete clients: ${error.message}`);
-    },
-  });
-
-  return {
-    bulkAssign: bulkAssignMutation.mutateAsync,
-    bulkStatusUpdate: bulkStatusUpdateMutation.mutateAsync,
-    bulkDelete: bulkDeleteMutation.mutateAsync,
-    isLoading: bulkAssignMutation.isLoading || bulkStatusUpdateMutation.isLoading || bulkDeleteMutation.isLoading,
-  };
 };
 
 /**
- * Hook for client export
+ * Hook for real-time client updates (WebSocket integration)
  */
-export const useClientExport = () => {
-  return useMutation({
-    mutationFn: (exportData) => clientsApi.exportClients(exportData),
-    onSuccess: (data) => {
-      // Handle download
-      const blob = new Blob([data], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `clients-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast.success('Export completed successfully');
-    },
-    onError: (error) => {
-      toast.error(`Export failed: ${error.message}`);
-    },
-  });
+export const useClientRealTimeUpdates = () => {
+  const queryClient = useQueryClient();
+
+  const setupRealTimeUpdates = (clientId) => {
+    // This would connect to WebSocket for real-time updates
+    // Implementation depends on your WebSocket setup
+    console.log('Setting up real-time updates for client:', clientId);
+    
+    // Example WebSocket connection
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+    const ws = new WebSocket(`${wsUrl}/clients/${clientId}`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Real-time client update received:', data);
+        
+        if (data.type === 'CLIENT_UPDATED') {
+          // Invalidate and refetch client data
+          queryClient.invalidateQueries({ queryKey: clientsQueryKeys.detail(clientId) });
+          queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
+          
+          toast.info('Client data updated in real-time');
+        }
+      } catch (error) {
+        console.error('Error processing real-time update:', error);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error for client updates:', error);
+    };
+    
+    return () => {
+      ws.close();
+    };
+  };
+
+  return { setupRealTimeUpdates };
+};
+
+/**
+ * Export all client feature hooks
+ */
+export const useClientFeatures = () => {
+  const search = useClientSearch();
+  const assign = useAssignClient();
+  const realTime = useClientRealTimeUpdates();
+
+  return {
+    search,
+    assign,
+    realTime,
+  };
 };
