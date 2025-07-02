@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('User authenticated successfully:', userData);
           setUser(userData);
           // Only initialize WebSocket if we have a real backend connection
-          if (import.meta.env.VITE_WS_URL) {
+          if (import.meta.env.VITE_WS_URL && !localStorage.getItem('demoMode')) {
             initializeWebSocket(userData.id);
           }
         } else {
@@ -96,6 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Clear invalid token
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('demoMode');
       } finally {
         setLoading(false);
       }
@@ -113,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [initializeWebSocket]);
 
   /**
-   * Enhanced login with backend integration
+   * Enhanced login with backend integration and fallback
    */
   const login = async (email: string, password: string) => {
     try {
@@ -130,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('User data fetched successfully:', userData);
           setUser(userData);
           // Only initialize WebSocket if we have a real backend connection
-          if (import.meta.env.VITE_WS_URL) {
+          if (import.meta.env.VITE_WS_URL && !localStorage.getItem('demoMode')) {
             initializeWebSocket(userData.id);
           }
         } else {
@@ -201,7 +202,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Check if permission exists in flatPermissions array
     const permissionString = `${module}:${action}`;
-    return user.flatPermissions.includes(permissionString);
+    return user.flatPermissions.includes(permissionString) || user.flatPermissions.includes('*:*');
   };
 
   /**

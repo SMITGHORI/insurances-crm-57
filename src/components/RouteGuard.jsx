@@ -15,7 +15,8 @@ const RouteGuard = ({ children }) => {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center space-y-4">
           <LoadingSpinner size="lg" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Authenticating...</p>
+          <p className="text-sm text-gray-500">Please wait while we verify your credentials</p>
         </div>
       </div>
     );

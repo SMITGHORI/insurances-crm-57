@@ -4,14 +4,51 @@ import { User, JWTPayload } from '@/types/auth';
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Demo credentials for fallback mode
+const DEMO_CREDENTIALS = {
+  email: 'admin@ambainsurance.com',
+  password: 'admin123'
+};
+
+// Demo user data
+const DEMO_USER = {
+  _id: '67742f123456789012345678',
+  id: '67742f123456789012345678',
+  email: 'admin@ambainsurance.com',
+  name: 'Admin User',
+  role: { name: 'super_admin' },
+  permissions: [],
+  flatPermissions: ['*:*'], // Super admin has all permissions
+  branch: 'main',
+  isActive: true,
+  lastUpdated: new Date().toISOString()
+};
+
 class AuthService {
   private static instance: AuthService;
+  private demoMode: boolean = false;
   
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
+  }
+
+  private async checkBackendConnection(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      return true;
+    } catch (error) {
+      console.log('Backend not available, switching to demo mode');
+      return false;
+    }
   }
 
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
@@ -21,13 +58,23 @@ class AuthService {
         return { success: false, error: 'Email and password are required' };
       }
 
-      // Make API request to backend
+      // Check if backend is available
+      const backendAvailable = await this.checkBackendConnection();
+      
+      if (!backendAvailable) {
+        // Fall back to demo mode
+        console.log('Using demo mode authentication');
+        return this.demoLogin(email, password);
+      }
+
+      // Try backend authentication
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       const data = await response.json();
@@ -51,8 +98,38 @@ class AuthService {
       
       return { success: true };
     } catch (error) {
-      console.error('Login failed:', error);
-      return { success: false, error: 'Network error. Please check your connection and try again.' };
+      console.error('Backend login failed, trying demo mode:', error);
+      // Fall back to demo mode if backend fails
+      return this.demoLogin(email, password);
+    }
+  }
+
+  private async demoLogin(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Check demo credentials
+      if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
+        this.demoMode = true;
+        
+        // Create demo token
+        const demoToken = btoa(JSON.stringify({
+          userId: DEMO_USER.id,
+          email: DEMO_USER.email,
+          exp: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 days
+        }));
+        
+        // Store demo data
+        localStorage.setItem('authToken', demoToken);
+        localStorage.setItem('currentUser', JSON.stringify(DEMO_USER));
+        localStorage.setItem('demoMode', 'true');
+        
+        console.log('Demo login successful');
+        return { success: true };
+      } else {
+        return { success: false, error: 'Invalid credentials. Use admin@ambainsurance.com / admin123 for demo.' };
+      }
+    } catch (error) {
+      console.error('Demo login failed:', error);
+      return { success: false, error: 'Login failed. Please try again.' };
     }
   }
 
@@ -62,6 +139,24 @@ class AuthService {
       if (!token) {
         console.log('No token found');
         return null;
+      }
+
+      const isDemoMode = localStorage.getItem('demoMode') === 'true';
+      
+      if (isDemoMode) {
+        // Return demo user data
+        console.log('Using demo user data');
+        const user: User = {
+          id: DEMO_USER.id,
+          email: DEMO_USER.email,
+          name: DEMO_USER.name,
+          role: DEMO_USER.role.name,
+          permissions: DEMO_USER.permissions,
+          flatPermissions: DEMO_USER.flatPermissions,
+          branch: DEMO_USER.branch,
+          lastUpdated: new Date(DEMO_USER.lastUpdated),
+        };
+        return user;
       }
 
       // First try to get user from localStorage
@@ -89,13 +184,14 @@ class AuthService {
         }
       }
 
-      // Fallback: Fetch user data from backend API
+      // Fallback: Try to fetch user data from backend API
       console.log('Fetching user data from backend...');
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       if (!response.ok) {
@@ -135,15 +231,22 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       const token = localStorage.getItem('authToken');
-      if (token) {
-        // Call backend logout endpoint
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+      const isDemoMode = localStorage.getItem('demoMode') === 'true';
+      
+      if (token && !isDemoMode) {
+        // Call backend logout endpoint only if not in demo mode
+        try {
+          await fetch(`${API_BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+          });
+        } catch (error) {
+          console.log('Backend logout failed (demo mode or network issue):', error);
+        }
       }
     } catch (error) {
       console.error('Logout API call failed:', error);
@@ -151,6 +254,8 @@ class AuthService {
       // Always clear local storage
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('demoMode');
+      this.demoMode = false;
     }
   }
 
