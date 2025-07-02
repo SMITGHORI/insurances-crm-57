@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PolicyForm from '../components/policies/PolicyForm';
 import { toast } from 'sonner';
@@ -18,141 +18,62 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { usePolicy, useUpdatePolicy, useDeletePolicy } from '../hooks/usePolicies';
+import { useClients } from '../hooks/useClients';
 
 const PolicyEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [policy, setPolicy] = useState(null);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
   const { hasPermission, isAgent, userId } = usePermissions();
+
+  // Connect to MongoDB for policy data
+  const { data: policy, isLoading: policyLoading, error: policyError } = usePolicy(id);
+  
+  // Connect to MongoDB for clients data
+  const { data: clientsResponse, isLoading: clientsLoading } = useClients({ limit: 1000 });
+  const clients = clientsResponse?.data || [];
+  
+  // Connect to MongoDB for policy operations
+  const updatePolicyMutation = useUpdatePolicy();
+  const deletePolicyMutation = useDeletePolicy();
 
   // Check permissions
   const canEditAnyPolicy = hasPermission('editAnyPolicy');
   const canDeletePolicy = hasPermission('deletePolicy');
 
-  useEffect(() => {
-    setLoading(true);
-    
-    // Load clients data
-    const storedClientsData = localStorage.getItem('clientsData');
-    if (storedClientsData) {
-      setClients(JSON.parse(storedClientsData));
-    }
-    
-    // Try to get policies from localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    let policiesList = [];
-    
-    if (storedPoliciesData) {
-      policiesList = JSON.parse(storedPoliciesData);
-    }
-    
-    // Find the policy by id
-    const foundPolicy = policiesList.find(p => p.id === parseInt(id));
-    
-    if (foundPolicy) {
-      // Check if agent can edit this specific policy
-      if (isAgent() && !canEditAnyPolicy && foundPolicy.agentId !== userId) {
-        toast.error('You do not have permission to edit this policy');
-        navigate('/policies');
-        return;
-      }
-      
-      // If typeSpecificDetails doesn't exist yet, initialize it
-      if (!foundPolicy.typeSpecificDetails) {
-        foundPolicy.typeSpecificDetails = {};
-      }
-      
-      setPolicy(foundPolicy);
-    } else {
-      toast.error(`Policy with ID ${id} not found`);
-      navigate('/policies');
-    }
-    
-    setLoading(false);
-  }, [id, navigate, isAgent, canEditAnyPolicy, userId]);
+  const loading = policyLoading || clientsLoading;
 
   const handleSavePolicy = async (updatedPolicy) => {
-    setSubmitting(true);
-    
     try {
       // Additional permission check
       if (isAgent() && !canEditAnyPolicy && policy.agentId !== userId) {
         toast.error('You do not have permission to edit this policy');
-        setSubmitting(false);
         return;
       }
       
       // Validate required fields
       if (!updatedPolicy.client?.id || !updatedPolicy.type || !updatedPolicy.premium || !updatedPolicy.sumAssured) {
         toast.error('Please fill in all required fields');
-        setSubmitting(false);
         return;
       }
       
-      // Get current policies from localStorage
-      const storedPoliciesData = localStorage.getItem('policiesData');
-      let policiesList = [];
+      console.log('Updating policy in MongoDB:', { id, updatedPolicy });
       
-      if (storedPoliciesData) {
-        policiesList = JSON.parse(storedPoliciesData);
-      }
+      // Update the policy in MongoDB
+      const result = await updatePolicyMutation.mutateAsync({ id, policyData: updatedPolicy });
+      console.log('Policy updated successfully in MongoDB:', result);
       
-      // Find the index of the policy to update
-      const policyIndex = policiesList.findIndex(p => p.id === updatedPolicy.id);
-      
-      if (policyIndex !== -1) {
-        // Preserve existing fields that aren't in the form
-        const existingPolicy = policiesList[policyIndex];
-        const fieldsToPreserve = ['renewals', 'documents', 'payments', 'history', 'notes', 'agentId', 'assignedAgent'];
-        
-        fieldsToPreserve.forEach(field => {
-          if (existingPolicy[field] && !updatedPolicy[field]) {
-            updatedPolicy[field] = existingPolicy[field];
-          }
-        });
-        
-        // Add history entry for the update
-        if (!updatedPolicy.history) {
-          updatedPolicy.history = existingPolicy.history || [];
-        }
-        
-        updatedPolicy.history.push({
-          action: 'Updated',
-          by: isAgent() ? 'Agent' : 'Admin',
-          timestamp: new Date().toISOString(),
-          details: 'Policy details updated'
-        });
-        
-        // Ensure typeSpecificDetails exists
-        if (!updatedPolicy.typeSpecificDetails) {
-          updatedPolicy.typeSpecificDetails = {};
-        }
-        
-        // Update the policy in the array
-        policiesList[policyIndex] = updatedPolicy;
-        
-        // Save updated policies list back to localStorage
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-        
-        toast.success(`Policy ${updatedPolicy.policyNumber} updated successfully`);
-        navigate(`/policies/${updatedPolicy.id}`);
-      } else {
-        toast.error('Policy not found for update');
-      }
+      toast.success(`Policy updated successfully in database`);
+      navigate(`/policies/${id}`);
     } catch (error) {
-      console.error('Error updating policy:', error);
-      toast.error('Failed to update policy. Please try again.');
-    } finally {
-      setSubmitting(false);
+      console.error('Error updating policy in MongoDB:', error);
+      toast.error('Failed to update policy in database. Please try again.');
     }
   };
   
-  const handleDeletePolicy = () => {
+  const handleDeletePolicy = async () => {
     try {
       // Check permission
       if (!canDeletePolicy) {
@@ -166,32 +87,40 @@ const PolicyEdit = () => {
         return;
       }
       
-      // Get current policies from localStorage
-      const storedPoliciesData = localStorage.getItem('policiesData');
+      console.log('Deleting policy from MongoDB:', id);
       
-      if (storedPoliciesData) {
-        let policiesList = JSON.parse(storedPoliciesData);
-        
-        // Filter out the policy to delete
-        policiesList = policiesList.filter(p => p.id !== parseInt(id));
-        
-        // Save updated policies list back to localStorage
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-        
-        toast.success('Policy deleted successfully');
-        navigate('/policies');
-      } else {
-        toast.error('No policies found');
-      }
+      // Delete the policy from MongoDB
+      await deletePolicyMutation.mutateAsync(id);
+      console.log('Policy deleted successfully from MongoDB');
+      
+      toast.success('Policy deleted successfully from database');
+      navigate('/policies');
     } catch (error) {
-      console.error('Error deleting policy:', error);
-      toast.error('Failed to delete policy');
+      console.error('Error deleting policy from MongoDB:', error);
+      toast.error('Failed to delete policy from database');
     }
   };
 
   // Show professional loading skeleton
   if (loading) {
     return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Handle errors
+  if (policyError || !policy) {
+    return (
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Policy Not Found</h2>
+            <p className="text-gray-600 mb-4">The requested policy could not be found in the database.</p>
+            <Button onClick={() => navigate('/policies')} variant="outline">
+              Back to Policies
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Check if user has permission to edit this policy
@@ -228,9 +157,14 @@ const PolicyEdit = () => {
             Back to policy
           </Button>
           
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-            {isMobile ? 'Edit Policy' : `Edit Policy: ${policy.policyNumber}`}
-          </h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+              {isMobile ? 'Edit Policy' : `Edit Policy: ${policy.policyNumber}`}
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Connected to MongoDB • Changes will be saved to database
+            </p>
+          </div>
         </div>
         
         {canDelete && (
@@ -239,9 +173,10 @@ const PolicyEdit = () => {
             size="sm"
             onClick={() => setShowDeleteDialog(true)}
             className="flex items-center"
+            disabled={deletePolicyMutation.isLoading}
           >
             <Trash className="mr-1 h-4 w-4" />
-            Delete Policy
+            {deletePolicyMutation.isLoading ? 'Deleting...' : 'Delete Policy'}
           </Button>
         )}
       </div>
@@ -250,7 +185,7 @@ const PolicyEdit = () => {
         policy={policy} 
         onSave={handleSavePolicy} 
         clients={clients} 
-        isSubmitting={submitting}
+        isSubmitting={updatePolicyMutation.isLoading}
       />
       
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -258,7 +193,7 @@ const PolicyEdit = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Policy</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this policy? This action cannot be undone.
+              Are you sure you want to delete this policy from the database? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -266,8 +201,9 @@ const PolicyEdit = () => {
             <AlertDialogAction 
               onClick={handleDeletePolicy}
               className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deletePolicyMutation.isLoading}
             >
-              Delete
+              {deletePolicyMutation.isLoading ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

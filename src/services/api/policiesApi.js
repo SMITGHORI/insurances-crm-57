@@ -1,396 +1,417 @@
 
-import { API_CONFIG, API_ENDPOINTS, HTTP_STATUS } from '../../config/api.js';
+import { toast } from 'sonner';
+import { PoliciesBackendApiService } from './policiesApiBackend';
+
+// Base API configuration for Express backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
- * Policies API Service
- * Handles all policy-related API requests with offline fallback
- * Follows the same pattern as clientsApi for consistency
+ * API service for policy operations
+ * Connects directly to Node.js + Express + MongoDB backend
  */
-
-// Mock data for offline mode
-const mockPoliciesData = [
-  {
-    id: 1,
-    policyNumber: 'POL-2024-001',
-    client: { id: 1, name: 'John Doe', email: 'john.doe@email.com' },
-    type: 'Motor Insurance',
-    status: 'Active',
-    premium: 15000,
-    sumAssured: 500000,
-    startDate: '2024-01-15',
-    endDate: '2025-01-15',
-    agent: { id: 1, name: 'Agent Smith' },
-    paymentFrequency: 'Annual',
-    nextPremiumDue: '2025-01-15',
-    typeSpecificDetails: {
-      vehicleNumber: 'TN01AB1234',
-      vehicleType: 'Car',
-      make: 'Toyota',
-      model: 'Camry',
-      year: 2023,
-      engineNumber: 'ENG123456',
-      chassisNumber: 'CHS789012'
-    },
-    documents: {},
-    history: [
-      {
-        action: 'Created',
-        by: 'Admin',
-        timestamp: '2024-01-15T10:00:00.000Z',
-        details: 'Policy created'
-      }
-    ],
-    renewals: [],
-    payments: [],
-    notes: []
-  },
-  {
-    id: 2,
-    policyNumber: 'POL-2024-002',
-    client: { id: 2, name: 'Jane Smith', email: 'jane.smith@email.com' },
-    type: 'Health Insurance',
-    status: 'Active',
-    premium: 25000,
-    sumAssured: 1000000,
-    startDate: '2024-02-01',
-    endDate: '2025-02-01',
-    agent: { id: 2, name: 'Agent Johnson' },
-    paymentFrequency: 'Annual',
-    nextPremiumDue: '2025-02-01',
-    typeSpecificDetails: {
-      familyMembers: [
-        { name: 'Jane Smith', age: 35, relation: 'Self' },
-        { name: 'John Smith', age: 37, relation: 'Spouse' }
-      ],
-      medicalHistory: 'None',
-      preExistingConditions: 'None'
-    },
-    documents: {},
-    history: [
-      {
-        action: 'Created',
-        by: 'Admin',
-        timestamp: '2024-02-01T10:00:00.000Z',
-        details: 'Policy created'
-      }
-    ],
-    renewals: [],
-    payments: [],
-    notes: []
-  },
-  {
-    id: 3,
-    policyNumber: 'POL-2024-003',
-    client: { id: 3, name: 'Acme Corp', email: 'contact@acmecorp.com' },
-    type: 'Property Insurance',
-    status: 'Pending',
-    premium: 50000,
-    sumAssured: 2000000,
-    startDate: '2024-03-01',
-    endDate: '2025-03-01',
-    agent: { id: 1, name: 'Agent Smith' },
-    paymentFrequency: 'Annual',
-    nextPremiumDue: '2024-03-01',
-    typeSpecificDetails: {
-      propertyType: 'Commercial Building',
-      address: '123 Business St, City, State',
-      constructionType: 'Concrete',
-      occupancy: 'Office',
-      securityFeatures: ['CCTV', 'Security Guard', 'Fire Alarm']
-    },
-    documents: {},
-    history: [
-      {
-        action: 'Created',
-        by: 'Admin',
-        timestamp: '2024-03-01T10:00:00.000Z',
-        details: 'Policy created'
-      }
-    ],
-    renewals: [],
-    payments: [],
-    notes: []
-  }
-];
-
 class PoliciesApiService {
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL;
-    this.timeout = API_CONFIG.TIMEOUT;
-    this.retryAttempts = API_CONFIG.RETRY_ATTEMPTS;
-    this.retryDelay = API_CONFIG.RETRY_DELAY;
-    this.isOfflineMode = false;
+    this.baseURL = `${API_BASE_URL}/policies`;
+    this.backendApi = new PoliciesBackendApiService();
   }
 
   /**
-   * Generic request method with retry logic and offline fallback
+   * Check backend connectivity
    */
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
-
-    // Add timeout to the request
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-    config.signal = controller.signal;
-
-    for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
-      try {
-        const response = await fetch(url, config);
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        this.isOfflineMode = false;
-        return await response.json();
-      } catch (error) {
-        clearTimeout(timeoutId);
-        
-        console.warn(`API Request failed (attempt ${attempt}):`, error.message);
-        
-        if (attempt === this.retryAttempts) {
-          console.warn('API Request failed, using offline mode:', error.message);
-          this.isOfflineMode = true;
-          throw error;
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, this.retryDelay * attempt));
-      }
+  async checkBackendAvailability() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health`, { 
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000)
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Backend not available:', error);
+      return false;
     }
   }
 
   /**
-   * Offline fallback methods using localStorage and mock data
-   */
-  getOfflinePolicies() {
-    try {
-      const stored = localStorage.getItem('policiesData');
-      return stored ? JSON.parse(stored) : mockPoliciesData;
-    } catch (error) {
-      console.error('Error reading offline policies:', error);
-      return mockPoliciesData;
-    }
-  }
-
-  saveOfflinePolicies(policies) {
-    try {
-      localStorage.setItem('policiesData', JSON.stringify(policies));
-    } catch (error) {
-      console.error('Error saving offline policies:', error);
-    }
-  }
-
-  /**
-   * Get policies with filtering, sorting, and pagination
+   * Get all policies with filtering and pagination
    */
   async getPolicies(params = {}) {
     try {
-      const queryParams = new URLSearchParams();
-      
-      // Add pagination
-      if (params.page) queryParams.append('page', params.page);
-      if (params.limit) queryParams.append('limit', params.limit);
-      
-      // Add filtering
-      if (params.status && params.status !== 'all') queryParams.append('status', params.status);
-      if (params.type && params.type !== 'all') queryParams.append('type', params.type);
-      if (params.agentId && params.agentId !== 'all') queryParams.append('agentId', params.agentId);
-      if (params.searchTerm) queryParams.append('search', params.searchTerm);
-      
-      // Add sorting
-      if (params.sortField) queryParams.append('sortField', params.sortField);
-      if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
-
-      const endpoint = `${API_ENDPOINTS.POLICIES}?${queryParams.toString()}`;
-      return await this.request(endpoint);
+      console.log('Fetching policies from MongoDB:', params);
+      const result = await this.backendApi.getPolicies(params);
+      console.log('Policies fetched from MongoDB:', result);
+      return result;
     } catch (error) {
-      // Offline fallback
-      const policies = this.getOfflinePolicies();
-      
-      // Apply filtering
-      let filteredPolicies = policies;
-      
-      if (params.status && params.status !== 'all') {
-        filteredPolicies = filteredPolicies.filter(p => 
-          p.status.toLowerCase() === params.status.toLowerCase()
-        );
-      }
-      
-      if (params.type && params.type !== 'all') {
-        filteredPolicies = filteredPolicies.filter(p => 
-          p.type.toLowerCase().includes(params.type.toLowerCase())
-        );
-      }
-      
-      if (params.agentId && params.agentId !== 'all') {
-        filteredPolicies = filteredPolicies.filter(p => 
-          p.agent?.id?.toString() === params.agentId.toString()
-        );
-      }
-      
-      if (params.searchTerm) {
-        const searchTerm = params.searchTerm.toLowerCase();
-        filteredPolicies = filteredPolicies.filter(p => 
-          p.policyNumber?.toLowerCase().includes(searchTerm) ||
-          p.client?.name?.toLowerCase().includes(searchTerm) ||
-          p.type?.toLowerCase().includes(searchTerm)
-        );
-      }
-      
-      // Apply sorting
-      if (params.sortField) {
-        filteredPolicies.sort((a, b) => {
-          const aVal = a[params.sortField];
-          const bVal = b[params.sortField];
-          
-          if (params.sortDirection === 'desc') {
-            return bVal > aVal ? 1 : -1;
-          }
-          return aVal > bVal ? 1 : -1;
-        });
-      }
-      
-      // Apply pagination
-      const page = parseInt(params.page) || 1;
-      const limit = parseInt(params.limit) || 10;
-      const startIndex = (page - 1) * limit;
-      const endIndex = startIndex + limit;
-      
-      return {
-        data: filteredPolicies.slice(startIndex, endIndex),
-        total: filteredPolicies.length,
-        page,
-        limit,
-        totalPages: Math.ceil(filteredPolicies.length / limit)
-      };
+      console.error('Failed to fetch policies from MongoDB:', error);
+      toast.error('Failed to load policies from database');
+      throw error;
     }
   }
 
   /**
-   * Get policy by ID
+   * Get a single policy by ID
    */
-  async getPolicyById(policyId) {
+  async getPolicyById(id) {
     try {
-      const endpoint = API_ENDPOINTS.POLICY_BY_ID ? API_ENDPOINTS.POLICY_BY_ID(policyId) : `/policies/${policyId}`;
-      return await this.request(endpoint);
+      console.log('Fetching policy from MongoDB:', id);
+      const result = await this.backendApi.getPolicyById(id);
+      console.log('Policy fetched from MongoDB:', result);
+      return result;
     } catch (error) {
-      // Offline fallback
-      const policies = this.getOfflinePolicies();
-      const policy = policies.find(p => p.id?.toString() === policyId?.toString());
-      
-      if (!policy) {
-        throw new Error(`Policy with ID ${policyId} not found`);
-      }
-      
-      return policy;
+      console.error('Failed to fetch policy from MongoDB:', error);
+      toast.error('Failed to load policy details');
+      throw error;
     }
   }
 
   /**
-   * Create new policy
+   * Create a new policy
    */
   async createPolicy(policyData) {
     try {
-      return await this.request(API_ENDPOINTS.POLICIES, {
-        method: 'POST',
-        body: JSON.stringify(policyData),
-      });
+      console.log('Creating policy in MongoDB:', policyData);
+      const result = await this.backendApi.createPolicy(policyData);
+      console.log('Policy created in MongoDB:', result);
+      toast.success('Policy created successfully');
+      return result;
     } catch (error) {
-      // Offline fallback
-      const policies = this.getOfflinePolicies();
-      const newId = Math.max(...policies.map(p => p.id || 0), 0) + 1;
-      
-      const newPolicy = {
-        ...policyData,
-        id: newId,
-        policyNumber: policyData.policyNumber || `POL-${new Date().getFullYear()}-${String(newId).padStart(3, '0')}`,
-        history: [
-          {
-            action: 'Created',
-            by: 'Admin',
-            timestamp: new Date().toISOString(),
-            details: 'Policy created'
-          }
-        ],
-        documents: {},
-        renewals: [],
-        payments: [],
-        notes: []
-      };
-      
-      policies.push(newPolicy);
-      this.saveOfflinePolicies(policies);
-      
-      return newPolicy;
+      console.error('Failed to create policy in MongoDB:', error);
+      toast.error(`Failed to create policy: ${error.message}`);
+      throw error;
     }
   }
 
   /**
-   * Update existing policy
+   * Update an existing policy
    */
-  async updatePolicy(policyId, policyData) {
+  async updatePolicy(id, policyData) {
     try {
-      const endpoint = API_ENDPOINTS.POLICY_BY_ID ? API_ENDPOINTS.POLICY_BY_ID(policyId) : `/policies/${policyId}`;
-      return await this.request(endpoint, {
-        method: 'PUT',
-        body: JSON.stringify(policyData),
-      });
+      console.log('Updating policy in MongoDB:', { id, policyData });
+      const result = await this.backendApi.updatePolicy(id, policyData);
+      console.log('Policy updated in MongoDB:', result);
+      toast.success('Policy updated successfully');
+      return result;
     } catch (error) {
-      // Offline fallback
-      const policies = this.getOfflinePolicies();
-      const policyIndex = policies.findIndex(p => p.id?.toString() === policyId?.toString());
-      
-      if (policyIndex === -1) {
-        throw new Error(`Policy with ID ${policyId} not found`);
-      }
-      
-      const updatedPolicy = {
-        ...policies[policyIndex],
-        ...policyData,
-        id: policies[policyIndex].id, // Preserve original ID
-      };
-      
-      policies[policyIndex] = updatedPolicy;
-      this.saveOfflinePolicies(policies);
-      
-      return updatedPolicy;
+      console.error('Failed to update policy in MongoDB:', error);
+      toast.error(`Failed to update policy: ${error.message}`);
+      throw error;
     }
   }
 
   /**
-   * Delete policy
+   * Delete a policy
    */
-  async deletePolicy(policyId) {
+  async deletePolicy(id) {
     try {
-      const endpoint = API_ENDPOINTS.POLICY_BY_ID ? API_ENDPOINTS.POLICY_BY_ID(policyId) : `/policies/${policyId}`;
-      return await this.request(endpoint, {
-        method: 'DELETE',
-      });
+      console.log('Deleting policy from MongoDB:', id);
+      const result = await this.backendApi.deletePolicy(id);
+      console.log('Policy deleted from MongoDB:', result);
+      toast.success('Policy deleted successfully');
+      return result;
     } catch (error) {
-      // Offline fallback
-      const policies = this.getOfflinePolicies();
-      const policyIndex = policies.findIndex(p => p.id?.toString() === policyId?.toString());
-      
-      if (policyIndex === -1) {
-        throw new Error(`Policy with ID ${policyId} not found`);
-      }
-      
-      policies.splice(policyIndex, 1);
-      this.saveOfflinePolicies(policies);
-      
-      return { success: true };
+      console.error('Failed to delete policy from MongoDB:', error);
+      toast.error(`Failed to delete policy: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload policy document
+   */
+  async uploadDocument(policyId, documentType, file, name) {
+    try {
+      console.log('Uploading document to MongoDB:', { policyId, documentType, fileName: file.name });
+      const result = await this.backendApi.uploadDocument(policyId, documentType, file, name);
+      console.log('Document uploaded to MongoDB:', result);
+      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
+      return result;
+    } catch (error) {
+      console.error('Failed to upload document to MongoDB:', error);
+      toast.error(`Failed to upload ${documentType} document: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get policy documents
+   */
+  async getPolicyDocuments(policyId) {
+    try {
+      console.log('Fetching policy documents from MongoDB:', policyId);
+      const result = await this.backendApi.getPolicyDocuments(policyId);
+      console.log('Policy documents fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch policy documents from MongoDB:', error);
+      toast.error('Failed to load policy documents');
+      throw error;
+    }
+  }
+
+  /**
+   * Delete policy document
+   */
+  async deleteDocument(policyId, documentId) {
+    try {
+      console.log('Deleting document from MongoDB:', { policyId, documentId });
+      const result = await this.backendApi.deleteDocument(policyId, documentId);
+      console.log('Document deleted from MongoDB:', result);
+      toast.success('Document deleted successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to delete document from MongoDB:', error);
+      toast.error(`Failed to delete document: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Add payment record
+   */
+  async addPayment(policyId, paymentData) {
+    try {
+      console.log('Adding payment to MongoDB:', { policyId, paymentData });
+      const result = await this.backendApi.addPayment(policyId, paymentData);
+      console.log('Payment added to MongoDB:', result);
+      toast.success('Payment record added successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to add payment to MongoDB:', error);
+      toast.error(`Failed to add payment: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get policy payment history
+   */
+  async getPaymentHistory(policyId) {
+    try {
+      console.log('Fetching payment history from MongoDB:', policyId);
+      const result = await this.backendApi.getPaymentHistory(policyId);
+      console.log('Payment history fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch payment history from MongoDB:', error);
+      toast.error('Failed to load payment history');
+      throw error;
+    }
+  }
+
+  /**
+   * Renew policy
+   */
+  async renewPolicy(policyId, renewalData) {
+    try {
+      console.log('Renewing policy in MongoDB:', { policyId, renewalData });
+      const result = await this.backendApi.renewPolicy(policyId, renewalData);
+      console.log('Policy renewed in MongoDB:', result);
+      toast.success('Policy renewed successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to renew policy in MongoDB:', error);
+      toast.error(`Failed to renew policy: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Add note to policy
+   */
+  async addNote(policyId, noteData) {
+    try {
+      console.log('Adding note to MongoDB:', { policyId, noteData });
+      const result = await this.backendApi.addNote(policyId, noteData);
+      console.log('Note added to MongoDB:', result);
+      toast.success('Note added successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to add note to MongoDB:', error);
+      toast.error(`Failed to add note: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get policy notes
+   */
+  async getPolicyNotes(policyId) {
+    try {
+      console.log('Fetching policy notes from MongoDB:', policyId);
+      const result = await this.backendApi.getPolicyNotes(policyId);
+      console.log('Policy notes fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch policy notes from MongoDB:', error);
+      toast.error('Failed to load policy notes');
+      throw error;
+    }
+  }
+
+  /**
+   * Search policies
+   */
+  async searchPolicies(query, limit = 10) {
+    try {
+      console.log('Searching policies in MongoDB:', { query, limit });
+      const result = await this.backendApi.searchPolicies(query, limit);
+      console.log('Policy search results from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to search policies in MongoDB:', error);
+      toast.error('Failed to search policies');
+      throw error;
+    }
+  }
+
+  /**
+   * Get policies by agent
+   */
+  async getPoliciesByAgent(agentId) {
+    try {
+      console.log('Fetching policies by agent from MongoDB:', agentId);
+      const result = await this.backendApi.getPoliciesByAgent(agentId);
+      console.log('Agent policies fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch agent policies from MongoDB:', error);
+      toast.error('Failed to load agent policies');
+      throw error;
+    }
+  }
+
+  /**
+   * Assign policy to agent
+   */
+  async assignPolicyToAgent(policyId, agentId) {
+    try {
+      console.log('Assigning policy to agent in MongoDB:', { policyId, agentId });
+      const result = await this.backendApi.assignPolicyToAgent(policyId, agentId);
+      console.log('Policy assigned to agent in MongoDB:', result);
+      toast.success('Policy assigned successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to assign policy to agent in MongoDB:', error);
+      toast.error(`Failed to assign policy: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Get policy statistics
+   */
+  async getPolicyStats() {
+    try {
+      console.log('Fetching policy statistics from MongoDB');
+      const result = await this.backendApi.getPolicyStats();
+      console.log('Policy statistics fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch policy statistics from MongoDB:', error);
+      toast.error('Failed to load policy statistics');
+      throw error;
+    }
+  }
+
+  /**
+   * Get policies expiring within specified days
+   */
+  async getExpiringPolicies(days = 30) {
+    try {
+      console.log('Fetching expiring policies from MongoDB:', days);
+      const result = await this.backendApi.getExpiringPolicies(days);
+      console.log('Expiring policies fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch expiring policies from MongoDB:', error);
+      toast.error('Failed to load expiring policies');
+      throw error;
+    }
+  }
+
+  /**
+   * Get policies due for renewal
+   */
+  async getPoliciesDueForRenewal(days = 30) {
+    try {
+      console.log('Fetching policies due for renewal from MongoDB:', days);
+      const result = await this.backendApi.getPoliciesDueForRenewal(days);
+      console.log('Policies due for renewal fetched from MongoDB:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to fetch policies due for renewal from MongoDB:', error);
+      toast.error('Failed to load policies due for renewal');
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk assign policies to agents
+   */
+  async bulkAssignPolicies(policyIds, agentId) {
+    try {
+      console.log('Bulk assigning policies in MongoDB:', { policyIds, agentId });
+      const result = await this.backendApi.bulkAssignPolicies(policyIds, agentId);
+      console.log('Bulk assign completed in MongoDB:', result);
+      toast.success('Policies assigned successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to bulk assign policies in MongoDB:', error);
+      toast.error(`Failed to assign policies: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Export policies data
+   */
+  async exportPolicies(filters = {}) {
+    try {
+      console.log('Exporting policies from MongoDB:', filters);
+      const result = await this.backendApi.exportPolicies(filters);
+      console.log('Policy export completed from MongoDB:', result);
+      toast.success('Policies exported successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to export policies from MongoDB:', error);
+      toast.error(`Failed to export policies: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk operations
+   */
+  async bulkUpdatePolicies(policyIds, updateData) {
+    try {
+      console.log('Bulk updating policies in MongoDB:', { policyIds, updateData });
+      const promises = policyIds.map(id => this.updatePolicy(id, updateData));
+      const results = await Promise.all(promises);
+      console.log('Bulk update completed in MongoDB:', results);
+      toast.success(`${policyIds.length} policies updated successfully`);
+      return results;
+    } catch (error) {
+      console.error('Failed to bulk update policies in MongoDB:', error);
+      toast.error(`Failed to bulk update policies: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async bulkDeletePolicies(policyIds) {
+    try {
+      console.log('Bulk deleting policies from MongoDB:', policyIds);
+      const promises = policyIds.map(id => this.deletePolicy(id));
+      const results = await Promise.all(promises);
+      console.log('Bulk delete completed in MongoDB:', results);
+      toast.success(`${policyIds.length} policies deleted successfully`);
+      return results;
+    } catch (error) {
+      console.error('Failed to bulk delete policies from MongoDB:', error);
+      toast.error(`Failed to bulk delete policies: ${error.message}`);
+      throw error;
     }
   }
 }
 
 // Export singleton instance
 export const policiesApi = new PoliciesApiService();
+export default policiesApi;

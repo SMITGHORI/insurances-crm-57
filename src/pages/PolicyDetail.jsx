@@ -27,7 +27,7 @@ const PolicyDetail = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Policy Not Found</h2>
-          <p className="text-gray-600 mb-4">The requested policy could not be found.</p>
+          <p className="text-gray-600 mb-4">The requested policy could not be found in the database.</p>
           <Button onClick={() => navigate('/policies')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Policies
@@ -48,10 +48,14 @@ const PolicyDetail = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Policies
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {policy.policyNumber || 'Policy Details'}
-        </h1>
-        <p className="text-gray-600">Complete policy information and management</p>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {policy.policyNumber || 'Policy Details'}
+          </h1>
+          <p className="text-gray-600">
+            Connected to MongoDB • Complete policy information and management
+          </p>
+        </div>
       </div>
 
       <PolicyDetailTabs policy={policy} />
