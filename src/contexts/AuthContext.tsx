@@ -78,19 +78,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
+        console.log('Initializing authentication...');
         const userData = await authService.fetchCurrentUser();
         
         if (userData) {
+          console.log('User authenticated successfully:', userData);
           setUser(userData);
           // Only initialize WebSocket if we have a real backend connection
           if (import.meta.env.VITE_WS_URL) {
             initializeWebSocket(userData.id);
           }
+        } else {
+          console.log('No authenticated user found');
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
         // Clear invalid token
         localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
       } finally {
         setLoading(false);
       }
@@ -108,24 +113,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [initializeWebSocket]);
 
   /**
-   * Enhanced login with backend integration and demo support
+   * Enhanced login with backend integration
    */
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login...');
       setLoading(true);
 
       const result = await authService.login(email, password);
       
       if (result.success) {
+        console.log('Login successful, fetching user data...');
         const userData = await authService.fetchCurrentUser();
         
         if (userData) {
+          console.log('User data fetched successfully:', userData);
           setUser(userData);
           // Only initialize WebSocket if we have a real backend connection
-          if (process.env.VITE_WS_URL) {
+          if (import.meta.env.VITE_WS_URL) {
             initializeWebSocket(userData.id);
           }
+        } else {
+          console.error('Failed to fetch user data after login');
+          return { success: false, error: 'Failed to fetch user data' };
         }
+      } else {
+        console.error('Login failed:', result.error);
       }
 
       return result;
@@ -141,6 +154,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Enhanced logout with cleanup
    */
   const logout = useCallback(async () => {
+    console.log('Logging out...');
+    
     // Close WebSocket connection
     if (wsConnection.current) {
       wsConnection.current.close();
@@ -152,6 +167,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear user state
     setUser(null);
+    
+    console.log('Logout completed');
   }, []);
 
   /**
@@ -165,11 +182,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
       } else {
         // Token expired or invalid, logout
-        logout();
+        await logout();
       }
     } catch (error) {
       console.error('Failed to refresh permissions:', error);
-      logout();
+      await logout();
     }
   };
 

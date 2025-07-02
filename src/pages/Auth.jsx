@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,20 +13,36 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('User already authenticated, redirecting to dashboard');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      console.log('Submitting login form...');
       const result = await login(email, password);
       
       if (result.success) {
-        toast.success('Login successful!');
-        navigate('/dashboard');
+        console.log('Login successful, showing success message');
+        toast.success('Login successful! Redirecting to dashboard...');
+        
+        // Small delay to show the success message
+        setTimeout(() => {
+          console.log('Navigating to dashboard');
+          navigate('/dashboard', { replace: true });
+        }, 1000);
       } else {
+        console.error('Login failed:', result.error);
         toast.error(result.error || 'Login failed');
       }
     } catch (error) {
@@ -36,8 +52,6 @@ const Auth = () => {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -177,7 +191,7 @@ const Auth = () => {
                 <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
                   <Award className="w-5 h-5 text-amba-blue" />
                 </div>
-                <h3 className="text-sm font-semibold text-amba-blue">Performance</h3>
+                <h3 className="text-sm font-semibold text-gray-700">Performance</h3>
               </div>
             </div>
           </div>

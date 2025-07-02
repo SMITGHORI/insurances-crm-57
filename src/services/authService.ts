@@ -31,14 +31,22 @@ class AuthService {
       });
 
       const data = await response.json();
+      console.log('Login response:', data);
 
       if (!response.ok) {
         return { success: false, error: data.message || 'Invalid credentials' };
       }
 
       // Store authentication token
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
+      if (data.data?.token) {
+        localStorage.setItem('authToken', data.data.token);
+        console.log('Token stored successfully');
+      }
+      
+      // Store user data if available
+      if (data.data?.user) {
+        localStorage.setItem('currentUser', JSON.stringify(data.data.user));
+        console.log('User data stored successfully');
       }
       
       return { success: true };
@@ -51,9 +59,38 @@ class AuthService {
   async fetchCurrentUser(): Promise<User | null> {
     try {
       const token = localStorage.getItem('authToken');
-      if (!token) return null;
+      if (!token) {
+        console.log('No token found');
+        return null;
+      }
 
-      // Fetch user data from backend API
+      // First try to get user from localStorage
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          console.log('Using stored user data:', userData);
+          
+          // Transform the stored user data to match our User interface
+          const user: User = {
+            id: userData._id || userData.id,
+            email: userData.email,
+            name: userData.name,
+            role: userData.role?.name || userData.role,
+            permissions: userData.permissions || [],
+            flatPermissions: userData.flatPermissions || [],
+            branch: userData.branch || 'main',
+            lastUpdated: userData.lastUpdated ? new Date(userData.lastUpdated) : new Date(),
+          };
+          
+          return user;
+        } catch (parseError) {
+          console.error('Failed to parse stored user data:', parseError);
+        }
+      }
+
+      // Fallback: Fetch user data from backend API
+      console.log('Fetching user data from backend...');
       const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -62,6 +99,7 @@ class AuthService {
       });
 
       if (!response.ok) {
+        console.error('Failed to fetch user data, status:', response.status);
         // If token is invalid, clear it
         if (response.status === 401) {
           this.logout();
@@ -69,19 +107,23 @@ class AuthService {
         throw new Error('Failed to fetch user data');
       }
 
-      const userData = await response.json();
+      const responseData = await response.json();
+      console.log('Backend user response:', responseData);
       
       // Ensure the user object has all required properties
       const user: User = {
-        id: userData.data.id,
-        email: userData.data.email,
-        name: userData.data.name,
-        role: userData.data.role,
-        permissions: userData.data.permissions || [],
-        flatPermissions: userData.data.flatPermissions || [],
-        branch: userData.data.branch || 'main',
-        lastUpdated: userData.data.lastUpdated ? new Date(userData.data.lastUpdated) : new Date(),
+        id: responseData.data._id || responseData.data.id,
+        email: responseData.data.email,
+        name: responseData.data.name,
+        role: responseData.data.role?.name || responseData.data.role,
+        permissions: responseData.data.permissions || [],
+        flatPermissions: responseData.data.flatPermissions || [],
+        branch: responseData.data.branch || 'main',
+        lastUpdated: responseData.data.lastUpdated ? new Date(responseData.data.lastUpdated) : new Date(),
       };
+
+      // Store updated user data
+      localStorage.setItem('currentUser', JSON.stringify(responseData.data));
 
       return user;
     } catch (error) {
@@ -108,6 +150,7 @@ class AuthService {
     } finally {
       // Always clear local storage
       localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
     }
   }
 
