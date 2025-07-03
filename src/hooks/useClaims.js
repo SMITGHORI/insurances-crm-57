@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import { claimsApi } from '../services/api/claimsApi';
 
 /**
- * React Query hooks for claims management
+ * React Query hooks for claims management with MongoDB integration
  * Provides optimistic updates and proper error handling
- * Optimized for MongoDB/Node.js/Express backend integration
+ * Integrates with Node.js/Express/MongoDB backend
  */
 
 // Query keys for cache management
@@ -18,7 +18,13 @@ export const claimsQueryKeys = {
   detail: (id) => [...claimsQueryKeys.details(), id],
   documents: (id) => [...claimsQueryKeys.detail(id), 'documents'],
   notes: (id) => [...claimsQueryKeys.detail(id), 'notes'],
+  timeline: (id) => [...claimsQueryKeys.detail(id), 'timeline'],
   stats: () => [...claimsQueryKeys.all, 'stats'],
+  dashboardStats: () => [...claimsQueryKeys.stats(), 'dashboard'],
+  search: (query) => [...claimsQueryKeys.all, 'search', query],
+  formData: () => [...claimsQueryKeys.all, 'formData'],
+  policies: () => [...claimsQueryKeys.formData(), 'policies'],
+  clients: () => [...claimsQueryKeys.formData(), 'clients'],
 };
 
 /**
@@ -29,17 +35,11 @@ export const useClaims = (params = {}) => {
     queryKey: claimsQueryKeys.list(params),
     queryFn: () => claimsApi.getClaims(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: (failureCount, error) => {
-      // Don't retry if we're in offline mode
-      if (claimsApi.isOfflineMode) return false;
-      return failureCount < 2;
-    },
+    retry: 2,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     onError: (error) => {
       console.error('Error fetching claims:', error);
-      if (!claimsApi.isOfflineMode) {
-        toast.error('Failed to load claims - working offline with sample data');
-      }
+      toast.error('Failed to load claims from database');
     },
   });
 };
@@ -53,15 +53,10 @@ export const useClaim = (claimId) => {
     queryFn: () => claimsApi.getClaimById(claimId),
     enabled: !!claimId, // Only run if claimId exists
     staleTime: 5 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (claimsApi.isOfflineMode) return false;
-      return failureCount < 2;
-    },
+    retry: 2,
     onError: (error) => {
       console.error('Error fetching claim:', error);
-      if (!claimsApi.isOfflineMode) {
-        toast.error('Failed to load claim details');
-      }
+      toast.error('Failed to load claim details from database');
     },
   });
 };
@@ -87,12 +82,14 @@ export const useCreateClaim = () => {
       // Invalidate and refetch claims list
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Claim "${data.claimNumber}" created successfully${mode}`);
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
+      
+      console.log('Claim created successfully in MongoDB:', data);
     },
     onError: (error, variables) => {
-      console.error('Error creating claim:', error);
-      toast.error(`Failed to create claim: ${error.message}`);
+      console.error('Error creating claim in MongoDB:', error);
+      toast.error(`Failed to create claim in database: ${error.message}`);
     },
   });
 };
@@ -118,12 +115,11 @@ export const useUpdateClaim = () => {
       // Invalidate lists to refresh them
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Claim "${data.claimNumber}" updated successfully${mode}`);
+      console.log('Claim updated successfully in MongoDB:', data);
     },
     onError: (error, variables) => {
-      console.error('Error updating claim:', error);
-      toast.error(`Failed to update claim: ${error.message}`);
+      console.error('Error updating claim in MongoDB:', error);
+      toast.error(`Failed to update claim in database: ${error.message}`);
     },
   });
 };
@@ -143,12 +139,14 @@ export const useDeleteClaim = () => {
       // Invalidate lists to refresh them
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Claim deleted successfully${mode}`);
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
+      
+      console.log('Claim deleted successfully from MongoDB');
     },
     onError: (error) => {
-      console.error('Error deleting claim:', error);
-      toast.error(`Failed to delete claim: ${error.message}`);
+      console.error('Error deleting claim from MongoDB:', error);
+      toast.error(`Failed to delete claim from database: ${error.message}`);
     },
   });
 };
@@ -160,8 +158,8 @@ export const useUploadClaimDocument = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ claimId, documentType, file }) => 
-      claimsApi.uploadDocument(claimId, documentType, file),
+    mutationFn: ({ claimId, documentType, file, name }) => 
+      claimsApi.uploadDocument(claimId, documentType, file, name),
     onSuccess: (data, variables) => {
       const { claimId } = variables;
       
@@ -171,12 +169,11 @@ export const useUploadClaimDocument = () => {
       // Invalidate claim details to refresh document count
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Document uploaded successfully${mode}`);
+      console.log('Document uploaded successfully to MongoDB:', data);
     },
     onError: (error) => {
-      console.error('Error uploading document:', error);
-      toast.error(`Failed to upload document: ${error.message}`);
+      console.error('Error uploading document to MongoDB:', error);
+      toast.error(`Failed to upload document to database: ${error.message}`);
     },
   });
 };
@@ -190,15 +187,10 @@ export const useClaimDocuments = (claimId) => {
     queryFn: () => claimsApi.getClaimDocuments(claimId),
     enabled: !!claimId,
     staleTime: 5 * 60 * 1000,
-    retry: (failureCount, error) => {
-      if (claimsApi.isOfflineMode) return false;
-      return failureCount < 2;
-    },
+    retry: 2,
     onError: (error) => {
-      console.error('Error fetching claim documents:', error);
-      if (!claimsApi.isOfflineMode) {
-        toast.error('Failed to load claim documents');
-      }
+      console.error('Error fetching claim documents from MongoDB:', error);
+      toast.error('Failed to load claim documents from database');
     },
   });
 };
@@ -221,12 +213,41 @@ export const useDeleteClaimDocument = () => {
       // Invalidate claim details to refresh document count
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Document deleted successfully${mode}`);
+      console.log('Document deleted successfully from MongoDB');
     },
     onError: (error) => {
-      console.error('Error deleting document:', error);
-      toast.error(`Failed to delete document: ${error.message}`);
+      console.error('Error deleting document from MongoDB:', error);
+      toast.error(`Failed to delete document from database: ${error.message}`);
+    },
+  });
+};
+
+/**
+ * Hook to update claim status
+ */
+export const useUpdateClaimStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimId, status, reason, approvedAmount }) => 
+      claimsApi.updateClaimStatus(claimId, status, reason, approvedAmount),
+    onSuccess: (data, variables) => {
+      const { claimId } = variables;
+      
+      // Update specific claim in cache
+      queryClient.setQueryData(claimsQueryKeys.detail(claimId), data);
+      
+      // Invalidate lists to refresh them
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
+      
+      console.log('Claim status updated successfully in MongoDB:', data);
+    },
+    onError: (error) => {
+      console.error('Error updating claim status in MongoDB:', error);
+      toast.error(`Failed to update claim status in database: ${error.message}`);
     },
   });
 };
@@ -248,40 +269,45 @@ export const useAddClaimNote = () => {
       // Invalidate claim details
       queryClient.invalidateQueries({ queryKey: claimsQueryKeys.detail(claimId) });
       
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Note added successfully${mode}`);
+      console.log('Note added successfully to MongoDB:', data);
     },
     onError: (error) => {
-      console.error('Error adding note:', error);
-      toast.error(`Failed to add note: ${error.message}`);
+      console.error('Error adding note to MongoDB:', error);
+      toast.error(`Failed to add note to database: ${error.message}`);
     },
   });
 };
 
 /**
- * Hook to update claim status
+ * Hook to get claim notes
  */
-export const useUpdateClaimStatus = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ claimId, status, reason }) => 
-      claimsApi.updateClaimStatus(claimId, status, reason),
-    onSuccess: (data, variables) => {
-      const { claimId } = variables;
-      
-      // Update specific claim in cache
-      queryClient.setQueryData(claimsQueryKeys.detail(claimId), data);
-      
-      // Invalidate lists to refresh them
-      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
-      
-      const mode = claimsApi.isOfflineMode ? ' (offline mode)' : '';
-      toast.success(`Claim status updated successfully${mode}`);
-    },
+export const useClaimNotes = (claimId) => {
+  return useQuery({
+    queryKey: claimsQueryKeys.notes(claimId),
+    queryFn: () => claimsApi.getClaimNotes(claimId),
+    enabled: !!claimId,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
     onError: (error) => {
-      console.error('Error updating claim status:', error);
-      toast.error(`Failed to update claim status: ${error.message}`);
+      console.error('Error fetching claim notes from MongoDB:', error);
+      toast.error('Failed to load claim notes from database');
+    },
+  });
+};
+
+/**
+ * Hook to search claims
+ */
+export const useSearchClaims = (query, options = {}) => {
+  return useQuery({
+    queryKey: claimsQueryKeys.search(query),
+    queryFn: () => claimsApi.searchClaims(query, options.limit),
+    enabled: !!query && query.length >= 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 1,
+    onError: (error) => {
+      console.error('Error searching claims in MongoDB:', error);
+      toast.error('Failed to search claims in database');
     },
   });
 };
@@ -294,15 +320,141 @@ export const useClaimsStats = (params = {}) => {
     queryKey: [...claimsQueryKeys.stats(), params],
     queryFn: () => claimsApi.getClaimsStats(params),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    retry: (failureCount, error) => {
-      if (claimsApi.isOfflineMode) return false;
-      return failureCount < 2;
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching claims stats from MongoDB:', error);
+      toast.error('Failed to load claims statistics from database');
+    },
+  });
+};
+
+/**
+ * Hook to get dashboard statistics
+ */
+export const useClaimsDashboardStats = () => {
+  return useQuery({
+    queryKey: claimsQueryKeys.dashboardStats(),
+    queryFn: () => claimsApi.getDashboardStats(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching dashboard stats from MongoDB:', error);
+      toast.error('Failed to load dashboard statistics from database');
+    },
+  });
+};
+
+/**
+ * Hook to bulk update claims
+ */
+export const useBulkUpdateClaims = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimIds, updateData }) => 
+      claimsApi.bulkUpdateClaims(claimIds, updateData),
+    onSuccess: (data, variables) => {
+      // Invalidate all claims lists
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
+      
+      console.log('Claims bulk updated successfully in MongoDB:', data);
     },
     onError: (error) => {
-      console.error('Error fetching claims stats:', error);
-      if (!claimsApi.isOfflineMode) {
-        toast.error('Failed to load claims statistics');
-      }
+      console.error('Error bulk updating claims in MongoDB:', error);
+      toast.error(`Failed to update claims in database: ${error.message}`);
+    },
+  });
+};
+
+/**
+ * Hook to bulk assign claims
+ */
+export const useBulkAssignClaims = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ claimIds, agentId }) => 
+      claimsApi.bulkAssignClaims(claimIds, agentId),
+    onSuccess: (data, variables) => {
+      // Invalidate all claims lists
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.lists() });
+      
+      // Invalidate dashboard stats
+      queryClient.invalidateQueries({ queryKey: claimsQueryKeys.dashboardStats() });
+      
+      console.log('Claims bulk assigned successfully in MongoDB:', data);
+    },
+    onError: (error) => {
+      console.error('Error bulk assigning claims in MongoDB:', error);
+      toast.error(`Failed to assign claims in database: ${error.message}`);
+    },
+  });
+};
+
+/**
+ * Hook to export claims data
+ */
+export const useExportClaims = () => {
+  return useMutation({
+    mutationFn: (filters) => claimsApi.exportClaims(filters),
+    onSuccess: (data) => {
+      console.log('Claims exported successfully from MongoDB:', data);
+    },
+    onError: (error) => {
+      console.error('Error exporting claims from MongoDB:', error);
+      toast.error(`Failed to export claims from database: ${error.message}`);
+    },
+  });
+};
+
+/**
+ * Hook to get policies for claim form
+ */
+export const usePoliciesForClaim = () => {
+  return useQuery({
+    queryKey: claimsQueryKeys.policies(),
+    queryFn: () => claimsApi.getPoliciesForClaim(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching policies for claim from MongoDB:', error);
+      toast.error('Failed to load policies from database');
+    },
+  });
+};
+
+/**
+ * Hook to get clients for claim form
+ */
+export const useClientsForClaim = () => {
+  return useQuery({
+    queryKey: claimsQueryKeys.clients(),
+    queryFn: () => claimsApi.getClientsForClaim(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching clients for claim from MongoDB:', error);
+      toast.error('Failed to load clients from database');
+    },
+  });
+};
+
+/**
+ * Hook to get policy details for claim
+ */
+export const usePolicyDetailsForClaim = (policyId) => {
+  return useQuery({
+    queryKey: [...claimsQueryKeys.formData(), 'policy', policyId],
+    queryFn: () => claimsApi.getPolicyDetails(policyId),
+    enabled: !!policyId,
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+    onError: (error) => {
+      console.error('Error fetching policy details for claim from MongoDB:', error);
+      toast.error('Failed to load policy details from database');
     },
   });
 };

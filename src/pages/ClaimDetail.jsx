@@ -4,37 +4,38 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ClaimDetailTabs from '@/components/claims/ClaimDetailTabs';
+import { useClaim } from '../hooks/useClaims';
+import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ClaimDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  
+  // Connect to MongoDB for claim data
+  const { data: claim, isLoading, error } = useClaim(id);
 
-  // Mock claim data - in real app, this would come from an API call
-  const claim = {
-    id: id,
-    claimNumber: 'CLM-2024-001',
-    claimType: 'Auto',
-    status: 'Under Review',
-    priority: 'High',
-    claimAmount: 150000,
-    approvedAmount: 0,
-    deductible: 10000,
-    incidentDate: '2024-01-15',
-    reportedDate: '2024-01-16',
-    description: 'Vehicle collision on Highway 101, significant damage to front end and engine compartment',
-    estimatedSettlement: '2024-02-15',
-    contactDetails: {
-      primaryContact: 'John Doe',
-      phoneNumber: '+91-9876543210',
-      email: 'john.doe@email.com'
-    },
-    incidentLocation: {
-      address: '123 Highway 101',
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      zipCode: '400001'
-    }
-  };
+  // Show professional loading skeleton
+  if (isLoading) {
+    return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Handle errors
+  if (error || !claim) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Claim Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested claim could not be found in the database.</p>
+          <Button onClick={() => navigate('/claims')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Claims
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -47,10 +48,14 @@ const ClaimDetail = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Claims
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {claim.claimNumber}
-        </h1>
-        <p className="text-gray-600">Complete claim information and management</p>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {claim.claimNumber || 'Claim Details'}
+          </h1>
+          <p className="text-gray-600">
+            Connected to MongoDB • Complete claim information and management
+          </p>
+        </div>
       </div>
 
       <ClaimDetailTabs claim={claim} />

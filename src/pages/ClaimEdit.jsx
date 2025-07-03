@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -12,134 +12,99 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, ArrowLeft } from 'lucide-react';
+import { Calendar, ArrowLeft, Trash } from 'lucide-react';
 import { toast } from 'sonner';
-import { Checkbox } from '@/components/ui/checkbox';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
-import DynamicClaimForm from '@/components/claims/DynamicClaimForm';
+import { useClaim, useUpdateClaim, useDeleteClaim, usePoliciesForClaim, useClientsForClaim } from '../hooks/useClaims';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ClaimEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [claim, setClaim] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({});
-  const [typeSpecificData, setTypeSpecificData] = useState({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  useEffect(() => {
-    // In a real app, this would fetch claim from API
-    // Mock data for now based on ID
-    const mockClaim = {
-      id: parseInt(id),
-      claimNumber: `AMB-CLM-2025-000${id}`,
-      insuranceCompanyClaimId: id === '2' ? null : `INS-CLM-78${id}12`,
-      policyId: id === '1' ? 1 : (id === '2' ? 3 : 5),
-      policyNumber: id === '1' ? 'POL-2025-0125' : (id === '2' ? 'POL-2025-0156' : 'POL-2025-0189'),
-      insuranceCompanyPolicyNumber: id === '1' ? 'INS-001-20250125-H' : (id === '2' ? 'STAR-H-A091238' : 'BAJA-P-112233'),
-      clientId: id === '1' ? 'AMB-CLI-2025-0001' : (id === '2' ? 'AMB-CLI-2025-0012' : 'AMB-CLI-2025-0024'),
-      clientName: id === '1' ? 'Vivek Patel' : (id === '2' ? 'Priya Desai' : 'Tech Solutions Ltd'),
-      memberName: id === '1' ? 'Vivek Patel' : (id === '2' ? 'Rahul Desai' : 'N/A'),
-      policyType: id === '1' || id === '2' ? 'Health Insurance' : 'Property Insurance',
-      dateOfIncident: id === '1' ? '2025-04-12' : (id === '2' ? '2025-05-05' : '2025-03-18'),
-      dateOfFiling: id === '1' ? '2025-04-14' : (id === '2' ? '2025-05-07' : '2025-03-20'),
-      claimAmount: id === '1' ? 75000 : (id === '2' ? 125000 : 950000),
-      approvedAmount: id === '1' ? 68500 : (id === '2' ? null : 850000),
-      status: id === '1' ? 'approved' : (id === '2' ? 'pending' : 'settled'),
-      claimReason: id === '1' ? 'Medical Emergency - Appendicitis' : 
-                 (id === '2' ? 'Medical Treatment - Kidney Stone' : 'Property Damage - Fire'),
-      
-      details: id === '1' || id === '2' ? {
-        // Health Insurance specific
-        hospitalName: id === '1' ? 'Apollo Hospital' : 'Fortis Hospital',
-        hospitalAddress: id === '1' ? '123 Health Avenue, Mumbai' : '456 Medical Park, Pune',
-        hospitalContact: id === '1' ? '+91 22 2234 5678' : '+91 20 2567 8901',
-        admissionDate: id === '1' ? '2025-04-12' : '2025-05-05',
-        dischargeDate: id === '1' ? '2025-04-14' : '2025-05-06',
-        roomCategory: id === '1' ? 'Semi-Private' : 'Private',
-        diagnosis: id === '1' ? 'Acute Appendicitis' : 'Kidney Stone',
-        treatment: id === '1' ? 'Laparoscopic Appendectomy' : 'Lithotripsy',
-        treatmentType: id === '1' ? 'Surgical' : 'Medical',
-        cashless: id === '1',
-        preAuthApproved: id === '1',
-        preAuthAmount: id === '1' ? 70000 : 0,
-        billedAmount: id === '1' ? 75000 : 125000,
-        copaymentRequired: false,
-        copaymentAmount: 0,
-        doctorName: id === '1' ? 'Dr. Suresh Patel' : 'Dr. Amir Khan',
-        doctorSpeciality: id === '1' ? 'General Surgeon' : 'Urologist',
-        medicalHistory: id === '1' ? 'No significant medical history' : 'History of kidney stones in 2023',
-      } : {
-        // Property Insurance specific
-        propertyAddress: '123 Tech Park, Mumbai',
-        propertyType: 'Commercial Office Space',
-        propertySize: '10,000 sq ft',
-        damageType: 'Fire Damage',
-        affectedAreas: 'Server Room, 2nd Floor',
-        damageExtent: 'Partial (30% of office space)',
-        surveyorName: 'Rajesh Gupta',
-        surveyorContact: '+91 98765 43210',
-        surveyDate: '2025-03-22',
-        surveyReport: 'Approved - Fire caused by electrical short circuit',
-        estimatedRepairCost: 920000,
-        preventionMeasuresTaken: 'Installed fire sprinklers, smoke detectors, and regular electrical maintenance',
-        occupancyStatus: 'Partially occupied with temporary workspace arrangements',
-      }
-    };
-    
-    setTimeout(() => {
-      setClaim(mockClaim);
-      
-      // Set form data
+  // Connect to MongoDB for claim data
+  const { data: claim, isLoading: claimLoading, error: claimError } = useClaim(id);
+  
+  // Connect to MongoDB for form data
+  const { data: policiesResponse = [], isLoading: policiesLoading } = usePoliciesForClaim();
+  const { data: clientsResponse = [], isLoading: clientsLoading } = useClientsForClaim();
+  
+  // Connect to MongoDB for claim operations
+  const updateClaimMutation = useUpdateClaim();
+  const deleteClaimMutation = useDeleteClaim();
+
+  const [formData, setFormData] = useState({});
+
+  // Initialize form data when claim loads
+  React.useEffect(() => {
+    if (claim) {
       setFormData({
-        claimAmount: mockClaim.claimAmount,
-        dateOfIncident: mockClaim.dateOfIncident,
-        claimReason: mockClaim.claimReason,
-        status: mockClaim.status,
-        approvedAmount: mockClaim.approvedAmount !== null ? mockClaim.approvedAmount : '',
-        isCashless: mockClaim.details.cashless || false
+        clientId: claim.clientId?._id || claim.clientId || '',
+        policyId: claim.policyId?._id || claim.policyId || '',
+        claimType: claim.claimType || '',
+        priority: claim.priority || 'Medium',
+        claimAmount: claim.claimAmount || '',
+        deductible: claim.deductible || '',
+        incidentDate: claim.incidentDate ? claim.incidentDate.split('T')[0] : '',
+        description: claim.description || '',
+        assignedTo: claim.assignedTo?._id || claim.assignedTo || '',
+        estimatedSettlement: claim.estimatedSettlement ? claim.estimatedSettlement.split('T')[0] : '',
+        status: claim.status || 'Reported',
+        approvedAmount: claim.approvedAmount || '',
+        incidentLocation: claim.incidentLocation || {
+          address: '',
+          city: '',
+          state: '',
+          zipCode: ''
+        },
+        contactDetails: claim.contactDetails || {
+          primaryContact: '',
+          phoneNumber: '',
+          email: ''
+        }
       });
-      
-      // Set type-specific data
-      setTypeSpecificData(mockClaim.details);
-      
-      setLoading(false);
-    }, 500);
-  }, [id]);
+    }
+  }, [claim]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
-  const handleTypeSpecificChange = (e) => {
-    const { name, value } = e.target;
-    setTypeSpecificData({
-      ...typeSpecificData,
-      [name]: value
-    });
-  };
-
-  const handleCheckboxChange = (e) => {
-    const { name, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: checked
-    });
-  };
-
-  const handleStatusChange = (status) => {
-    setFormData({
-      ...formData,
-      status
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Basic validation
@@ -147,24 +112,87 @@ const ClaimEdit = () => {
       toast.error("Please enter claim amount");
       return;
     }
-
-    if (!formData.dateOfIncident) {
-      toast.error("Please enter date of incident");
+    if (!formData.incidentDate) {
+      toast.error("Please enter incident date");
+      return;
+    }
+    if (!formData.description) {
+      toast.error("Please enter claim description");
       return;
     }
 
-    // In a real app, this would submit to API
-    toast.success("Claim updated successfully!");
-    navigate(`/claims/${id}`);
+    try {
+      // Prepare update data for MongoDB
+      const updateData = {
+        claimType: formData.claimType,
+        priority: formData.priority,
+        claimAmount: parseFloat(formData.claimAmount),
+        deductible: formData.deductible ? parseFloat(formData.deductible) : 0,
+        incidentDate: formData.incidentDate,
+        description: formData.description,
+        assignedTo: formData.assignedTo || null,
+        estimatedSettlement: formData.estimatedSettlement || null,
+        status: formData.status,
+        approvedAmount: formData.approvedAmount ? parseFloat(formData.approvedAmount) : null,
+        incidentLocation: formData.incidentLocation,
+        contactDetails: formData.contactDetails
+      };
+
+      console.log('Updating claim in MongoDB:', { id, updateData });
+      
+      // Update the claim in MongoDB
+      const result = await updateClaimMutation.mutateAsync({ id, claimData: updateData });
+      console.log('Claim updated successfully in MongoDB:', result);
+      
+      // Navigate back to claim detail
+      navigate(`/claims/${id}`);
+    } catch (error) {
+      console.error('Error updating claim in MongoDB:', error);
+      toast.error('Failed to update claim in database. Please try again.');
+    }
+  };
+
+  const handleDeleteClaim = async () => {
+    try {
+      console.log('Deleting claim from MongoDB:', id);
+      
+      // Delete the claim from MongoDB
+      await deleteClaimMutation.mutateAsync(id);
+      console.log('Claim deleted successfully from MongoDB');
+      
+      // Navigate back to claims list
+      navigate('/claims');
+    } catch (error) {
+      console.error('Error deleting claim from MongoDB:', error);
+      toast.error('Failed to delete claim from database');
+    }
   };
 
   const handleCancel = () => {
     navigate(`/claims/${id}`);
   };
 
+  const loading = claimLoading || policiesLoading || clientsLoading;
+
   // Show professional loading skeleton
   if (loading) {
     return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Handle errors
+  if (claimError || !claim) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Claim Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested claim could not be found in the database.</p>
+          <Button onClick={() => navigate('/claims')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Claims
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -179,12 +207,24 @@ const ClaimEdit = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Edit Claim</h1>
           <div className="text-gray-500">
-            {claim.claimNumber} - {claim.policyType}
+            {claim.claimNumber} • Connected to MongoDB • Changes will be saved to database
           </div>
         </div>
+        
+        <Button 
+          variant="destructive" 
+          size="sm"
+          onClick={() => setShowDeleteDialog(true)}
+          className="flex items-center"
+          disabled={deleteClaimMutation.isLoading}
+        >
+          <Trash className="mr-1 h-4 w-4" />
+          {deleteClaimMutation.isLoading ? 'Deleting...' : 'Delete Claim'}
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -196,7 +236,7 @@ const ClaimEdit = () => {
                 <Label htmlFor="claimNumber">Claim Number</Label>
                 <Input
                   id="claimNumber"
-                  value={claim.claimNumber}
+                  value={claim.claimNumber || ''}
                   disabled
                   className="bg-gray-50"
                 />
@@ -205,23 +245,24 @@ const ClaimEdit = () => {
               <div className="space-y-2">
                 <Label>Client</Label>
                 <Input
-                  value={claim.clientName}
+                  value={`${claim.clientId?.firstName || ''} ${claim.clientId?.lastName || ''}`.trim() || 'Unknown Client'}
                   disabled
                   className="bg-gray-50"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="dateOfIncident">Date of Incident *</Label>
+                <Label htmlFor="incidentDate">Date of Incident *</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                   <Input
-                    id="dateOfIncident"
-                    name="dateOfIncident"
+                    id="incidentDate"
+                    name="incidentDate"
                     type="date"
-                    value={formData.dateOfIncident || ''}
+                    value={formData.incidentDate || ''}
                     onChange={handleInputChange}
                     className="pl-10"
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </div>
@@ -235,6 +276,7 @@ const ClaimEdit = () => {
                   value={formData.claimAmount || ''}
                   onChange={handleInputChange}
                   placeholder="Enter claim amount"
+                  min="1"
                 />
               </div>
 
@@ -242,23 +284,24 @@ const ClaimEdit = () => {
                 <Label htmlFor="status">Status</Label>
                 <Select 
                   value={formData.status || ''} 
-                  onValueChange={handleStatusChange}
+                  onValueChange={(value) => handleSelectChange('status', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="review">Under Review</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="settled">Settled</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                    <SelectItem value="Reported">Reported</SelectItem>
+                    <SelectItem value="Under Review">Under Review</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Approved">Approved</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Settled">Settled</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {(formData.status === 'approved' || formData.status === 'settled') && (
+              {(formData.status === 'Approved' || formData.status === 'Settled') && (
                 <div className="space-y-2">
                   <Label htmlFor="approvedAmount">Approved Amount</Label>
                   <Input
@@ -268,42 +311,60 @@ const ClaimEdit = () => {
                     value={formData.approvedAmount || ''}
                     onChange={handleInputChange}
                     placeholder="Enter approved amount"
+                    min="0"
                   />
                 </div>
               )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="claimReason">Claim Reason *</Label>
+              <Label htmlFor="description">Claim Description *</Label>
               <Textarea
-                id="claimReason"
-                name="claimReason"
-                value={formData.claimReason || ''}
+                id="description"
+                name="description"
+                value={formData.description || ''}
                 onChange={handleInputChange}
-                placeholder="Enter detailed reason for claim"
-                rows={3}
+                placeholder="Enter detailed description of the incident"
+                rows={4}
+                className="resize-none"
               />
             </div>
           </CardContent>
         </Card>
         
-        <DynamicClaimForm 
-          policyType={claim.policyType}
-          typeSpecificData={typeSpecificData}
-          setTypeSpecificData={setTypeSpecificData}
-          formData={formData}
-          setFormData={setFormData}
-        />
-        
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button type="submit">
-            Update Claim
+          <Button 
+            type="submit" 
+            disabled={updateClaimMutation.isLoading}
+          >
+            {updateClaimMutation.isLoading ? 'Updating...' : 'Update Claim'}
           </Button>
         </div>
       </form>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Claim</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this claim from the database? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteClaim}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteClaimMutation.isLoading}
+            >
+              {deleteClaimMutation.isLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

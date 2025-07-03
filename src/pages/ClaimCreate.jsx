@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -13,583 +13,195 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from 'lucide-react';
+import { Calendar, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { Checkbox } from '@/components/ui/checkbox';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCreateClaim, usePoliciesForClaim, useClientsForClaim, usePolicyDetailsForClaim } from '../hooks/useClaims';
 
 const ClaimCreate = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [policies, setPolicies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPolicy, setSelectedPolicy] = useState(null);
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [claimType, setClaimType] = useState('');
+  
+  // Connect to MongoDB for form data
+  const { data: policiesResponse = [], isLoading: policiesLoading } = usePoliciesForClaim();
+  const { data: clientsResponse = [], isLoading: clientsLoading } = useClientsForClaim();
+  
+  // Connect to MongoDB for claim creation
+  const createClaimMutation = useCreateClaim();
+
   const [formData, setFormData] = useState({
-    policyId: '',
     clientId: '',
-    memberName: '',
-    dateOfIncident: '',
+    policyId: '',
+    claimType: '',
+    priority: 'Medium',
     claimAmount: '',
-    claimReason: '',
-    isCashless: false
-  });
-  const [typeSpecificData, setTypeSpecificData] = useState({});
-
-  // Fetch policies for dropdown
-  useEffect(() => {
-    // In a real app, this would fetch from API
-    const mockPolicies = [
-      {
-        id: 1,
-        policyNumber: 'POL-2025-0125',
-        insuranceCompanyPolicyNumber: 'INS-001-20250125-H',
-        clientName: 'Vivek Patel',
-        clientId: 'AMB-CLI-2025-0001',
-        type: 'Health Insurance',
-        status: 'active',
-        members: [
-          { id: 1, name: 'Vivek Patel', relation: 'Self', age: 35 },
-          { id: 2, name: 'Neha Patel', relation: 'Spouse', age: 32 },
-          { id: 3, name: 'Aryan Patel', relation: 'Son', age: 8 }
-        ]
-      },
-      {
-        id: 3,
-        policyNumber: 'POL-2025-0156',
-        insuranceCompanyPolicyNumber: 'STAR-H-A091238',
-        clientName: 'Priya Desai',
-        clientId: 'AMB-CLI-2025-0012',
-        type: 'Health Insurance',
-        status: 'active',
-        members: [
-          { id: 1, name: 'Priya Desai', relation: 'Self', age: 42 },
-          { id: 2, name: 'Rahul Desai', relation: 'Spouse', age: 45 }
-        ]
-      },
-      {
-        id: 5,
-        policyNumber: 'POL-2025-0189',
-        insuranceCompanyPolicyNumber: 'BAJA-P-112233',
-        clientName: 'Tech Solutions Ltd',
-        clientId: 'AMB-CLI-2025-0024',
-        type: 'Property Insurance',
-        status: 'active'
-      },
-      {
-        id: 7,
-        policyNumber: 'POL-2025-0215',
-        insuranceCompanyPolicyNumber: 'ICICI-L-332211',
-        clientName: 'Arjun Singh',
-        clientId: 'AMB-CLI-2025-0035',
-        type: 'Term Insurance',
-        status: 'active'
-      }
-    ];
-
-    setTimeout(() => {
-      setPolicies(mockPolicies);
-      setLoading(false);
-    }, 500);
-  }, []);
-
-  const handlePolicyChange = (policyId) => {
-    const selectedPol = policies.find(p => p.id === parseInt(policyId));
-    setSelectedPolicy(selectedPol);
-    setClaimType(selectedPol?.type || '');
-    setFormData({
-      ...formData,
-      policyId: policyId,
-      clientId: selectedPol?.clientId || '',
-      memberName: ''
-    });
-    
-    // Reset type-specific data when policy changes
-    initializeTypeSpecificData(selectedPol?.type || '');
-  };
-
-  const handleMemberChange = (memberId) => {
-    if (!selectedPolicy?.members) return;
-    
-    const member = selectedPolicy.members.find(m => m.id === parseInt(memberId));
-    setSelectedMember(member);
-    setFormData({
-      ...formData,
-      memberName: member?.name || ''
-    });
-  };
-
-  const initializeTypeSpecificData = (type) => {
-    if (type === 'Health Insurance') {
-      setTypeSpecificData({
-        hospitalName: '',
-        hospitalAddress: '',
-        hospitalContact: '',
-        admissionDate: '',
-        dischargeDate: '',
-        roomCategory: '',
-        diagnosis: '',
-        treatment: '',
-        treatmentType: '',
-        billedAmount: '',
-        doctorName: '',
-        doctorSpeciality: '',
-        medicalHistory: ''
-      });
-    } else if (type === 'Property Insurance') {
-      setTypeSpecificData({
-        propertyAddress: '',
-        damageType: '',
-        affectedAreas: '',
-        damageExtent: '',
-        estimatedRepairCost: '',
-        occupancyStatus: ''
-      });
-    } else if (type === 'Term Insurance') {
-      setTypeSpecificData({
-        deathDate: '',
-        deathCause: '',
-        nomineeDetails: '',
-        nomineeContact: '',
-        relationshipWithDeceased: ''
-      });
-    } else {
-      setTypeSpecificData({});
+    deductible: '',
+    incidentDate: '',
+    description: '',
+    assignedTo: '',
+    estimatedSettlement: '',
+    incidentLocation: {
+      address: '',
+      city: '',
+      state: '',
+      zipCode: ''
+    },
+    contactDetails: {
+      primaryContact: '',
+      phoneNumber: '',
+      email: ''
     }
-  };
+  });
+
+  // Get policy details when policy is selected
+  const { data: policyDetails } = usePolicyDetailsForClaim(formData.policyId);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
-  const handleTypeSpecificChange = (e) => {
-    const { name, value } = e.target;
-    setTypeSpecificData({
-      ...typeSpecificData,
-      [name]: value
-    });
-  };
-
-  const handleCheckboxChange = (e) => {
-    const { name, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: checked
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Basic validation
+    if (!formData.clientId) {
+      toast.error("Please select a client");
+      return;
+    }
     if (!formData.policyId) {
       toast.error("Please select a policy");
       return;
     }
-
-    if (!formData.dateOfIncident) {
-      toast.error("Please enter date of incident");
+    if (!formData.claimType) {
+      toast.error("Please select claim type");
       return;
     }
-
     if (!formData.claimAmount) {
       toast.error("Please enter claim amount");
       return;
     }
+    if (!formData.incidentDate) {
+      toast.error("Please enter incident date");
+      return;
+    }
+    if (!formData.description) {
+      toast.error("Please enter claim description");
+      return;
+    }
 
-    // In a real app, this would submit to API
-    // Mock success for now
-    toast.success("Claim submitted successfully!");
-    navigate('/claims/1'); // Navigate to a mock detail page
+    try {
+      // Prepare claim data for MongoDB
+      const claimData = {
+        clientId: formData.clientId,
+        policyId: formData.policyId,
+        claimType: formData.claimType,
+        priority: formData.priority,
+        claimAmount: parseFloat(formData.claimAmount),
+        deductible: formData.deductible ? parseFloat(formData.deductible) : 0,
+        incidentDate: formData.incidentDate,
+        description: formData.description,
+        assignedTo: formData.assignedTo || null,
+        estimatedSettlement: formData.estimatedSettlement || null,
+        incidentLocation: formData.incidentLocation,
+        contactDetails: formData.contactDetails
+      };
+
+      console.log('Creating claim in MongoDB:', claimData);
+      
+      // Create the claim in MongoDB
+      const result = await createClaimMutation.mutateAsync(claimData);
+      console.log('Claim created successfully in MongoDB:', result);
+      
+      // Navigate to the created claim detail page
+      navigate(`/claims/${result._id || result.id}`);
+    } catch (error) {
+      console.error('Error creating claim in MongoDB:', error);
+      toast.error('Failed to create claim in database. Please try again.');
+    }
   };
 
-  // Render type-specific form fields based on the policy type
-  const renderTypeSpecificFields = () => {
-    if (claimType === 'Health Insurance') {
-      return (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Medical Details</CardTitle>
-            <CardDescription>Enter hospital and treatment information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="hospitalName">Hospital Name *</Label>
-                <Input
-                  id="hospitalName"
-                  name="hospitalName"
-                  value={typeSpecificData.hospitalName || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter hospital name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hospitalAddress">Hospital Address</Label>
-                <Input
-                  id="hospitalAddress"
-                  name="hospitalAddress"
-                  value={typeSpecificData.hospitalAddress || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter hospital address"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hospitalContact">Hospital Contact</Label>
-                <Input
-                  id="hospitalContact"
-                  name="hospitalContact"
-                  value={typeSpecificData.hospitalContact || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter hospital contact"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="doctorName">Doctor Name *</Label>
-                <Input
-                  id="doctorName"
-                  name="doctorName"
-                  value={typeSpecificData.doctorName || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter doctor name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="doctorSpeciality">Doctor Speciality</Label>
-                <Input
-                  id="doctorSpeciality"
-                  name="doctorSpeciality"
-                  value={typeSpecificData.doctorSpeciality || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter doctor speciality"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="admissionDate">Admission Date *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="admissionDate"
-                    name="admissionDate"
-                    type="date"
-                    value={typeSpecificData.admissionDate || ''}
-                    onChange={handleTypeSpecificChange}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dischargeDate">Discharge Date</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="dischargeDate"
-                    name="dischargeDate"
-                    type="date"
-                    value={typeSpecificData.dischargeDate || ''}
-                    onChange={handleTypeSpecificChange}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="roomCategory">Room Category</Label>
-                <Select 
-                  name="roomCategory" 
-                  value={typeSpecificData.roomCategory || ''} 
-                  onValueChange={(value) => setTypeSpecificData({...typeSpecificData, roomCategory: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select room category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="General Ward">General Ward</SelectItem>
-                    <SelectItem value="Semi-Private">Semi-Private</SelectItem>
-                    <SelectItem value="Private">Private</SelectItem>
-                    <SelectItem value="Deluxe">Deluxe</SelectItem>
-                    <SelectItem value="ICU">ICU</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="treatmentType">Treatment Type</Label>
-                <Select 
-                  name="treatmentType" 
-                  value={typeSpecificData.treatmentType || ''} 
-                  onValueChange={(value) => setTypeSpecificData({...typeSpecificData, treatmentType: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select treatment type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Medical">Medical</SelectItem>
-                    <SelectItem value="Surgical">Surgical</SelectItem>
-                    <SelectItem value="Emergency">Emergency</SelectItem>
-                    <SelectItem value="Maternity">Maternity</SelectItem>
-                    <SelectItem value="Preventive">Preventive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="diagnosis">Diagnosis *</Label>
-                <Input
-                  id="diagnosis"
-                  name="diagnosis"
-                  value={typeSpecificData.diagnosis || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter diagnosis"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="treatment">Treatment *</Label>
-                <Input
-                  id="treatment"
-                  name="treatment"
-                  value={typeSpecificData.treatment || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter treatment details"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="billedAmount">Billed Amount *</Label>
-                <Input
-                  id="billedAmount"
-                  name="billedAmount"
-                  type="number"
-                  value={typeSpecificData.billedAmount || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter billed amount"
-                />
-              </div>
-              <div className="flex items-center space-x-2 pt-6">
-                <Checkbox 
-                  id="isCashless"
-                  name="isCashless"
-                  checked={formData.isCashless || false}
-                  onCheckedChange={(checked) => setFormData({...formData, isCashless: checked})}
-                />
-                <Label htmlFor="isCashless">This is a cashless claim</Label>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="medicalHistory">Medical History</Label>
-              <Textarea
-                id="medicalHistory"
-                name="medicalHistory"
-                value={typeSpecificData.medicalHistory || ''}
-                onChange={handleTypeSpecificChange}
-                placeholder="Enter relevant medical history"
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      );
-    } else if (claimType === 'Property Insurance') {
-      return (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Property Damage Details</CardTitle>
-            <CardDescription>Enter information about the property and damage</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="propertyAddress">Property Address *</Label>
-                <Input
-                  id="propertyAddress"
-                  name="propertyAddress"
-                  value={typeSpecificData.propertyAddress || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter property address"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="damageType">Damage Type *</Label>
-                <Select 
-                  name="damageType" 
-                  value={typeSpecificData.damageType || ''} 
-                  onValueChange={(value) => setTypeSpecificData({...typeSpecificData, damageType: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type of damage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Fire Damage">Fire Damage</SelectItem>
-                    <SelectItem value="Water Damage">Water Damage</SelectItem>
-                    <SelectItem value="Storm Damage">Storm Damage</SelectItem>
-                    <SelectItem value="Theft">Theft</SelectItem>
-                    <SelectItem value="Vandalism">Vandalism</SelectItem>
-                    <SelectItem value="Earthquake">Earthquake</SelectItem>
-                    <SelectItem value="Electrical">Electrical Damage</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="affectedAreas">Affected Areas *</Label>
-                <Input
-                  id="affectedAreas"
-                  name="affectedAreas"
-                  value={typeSpecificData.affectedAreas || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Which areas are affected"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="damageExtent">Damage Extent *</Label>
-                <Select 
-                  name="damageExtent" 
-                  value={typeSpecificData.damageExtent || ''} 
-                  onValueChange={(value) => setTypeSpecificData({...typeSpecificData, damageExtent: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select extent of damage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Minor (<10%)">Minor (&lt;10%)</SelectItem>
-                    <SelectItem value="Moderate (10-30%)">Moderate (10-30%)</SelectItem>
-                    <SelectItem value="Significant (30-60%)">Significant (30-60%)</SelectItem>
-                    <SelectItem value="Major (60-90%)">Major (60-90%)</SelectItem>
-                    <SelectItem value="Total (>90%)">Total (&gt;90%)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="estimatedRepairCost">Estimated Repair Cost *</Label>
-                <Input
-                  id="estimatedRepairCost"
-                  name="estimatedRepairCost"
-                  type="number"
-                  value={typeSpecificData.estimatedRepairCost || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter estimated repair cost"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="occupancyStatus">Occupancy Status</Label>
-                <Input
-                  id="occupancyStatus"
-                  name="occupancyStatus"
-                  value={typeSpecificData.occupancyStatus || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Current occupancy status"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    } else if (claimType === 'Term Insurance') {
-      return (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Term Insurance Claim Details</CardTitle>
-            <CardDescription>Enter information about the claim</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="deathDate">Date of Death *</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    id="deathDate"
-                    name="deathDate"
-                    type="date"
-                    value={typeSpecificData.deathDate || ''}
-                    onChange={handleTypeSpecificChange}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deathCause">Cause of Death *</Label>
-                <Input
-                  id="deathCause"
-                  name="deathCause"
-                  value={typeSpecificData.deathCause || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter cause of death"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nomineeDetails">Nominee Details *</Label>
-                <Input
-                  id="nomineeDetails"
-                  name="nomineeDetails"
-                  value={typeSpecificData.nomineeDetails || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter nominee name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nomineeContact">Nominee Contact *</Label>
-                <Input
-                  id="nomineeContact"
-                  name="nomineeContact"
-                  value={typeSpecificData.nomineeContact || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter nominee contact"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="relationshipWithDeceased">Relationship with Deceased *</Label>
-                <Input
-                  id="relationshipWithDeceased"
-                  name="relationshipWithDeceased"
-                  value={typeSpecificData.relationshipWithDeceased || ''}
-                  onChange={handleTypeSpecificChange}
-                  placeholder="Enter relationship with deceased"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    
-    return null;
+  const handleCancel = () => {
+    navigate('/claims');
   };
 
   // Show professional loading skeleton
-  if (loading) {
+  if (policiesLoading || clientsLoading) {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Create New Claim</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="sm" onClick={handleCancel} className="p-0 h-8 hover:bg-transparent">
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to Claims
+            </Button>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Create New Claim</h1>
+          <div className="text-gray-500">
+            Connected to MongoDB • Claim will be saved to database
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
-            <CardDescription>Select the policy and provide basic claim details</CardDescription>
+            <CardDescription>Enter basic claim details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="policyId">Select Policy *</Label>
-                <Select 
-                  name="policyId" 
-                  value={formData.policyId || ''} 
-                  onValueChange={handlePolicyChange}
-                >
+                <Label htmlFor="clientId">Client *</Label>
+                <Select value={formData.clientId} onValueChange={(value) => handleSelectChange('clientId', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientsResponse.map((client) => (
+                      <SelectItem key={client._id || client.id} value={client._id || client.id}>
+                        {client.firstName} {client.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="policyId">Policy *</Label>
+                <Select value={formData.policyId} onValueChange={(value) => handleSelectChange('policyId', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select policy" />
                   </SelectTrigger>
                   <SelectContent>
-                    {policies.map(policy => (
-                      <SelectItem key={policy.id} value={policy.id.toString()}>
+                    {policiesResponse.map((policy) => (
+                      <SelectItem key={policy._id || policy.id} value={policy._id || policy.id}>
                         {policy.policyNumber} - {policy.type}
                       </SelectItem>
                     ))}
@@ -597,49 +209,54 @@ const ClaimCreate = () => {
                 </Select>
               </div>
               
-              {selectedPolicy && (
-                <div className="space-y-2">
-                  <Label>Client</Label>
-                  <Input
-                    value={selectedPolicy.clientName}
-                    readOnly
-                    className="bg-gray-50"
-                  />
-                </div>
-              )}
-              
-              {selectedPolicy?.members && selectedPolicy.members.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="memberId">Select Member *</Label>
-                  <Select 
-                    name="memberId" 
-                    onValueChange={handleMemberChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedPolicy.members.map(member => (
-                        <SelectItem key={member.id} value={member.id.toString()}>
-                          {member.name} ({member.relation}, {member.age} yrs)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="claimType">Claim Type *</Label>
+                <Select value={formData.claimType} onValueChange={(value) => handleSelectChange('claimType', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select claim type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Auto">Auto</SelectItem>
+                    <SelectItem value="Home">Home</SelectItem>
+                    <SelectItem value="Life">Life</SelectItem>
+                    <SelectItem value="Health">Health</SelectItem>
+                    <SelectItem value="Travel">Travel</SelectItem>
+                    <SelectItem value="Business">Business</SelectItem>
+                    <SelectItem value="Disability">Disability</SelectItem>
+                    <SelectItem value="Property">Property</SelectItem>
+                    <SelectItem value="Liability">Liability</SelectItem>
+                    <SelectItem value="Workers Compensation">Workers Compensation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Priority</Label>
+                <Select value={formData.priority} onValueChange={(value) => handleSelectChange('priority', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="space-y-2">
-                <Label htmlFor="dateOfIncident">Date of Incident *</Label>
+                <Label htmlFor="incidentDate">Incident Date *</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                   <Input
-                    id="dateOfIncident"
-                    name="dateOfIncident"
+                    id="incidentDate"
+                    name="incidentDate"
                     type="date"
-                    value={formData.dateOfIncident}
+                    value={formData.incidentDate}
                     onChange={handleInputChange}
                     className="pl-10"
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </div>
@@ -653,89 +270,149 @@ const ClaimCreate = () => {
                   value={formData.claimAmount}
                   onChange={handleInputChange}
                   placeholder="Enter claim amount"
+                  min="1"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deductible">Deductible</Label>
+                <Input
+                  id="deductible"
+                  name="deductible"
+                  type="number"
+                  value={formData.deductible}
+                  onChange={handleInputChange}
+                  placeholder="Enter deductible amount"
+                  min="0"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="estimatedSettlement">Estimated Settlement Date</Label>
+                <Input
+                  id="estimatedSettlement"
+                  name="estimatedSettlement"
+                  type="date"
+                  value={formData.estimatedSettlement}
+                  onChange={handleInputChange}
+                  min={new Date().toISOString().split('T')[0]}
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="claimReason">Claim Reason *</Label>
+              <Label htmlFor="description">Claim Description *</Label>
               <Textarea
-                id="claimReason"
-                name="claimReason"
-                value={formData.claimReason}
+                id="description"
+                name="description"
+                value={formData.description}
                 onChange={handleInputChange}
-                placeholder="Enter detailed reason for claim"
-                rows={3}
+                placeholder="Enter detailed description of the incident"
+                rows={4}
+                className="resize-none"
               />
             </div>
           </CardContent>
         </Card>
-        
-        {selectedPolicy && renderTypeSpecificFields()}
-        
+
+        {/* Incident Location */}
         <Card>
           <CardHeader>
-            <CardTitle>Documents</CardTitle>
-            <CardDescription>Upload all necessary documents for claim processing</CardDescription>
+            <CardTitle>Incident Location</CardTitle>
+            <CardDescription>Where did the incident occur?</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <p className="text-gray-500 mb-2">Drag and drop files here, or click to browse</p>
-              <p className="text-xs text-gray-400">Supported formats: PDF, JPG, PNG (Max 10MB per file)</p>
-              <Button variant="outline" className="mt-4">Browse Files</Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="incidentLocation.address">Address</Label>
+                <Input
+                  id="incidentLocation.address"
+                  name="incidentLocation.address"
+                  value={formData.incidentLocation.address}
+                  onChange={handleInputChange}
+                  placeholder="Enter incident address"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="incidentLocation.city">City</Label>
+                <Input
+                  id="incidentLocation.city"
+                  name="incidentLocation.city"
+                  value={formData.incidentLocation.city}
+                  onChange={handleInputChange}
+                  placeholder="Enter city"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="incidentLocation.state">State</Label>
+                <Input
+                  id="incidentLocation.state"
+                  name="incidentLocation.state"
+                  value={formData.incidentLocation.state}
+                  onChange={handleInputChange}
+                  placeholder="Enter state"
+                />
+              </div>
             </div>
-            
-            {claimType === 'Health Insurance' && (
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">Required Documents:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  <li>Claim Form (duly filled and signed)</li>
-                  <li>Hospital Discharge Summary</li>
-                  <li>All Medical Bills (original)</li>
-                  <li>Investigation Reports</li>
-                  <li>Doctor's Prescription</li>
-                  <li>ID Proof</li>
-                </ul>
+          </CardContent>
+        </Card>
+
+        {/* Contact Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contact Information</CardTitle>
+            <CardDescription>Primary contact for this claim</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contactDetails.primaryContact">Primary Contact</Label>
+                <Input
+                  id="contactDetails.primaryContact"
+                  name="contactDetails.primaryContact"
+                  value={formData.contactDetails.primaryContact}
+                  onChange={handleInputChange}
+                  placeholder="Enter contact name"
+                />
               </div>
-            )}
-            
-            {claimType === 'Property Insurance' && (
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">Required Documents:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  <li>Claim Form (duly filled and signed)</li>
-                  <li>FIR Copy (in case of theft/vandalism)</li>
-                  <li>Photographs of Damaged Property</li>
-                  <li>Original Purchase Receipts (if available)</li>
-                  <li>Repair Estimates</li>
-                  <li>Property Ownership Documents</li>
-                </ul>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contactDetails.phoneNumber">Phone Number</Label>
+                <Input
+                  id="contactDetails.phoneNumber"
+                  name="contactDetails.phoneNumber"
+                  value={formData.contactDetails.phoneNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter phone number"
+                />
               </div>
-            )}
-            
-            {claimType === 'Term Insurance' && (
-              <div className="space-y-2 text-sm">
-                <p className="font-medium">Required Documents:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  <li>Claim Form (duly filled and signed by nominee)</li>
-                  <li>Death Certificate</li>
-                  <li>Medical Records (if death due to illness)</li>
-                  <li>Post Mortem Report (if applicable)</li>
-                  <li>ID Proof of Nominee</li>
-                  <li>Bank Account Details of Nominee</li>
-                  <li>Original Policy Document</li>
-                </ul>
+              
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="contactDetails.email">Email</Label>
+                <Input
+                  id="contactDetails.email"
+                  name="contactDetails.email"
+                  type="email"
+                  value={formData.contactDetails.email}
+                  onChange={handleInputChange}
+                  placeholder="Enter email address"
+                />
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
         
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate('/claims')}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button type="submit">
-            Submit Claim
+          <Button 
+            type="submit" 
+            disabled={createClaimMutation.isLoading}
+          >
+            {createClaimMutation.isLoading ? 'Creating...' : 'Create Claim'}
           </Button>
         </div>
       </form>
