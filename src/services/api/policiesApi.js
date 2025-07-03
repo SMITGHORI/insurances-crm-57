@@ -1,6 +1,5 @@
-
 import { toast } from 'sonner';
-import { PoliciesBackendApiService } from './policiesApiBackend';
+import policiesBackendApi from './policiesApiBackend';
 
 // Base API configuration for Express backend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -12,7 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 class PoliciesApiService {
   constructor() {
     this.baseURL = `${API_BASE_URL}/policies`;
-    this.backendApi = new PoliciesBackendApiService();
+    this.backendApi = policiesBackendApi;
   }
 
   /**
