@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart } from 'lucide-react';
+import { Plus, BarChart, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import LeadsTable from '@/components/leads/LeadsTable';
 import LeadFilters from '@/components/leads/LeadFilters';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import LeadStatsCards from '@/components/leads/LeadStatsCards';
 import BulkOperationsToolbar from '@/components/leads/BulkOperationsToolbar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import Protected from '@/components/Protected';
+import { useLeads, useExportLeads } from '../hooks/useLeads';
 
 const Leads = () => {
   const navigate = useNavigate();
@@ -21,23 +22,46 @@ const Leads = () => {
     source: 'all',
     assignedTo: 'all',
     priority: 'all',
-    searchTerm: ''
+    searchTerm: '',
+    page: 1,
+    limit: 10
   });
-  const [sortField, setSortField] = useState('');
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortDirection, setSortDirection] = useState('desc');
   const [activeFilters, setActiveFilters] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [showReports, setShowReports] = useState(false);
 
-  // Simulate loading for demonstration
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Connect to MongoDB for leads data
+  const { data: leadsResponse, isLoading, error } = useLeads({
+    ...filterParams,
+    search: filterParams.searchTerm,
+    sortField,
+    sortDirection
+  });
+
+  // Connect to MongoDB for export
+  const exportLeadsMutation = useExportLeads();
+
+  const leads = leadsResponse?.leads || [];
+  const pagination = leadsResponse?.pagination || {};
 
   const handleCreateLead = () => {
     navigate('/leads/create');
+  };
+
+  const handleExport = async () => {
+    try {
+      console.log('Exporting leads from MongoDB with filters:', filterParams);
+      
+      // Use the MongoDB export API
+      await exportLeadsMutation.mutateAsync(filterParams);
+      
+      console.log('Leads exported successfully from MongoDB');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export leads data from database');
+    }
   };
 
   const updateActiveFilters = (name, value) => {
@@ -58,34 +82,20 @@ const Leads = () => {
 
   const removeFilter = (filterName) => {
     if (filterName === 'Status') {
-      setFilterParams({...filterParams, status: 'all'});
+      setFilterParams({...filterParams, status: 'all', page: 1});
     } else if (filterName === 'Source') {
-      setFilterParams({...filterParams, source: 'all'});
+      setFilterParams({...filterParams, source: 'all', page: 1});
     } else if (filterName === 'Agent') {
-      setFilterParams({...filterParams, assignedTo: 'all'});
+      setFilterParams({...filterParams, assignedTo: 'all', page: 1});
     } else if (filterName === 'Priority') {
-      setFilterParams({...filterParams, priority: 'all'});
+      setFilterParams({...filterParams, priority: 'all', page: 1});
     }
     setActiveFilters(activeFilters.filter(filter => filter.name !== filterName));
   };
 
-  const handleExport = (leads) => {
-    toast.success("Leads exported successfully");
-  };
-
   const handleBulkAction = (action, leadIds) => {
     console.log('Bulk action:', action, leadIds);
-    // Handle bulk actions here
-    switch(action) {
-      case 'delete':
-        toast.success(`${leadIds.length} leads deleted successfully`);
-        break;
-      case 'convert':
-        toast.success(`${leadIds.length} leads converted to clients successfully`);
-        break;
-      default:
-        toast.info(`Bulk action ${action} performed on ${leadIds.length} leads`);
-    }
+    // Handle bulk actions here - these will connect to MongoDB
   };
 
   const handleLeadSelection = (leadId, selected) => {
@@ -100,46 +110,76 @@ const Leads = () => {
     setSelectedLeads([]);
   };
 
-  const clearActiveFilters = () => {
-    setActiveFilters([]);
-  };
-
   // Show professional loading skeleton
   if (isLoading) {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
+  // Handle errors
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Leads</h2>
+          <p className="text-gray-600 mb-4">Unable to connect to the database. Please try again later.</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
-      <div className="flex flex-wrap justify-between items-center mb-4 sm:mb-6 gap-3">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Leads Management</h1>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Leads Management</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Connected to MongoDB • Real-time database operations
+          </p>
+        </div>
         <div className="flex gap-2">
-          <Dialog open={showReports} onOpenChange={setShowReports}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className={isMobile ? "w-full" : ""}>
-                <BarChart className="mr-2 h-4 w-4" /> Reports
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-6xl h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Lead Reports & Analytics</DialogTitle>
-              </DialogHeader>
-              <div className="p-4">
-                <p className="text-gray-500">Lead reports component will be implemented here</p>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Protected module="leads" action="view">
+            <Dialog open={showReports} onOpenChange={setShowReports}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className={isMobile ? "w-full" : ""}>
+                  <BarChart className="mr-2 h-4 w-4" /> Reports
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-6xl h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Lead Reports & Analytics</DialogTitle>
+                </DialogHeader>
+                <div className="p-4">
+                  <p className="text-gray-500">Lead reports component will be implemented here</p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </Protected>
           
-          <Button onClick={handleCreateLead} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> {isMobile ? 'Create' : 'Create Lead'}
-          </Button>
+          <Protected module="leads" action="export">
+            <Button 
+              variant="outline" 
+              className={isMobile ? "w-full" : ""}
+              onClick={handleExport}
+              disabled={exportLeadsMutation.isLoading}
+            >
+              <Download className="mr-2 h-4 w-4" /> 
+              {exportLeadsMutation.isLoading ? 'Exporting...' : 'Export'}
+            </Button>
+          </Protected>
+          
+          <Protected module="leads" action="create">
+            <Button onClick={handleCreateLead} className={isMobile ? "w-full" : ""}>
+              <Plus className="mr-2 h-4 w-4" /> Create Lead
+            </Button>
+          </Protected>
         </div>
       </div>
 
       {/* Lead Statistics Cards */}
       <LeadStatsCards />
 
-      <Card className="mb-4 sm:mb-6 border-0 shadow-sm">
+      <div className="mb-6">
         <LeadFilters 
           filterParams={filterParams} 
           setFilterParams={setFilterParams}
@@ -151,7 +191,7 @@ const Leads = () => {
           activeFilters={activeFilters}
           removeFilter={removeFilter}
         />
-      </Card>
+      </div>
 
       {/* Bulk Operations Toolbar */}
       <BulkOperationsToolbar
@@ -161,16 +201,19 @@ const Leads = () => {
         agents={[]} // Add agents data here when available
       />
       
-      <div className="max-w-full overflow-hidden mb-20 sm:mb-0">
-        <LeadsTable 
-          filterParams={filterParams}
-          sortField={sortField}
-          sortDirection={sortDirection}
-          handleExport={handleExport}
-          selectedLeads={selectedLeads}
-          onLeadSelection={handleLeadSelection}
-        />
-      </div>
+      <LeadsTable 
+        leads={leads}
+        pagination={pagination}
+        isLoading={isLoading}
+        filterParams={filterParams}
+        setFilterParams={setFilterParams}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        setSortField={setSortField}
+        setSortDirection={setSortDirection}
+        selectedLeads={selectedLeads}
+        onLeadSelection={handleLeadSelection}
+      />
     </div>
   );
 };

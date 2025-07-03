@@ -11,7 +11,7 @@ import LeadAssignDialog from '@/components/leads/LeadAssignDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
-import { useLead, useDeleteLead } from '@/hooks/useLeads';
+import { useLead, useDeleteLead, useConvertToClient } from '@/hooks/useLeads';
 import LeadTimeline from '@/components/leads/LeadTimeline';
 
 const getStatusColor = (status) => {
@@ -47,6 +47,7 @@ const LeadDetails = () => {
   // Use React Query to fetch lead data
   const { data: lead, isLoading, error } = useLead(id);
   const deleteLeadMutation = useDeleteLead();
+  const convertToClientMutation = useConvertToClient();
 
   useEffect(() => {
     if (!isLoading) {
@@ -56,18 +57,23 @@ const LeadDetails = () => {
 
   const handleDelete = async () => {
     try {
+      console.log('Deleting lead from MongoDB:', id);
       await deleteLeadMutation.mutateAsync(id);
       setShowDeleteDialog(false);
       navigate('/leads');
     } catch (error) {
-      console.error('Error deleting lead:', error);
+      console.error('Error deleting lead from MongoDB:', error);
     }
   };
 
-  const handleConvertToClient = () => {
-    // In a real app, this would call an API endpoint to convert the lead to a client
-    toast.success(`Lead "${lead.name}" converted to client successfully`);
-    navigate('/clients');
+  const handleConvertToClient = async () => {
+    try {
+      console.log('Converting lead to client in MongoDB:', id);
+      await convertToClientMutation.mutateAsync(id);
+      navigate('/clients');
+    } catch (error) {
+      console.error('Error converting lead to client in MongoDB:', error);
+    }
   };
 
   const handleCreateQuotation = () => {
@@ -304,9 +310,9 @@ const LeadDetails = () => {
             <AlertDialogAction 
               onClick={handleDelete} 
               className="bg-red-600 hover:bg-red-700"
-              disabled={deleteLeadMutation.isLoading}
+              disabled={deleteLeadMutation.isLoading || convertToClientMutation.isLoading}
             >
-              {deleteLeadMutation.isLoading ? 'Deleting...' : 'Delete'}
+              {deleteLeadMutation.isLoading || convertToClientMutation.isLoading ? 'Processing...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -10,77 +10,110 @@ import { toast } from 'sonner';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useLeads, useCreateLead, useUpdateLead } from '@/hooks/useLeads';
+import { useLead, useCreateLead, useUpdateLead } from '@/hooks/useLeads';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 
 const leadFormSchema = z.object({
-  firstName: z.string().min(2, { message: "First name must be at least 2 characters." }),
-  lastName: z.string().min(2, { message: "Last name must be at least 2 characters." }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
-  status: z.string().min(2, { message: "Status is required." }),
-  source: z.string().min(2, { message: "Source is required." }),
-  assignedTo: z.string().min(2, { message: "Assigned agent is required." }),
-  priority: z.string().min(2, { message: "Priority is required." }),
-  notes: z.string().optional(),
+  address: z.string().optional(),
+  source: z.string().min(1, { message: "Source is required." }),
+  product: z.string().min(1, { message: "Product is required." }),
+  status: z.string().min(1, { message: "Status is required." }),
+  budget: z.string().optional(),
+  assignedTo: z.string().min(1, { message: "Assigned agent is required." }),
+  priority: z.string().min(1, { message: "Priority is required." }),
+  additionalInfo: z.string().optional(),
 });
 
 const LeadForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isMobile = useIsMobile();
-  const [loading, setLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(!!id);
 
-  const { data: leadData } = useLeads({ id });
+  // Connect to MongoDB for lead data
+  const { data: lead, isLoading, error } = useLead(id);
   const createLeadMutation = useCreateLead();
   const updateLeadMutation = useUpdateLead();
 
   const form = useForm({
     resolver: zodResolver(leadFormSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
       phone: '',
-      status: 'new',
-      source: 'web',
-      assignedTo: 'john.doe@example.com',
-      priority: 'low',
-      notes: '',
+      address: '',
+      source: 'Website',
+      product: 'Health Insurance',
+      status: 'New',
+      budget: '',
+      assignedTo: 'Raj Malhotra',
+      priority: 'Medium',
+      additionalInfo: '',
     },
     mode: "onChange"
   });
 
   useEffect(() => {
-    if (id && leadData?.data) {
+    if (id && lead) {
       setIsEditMode(true);
-      form.reset(leadData.data);
+      form.reset({
+        name: lead.name || '',
+        email: lead.email || '',
+        phone: lead.phone || '',
+        address: lead.address || '',
+        source: lead.source || 'Website',
+        product: lead.product || 'Health Insurance',
+        status: lead.status || 'New',
+        budget: lead.budget ? lead.budget.toString() : '',
+        assignedTo: lead.assignedTo || 'Raj Malhotra',
+        priority: lead.priority || 'Medium',
+        additionalInfo: lead.additionalInfo || '',
+      });
     }
-  }, [id, leadData, form]);
+  }, [id, lead, form]);
 
   const onSubmit = async (values) => {
-    setLoading(true);
     try {
+      console.log('Submitting lead data to MongoDB:', values);
+      
+      const leadData = {
+        ...values,
+        budget: values.budget ? parseInt(values.budget.replace(/[^0-9]/g, '')) : null,
+      };
+
       if (isEditMode) {
-        await updateLeadMutation.mutateAsync({ id, ...values });
-        toast.success("Lead updated successfully!");
+        await updateLeadMutation.mutateAsync({ id, leadData });
+        console.log('Lead updated successfully in MongoDB');
       } else {
-        await createLeadMutation.mutateAsync(values);
-        toast.success("Lead created successfully!");
+        await createLeadMutation.mutateAsync(leadData);
+        console.log('Lead created successfully in MongoDB');
       }
       navigate('/leads');
     } catch (error) {
-      toast.error(error?.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
+      console.error('Error submitting lead to MongoDB:', error);
     }
   };
 
   // Show professional loading skeleton
-  if (loading) {
+  if (isLoading) {
     return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Handle errors
+  if (error && id) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Lead Not Found</h2>
+          <p className="text-gray-600 mb-4">The requested lead could not be found in the database.</p>
+          <Button onClick={() => navigate('/leads')}>Back to Leads</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -88,36 +121,26 @@ const LeadForm = () => {
       <Card>
         <CardHeader>
           <h2 className="text-2xl font-bold">{isEditMode ? 'Edit Lead' : 'Create Lead'}</h2>
-          <p className="text-muted-foreground">Fill out the form below to {isEditMode ? 'update' : 'create'} a lead.</p>
+          <p className="text-muted-foreground">
+            Connected to MongoDB • {isEditMode ? 'Update' : 'Create'} lead data in real-time
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Controller
                 control={form.control}
-                name="firstName"
+                name="name"
                 render={({ field }) => (
-                  <Input id="firstName" type="text" placeholder="John" {...field} />
+                  <Input id="name" type="text" placeholder="John Doe" {...field} />
                 )}
               />
-              {form.formState.errors.firstName && (
-                <p className="text-red-500 text-sm">{form.formState.errors.firstName.message}</p>
+              {form.formState.errors.name && (
+                <p className="text-red-500 text-sm">{form.formState.errors.name.message}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Controller
-                control={form.control}
-                name="lastName"
-                render={({ field }) => (
-                  <Input id="lastName" type="text" placeholder="Doe" {...field} />
-                )}
-              />
-              {form.formState.errors.lastName && (
-                <p className="text-red-500 text-sm">{form.formState.errors.lastName.message}</p>
-              )}
-            </div>
+            
             <div>
               <Label htmlFor="email">Email</Label>
               <Controller
@@ -131,116 +154,205 @@ const LeadForm = () => {
                 <p className="text-red-500 text-sm">{form.formState.errors.email.message}</p>
               )}
             </div>
+            
             <div>
               <Label htmlFor="phone">Phone</Label>
               <Controller
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
-                  <Input id="phone" type="tel" placeholder="123-456-7890" {...field} />
+                  <Input id="phone" type="tel" placeholder="9876543210" {...field} />
                 )}
               />
               {form.formState.errors.phone && (
                 <p className="text-red-500 text-sm">{form.formState.errors.phone.message}</p>
               )}
             </div>
+            
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="address">Address</Label>
               <Controller
                 control={form.control}
-                name="status"
+                name="address"
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="qualified">Qualified</SelectItem>
-                      <SelectItem value="unqualified">Unqualified</SelectItem>
-                      <SelectItem value="converted">Converted</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.status && (
-                <p className="text-red-500 text-sm">{form.formState.errors.status.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="source">Source</Label>
-              <Controller
-                control={form.control}
-                name="source"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="web">Web</SelectItem>
-                      <SelectItem value="phone">Phone</SelectItem>
-                      <SelectItem value="referral">Referral</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.source && (
-                <p className="text-red-500 text-sm">{form.formState.errors.source.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="assignedTo">Assigned To</Label>
-              <Controller
-                control={form.control}
-                name="assignedTo"
-                render={({ field }) => (
-                  <Input id="assignedTo" type="email" placeholder="john.doe@example.com" {...field} />
-                )}
-              />
-              {form.formState.errors.assignedTo && (
-                <p className="text-red-500 text-sm">{form.formState.errors.assignedTo.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Controller
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {form.formState.errors.priority && (
-                <p className="text-red-500 text-sm">{form.formState.errors.priority.message}</p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Controller
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <Textarea id="notes" placeholder="Additional notes" {...field} />
+                  <Textarea id="address" placeholder="Full address" {...field} />
                 )}
               />
             </div>
-            <CardFooter>
-              <Button type="submit" disabled={!form.formState.isValid || loading}>
-                {isEditMode ? 'Update Lead' : 'Create Lead'}
-              </Button>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="source">Source</Label>
+                <Controller
+                  control={form.control}
+                  name="source"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select source" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Website">Website</SelectItem>
+                        <SelectItem value="Referral">Referral</SelectItem>
+                        <SelectItem value="Cold Call">Cold Call</SelectItem>
+                        <SelectItem value="Social Media">Social Media</SelectItem>
+                        <SelectItem value="Event">Event</SelectItem>
+                        <SelectItem value="Advertisement">Advertisement</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.source && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.source.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="product">Product Interest</Label>
+                <Controller
+                  control={form.control}
+                  name="product"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Health Insurance">Health Insurance</SelectItem>
+                        <SelectItem value="Motor Insurance">Motor Insurance</SelectItem>
+                        <SelectItem value="Life Insurance">Life Insurance</SelectItem>
+                        <SelectItem value="Travel Insurance">Travel Insurance</SelectItem>
+                        <SelectItem value="Home Insurance">Home Insurance</SelectItem>
+                        <SelectItem value="Business Insurance">Business Insurance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.product && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.product.message}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Controller
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="New">New</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Qualified">Qualified</SelectItem>
+                        <SelectItem value="Not Interested">Not Interested</SelectItem>
+                        <SelectItem value="Converted">Converted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.status && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.status.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="priority">Priority</Label>
+                <Controller
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High">High</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="Low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.priority && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.priority.message}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="budget">Budget (₹)</Label>
+                <Controller
+                  control={form.control}
+                  name="budget"
+                  render={({ field }) => (
+                    <Input id="budget" type="text" placeholder="50000" {...field} />
+                  )}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="assignedTo">Assigned To</Label>
+                <Controller
+                  control={form.control}
+                  name="assignedTo"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Raj Malhotra">Raj Malhotra</SelectItem>
+                        <SelectItem value="Amit Kumar">Amit Kumar</SelectItem>
+                        <SelectItem value="Sunita Verma">Sunita Verma</SelectItem>
+                        <SelectItem value="Vikash Sharma">Vikash Sharma</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.assignedTo && (
+                  <p className="text-red-500 text-sm">{form.formState.errors.assignedTo.message}</p>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="additionalInfo">Additional Information</Label>
+              <Controller
+                control={form.control}
+                name="additionalInfo"
+                render={({ field }) => (
+                  <Textarea id="additionalInfo" placeholder="Any additional notes or requirements" {...field} />
+                )}
+              />
+            </div>
+            
+            <CardFooter className="px-0">
+              <div className="flex gap-4 w-full">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => navigate('/leads')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={!form.formState.isValid || createLeadMutation.isLoading || updateLeadMutation.isLoading}
+                  className="flex-1"
+                >
+                  {createLeadMutation.isLoading || updateLeadMutation.isLoading 
+                    ? 'Saving...' 
+                    : isEditMode ? 'Update Lead' : 'Create Lead'
+                  }
+                </Button>
+              </div>
             </CardFooter>
           </form>
         </CardContent>
