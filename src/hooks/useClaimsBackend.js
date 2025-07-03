@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { claimsBackendApi } from '../services/api/claimsApiBackend';
+import claimsBackendApi from '../services/api/claimsApiBackend';
 
 /**
  * React Query hooks for claims management with backend integration
