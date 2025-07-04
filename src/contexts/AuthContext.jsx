@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { API_CONFIG } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -18,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       try {
         const decoded = jwtDecode(token);
@@ -33,11 +34,11 @@ export const AuthProvider = ({ children }) => {
             flatPermissions: decoded.flatPermissions || []
           });
         } else {
-          localStorage.removeItem('token');
+          localStorage.removeItem('authToken');
         }
       } catch (error) {
         console.error('Invalid token:', error);
-        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
       }
     }
     setLoading(false);
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -53,18 +54,19 @@ export const AuthProvider = ({ children }) => {
 
       const data = await response.json();
 
-      if (response.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        const decoded = jwtDecode(data.token);
+      if (response.ok && data.success && data.data?.token) {
+        localStorage.setItem('authToken', data.data.token);
+        const decoded = jwtDecode(data.data.token);
         
+        const userData = data.data.user;
         setUser({
-          id: decoded.sub,
-          email: decoded.email,
-          name: decoded.name,
-          role: decoded.role,
-          branch: decoded.branch,
-          permissions: decoded.permissions || [],
-          flatPermissions: decoded.flatPermissions || []
+          id: userData._id || userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role?.name || userData.role,
+          branch: userData.branch || 'main',
+          permissions: data.data.permissions || userData.permissions || [],
+          flatPermissions: userData.flatPermissions || []
         });
 
         return { success: true };
@@ -78,23 +80,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('authToken');
     setUser(null);
   };
 
   const refreshPermissions = async () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (!token || !user) return;
 
     try {
-      const response = await fetch('/api/auth/refresh-permissions', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/refresh-permissions`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.token) {
-          localStorage.setItem('token', data.token);
+          localStorage.setItem('authToken', data.token);
           const decoded = jwtDecode(data.token);
           
           setUser(prevUser => ({

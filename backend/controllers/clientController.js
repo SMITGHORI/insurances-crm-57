@@ -23,20 +23,30 @@ exports.getAllClients = async (req, res) => {
       sortDirection = 'desc' 
     } = req.query;
 
-    const { role, _id: userId } = req.user;
+    const { role, _id: userId, isFallbackUser } = req.user;
     let filter = {};
 
-    // Role-based filtering
-    if (role === 'agent') {
-      filter.assignedAgentId = userId;
-    } else if (role === 'manager') {
-      // Managers see clients from their team/region
-      const teamAgents = await User.find({ managerId: userId }).select('_id');
-      const agentIds = teamAgents.map(agent => agent._id);
-      agentIds.push(userId); // Include manager's own clients
-      filter.assignedAgentId = { $in: agentIds };
+    // Handle fallback users - super admin sees all, agent sees none (no real data)
+    if (isFallbackUser) {
+      if (role?.name === 'super_admin' || role === 'super_admin') {
+        // Super admin fallback user sees all clients (no filter)
+      } else {
+        // Agent fallback user sees no clients (empty result)
+        filter._id = { $in: [] };
+      }
+    } else {
+      // Role-based filtering for database users
+      if (role?.name === 'agent' || role === 'agent') {
+        filter.assignedAgentId = userId;
+      } else if (role?.name === 'manager' || role === 'manager') {
+        // Managers see clients from their team/region
+        const teamAgents = await User.find({ managerId: userId }).select('_id');
+        const agentIds = teamAgents.map(agent => agent._id);
+        agentIds.push(userId); // Include manager's own clients
+        filter.assignedAgentId = { $in: agentIds };
+      }
+      // Super admin sees all clients (no additional filter)
     }
-    // Super admin sees all clients (no additional filter)
 
     // Apply search filter
     if (search) {
@@ -127,18 +137,30 @@ exports.getAllClients = async (req, res) => {
 exports.getClientById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, _id: userId } = req.user;
+    const { role, _id: userId, isFallbackUser } = req.user;
 
     let filter = { _id: id };
 
-    // Role-based filtering
-    if (role === 'agent') {
-      filter.assignedAgentId = userId;
-    } else if (role === 'manager') {
-      const teamAgents = await User.find({ managerId: userId }).select('_id');
-      const agentIds = teamAgents.map(agent => agent._id);
-      agentIds.push(userId);
-      filter.assignedAgentId = { $in: agentIds };
+    // Handle fallback users
+    if (isFallbackUser) {
+      if (role?.name === 'agent' || role === 'agent') {
+        // Agent fallback user cannot access any specific client
+        return res.status(404).json({
+          success: false,
+          message: 'Client not found or access denied'
+        });
+      }
+      // Super admin fallback user can access any client (no additional filter)
+    } else {
+      // Role-based filtering for database users
+      if (role?.name === 'agent' || role === 'agent') {
+        filter.assignedAgentId = userId;
+      } else if (role?.name === 'manager' || role === 'manager') {
+        const teamAgents = await User.find({ managerId: userId }).select('_id');
+        const agentIds = teamAgents.map(agent => agent._id);
+        agentIds.push(userId);
+        filter.assignedAgentId = { $in: agentIds };
+      }
     }
 
     const client = await Client.findOne(filter)

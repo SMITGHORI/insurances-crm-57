@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
-import LoginPage from './pages/LoginPage';
+import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import ClientsPage from './pages/ClientsPage';
 import AgentsPage from './pages/AgentsPage';
@@ -18,7 +19,7 @@ import AccessDenied from './components/AccessDenied';
 import { LoadingSpinner } from './components/ui/loading-spinner';
 import { useRealtimePermissions } from '@/hooks/useRealtimePermissions';
 
-function App() {
+function AppContent() {
   const { user, loading } = useAuth();
   
   // Initialize real-time permissions system
@@ -37,11 +38,14 @@ function App() {
 
   return (
     <div className="App">
-      <Router>
-        <AuthProvider>
-          <PermissionsProvider>
+      <PermissionsProvider>
             <Routes>
-              <Route path="/auth" element={<LoginPage />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
               <Route
                 path="/dashboard"
                 element={
@@ -125,10 +129,18 @@ function App() {
               <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="*" element={<AccessDenied />} />
             </Routes>
-          </PermissionsProvider>
-        </AuthProvider>
-      </Router>
+        </PermissionsProvider>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 

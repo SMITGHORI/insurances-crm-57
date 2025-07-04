@@ -13,13 +13,33 @@ class RateLimiterManager {
     try {
       if (process.env.REDIS_URL) {
         this.redisClient = redis.createClient({
-          url: process.env.REDIS_URL
+          url: process.env.REDIS_URL,
+          socket: {
+            connectTimeout: 5000,
+            lazyConnect: true
+          }
         });
-        await this.redisClient.connect();
+        
+        // Set up error handlers
+        this.redisClient.on('error', (err) => {
+          console.warn('Redis connection error:', err.message);
+          this.redisClient = null;
+        });
+        
+        // Try to connect with timeout
+        const connectPromise = this.redisClient.connect();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Redis connection timeout')), 5000)
+        );
+        
+        await Promise.race([connectPromise, timeoutPromise]);
         console.log('Redis connected for rate limiting');
+      } else {
+        console.log('No Redis URL provided, using memory store for rate limiting');
       }
     } catch (error) {
-      console.warn('Redis not available, using memory store for rate limiting');
+      console.warn('Redis not available, using memory store for rate limiting:', error.message);
+      this.redisClient = null;
     }
   }
 

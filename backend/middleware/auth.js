@@ -21,7 +21,66 @@ const authMiddleware = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Get user from database
+    // Check if this is a fallback user
+    if (decoded.userId === 'admin-fallback-id' || decoded.userId === 'agent-fallback-id') {
+      // Handle fallback authentication
+      let fallbackUser;
+      
+      if (decoded.userId === 'admin-fallback-id') {
+        fallbackUser = {
+          _id: 'admin-fallback-id',
+          email: 'admin@gmail.com',
+          firstName: 'Admin',
+          lastName: 'User',
+          role: {
+            name: 'super_admin',
+            displayName: 'Super Administrator',
+            permissions: [
+              { module: 'clients', actions: ['view', 'create', 'edit', 'delete', 'export', 'edit_sensitive'] },
+              { module: 'leads', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'quotations', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'policies', actions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'edit_sensitive'] },
+              { module: 'claims', actions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'edit_status'] },
+              { module: 'invoices', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'agents', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'activities', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'offers', actions: ['view', 'create', 'edit', 'delete', 'export'] },
+              { module: 'reports', actions: ['view', 'export'] },
+              { module: 'settings', actions: ['view', 'edit', 'export'] }
+            ]
+          },
+          branch: 'main',
+          isActive: true,
+          isFallbackUser: true // Flag to identify fallback users
+        };
+      } else if (decoded.userId === 'agent-fallback-id') {
+        fallbackUser = {
+          _id: 'agent-fallback-id',
+          email: 'agent@gmail.com',
+          firstName: 'Test',
+          lastName: 'Agent',
+          role: {
+            name: 'agent',
+            displayName: 'Sales Agent',
+            permissions: [
+              { module: 'clients', actions: ['view', 'create', 'edit'] },
+              { module: 'leads', actions: ['view', 'create', 'edit'] },
+              { module: 'quotations', actions: ['view', 'create', 'edit'] },
+              { module: 'policies', actions: ['view', 'create', 'edit'] },
+              { module: 'claims', actions: ['view', 'create', 'edit'] }
+            ]
+          },
+          branch: 'branch1',
+          isActive: true,
+          isFallbackUser: true
+        };
+      }
+      
+      req.user = fallbackUser;
+      return next();
+    }
+    
+    // Get user from database for regular authentication
     const user = await User.findById(decoded.userId)
       .select('-password')
       .populate('role');

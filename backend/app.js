@@ -62,10 +62,12 @@ app.use(rateLimiter.getGeneralLimiter());
 // Audit logging (after auth middleware in routes)
 app.use(auditLogger.middleware());
 
-// MongoDB connection
+// MongoDB connection - simplified Atlas configuration
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance_system', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 75000
 })
 .then(() => {
   console.log("MongoDB Atlas connected successfully");

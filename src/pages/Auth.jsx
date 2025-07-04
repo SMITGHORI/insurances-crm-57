@@ -13,16 +13,17 @@ const Auth = () => {
   const [email, setEmail] = useState('admin@ambainsurance.com');
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      console.log('User already authenticated, redirecting to dashboard');
+    console.log('Auth useEffect - isAuthenticated:', isAuthenticated, 'authLoading:', authLoading);
+    if (isAuthenticated && !authLoading) {
+      console.log('User authenticated, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,11 +37,9 @@ const Auth = () => {
         console.log('Login successful, showing success message');
         toast.success('Login successful! Redirecting to dashboard...');
         
-        // Small delay to show the success message
-        setTimeout(() => {
-          console.log('Navigating to dashboard');
-          navigate('/dashboard', { replace: true });
-        }, 1000);
+        // Immediate redirect after successful login
+        console.log('Navigating to dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         console.error('Login failed:', result.error);
         toast.error(result.error || 'Login failed');
