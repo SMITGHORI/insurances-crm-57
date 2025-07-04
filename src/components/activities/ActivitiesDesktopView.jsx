@@ -1,150 +1,151 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import {
-  Users, 
-  FileText, 
-  ShieldCheck, 
-  Star, 
-  Clock,
-  FileEdit,
-  AlertCircle,
-  Link as LinkIcon
-} from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, Database } from 'lucide-react';
 
 const ActivitiesDesktopView = ({ activities, loading, getActivityIcon, formatDate }) => {
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-amba-blue" />
-      </div>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Loading Activities from MongoDB
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-pulse space-y-4 w-full">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-12 bg-gray-200 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
-  
+
+  if (!activities || activities.length === 0) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Recent Activities
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12">
+            <AlertCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Activities Found</h3>
+            <p className="text-gray-500">
+              Activities will appear here when actions are performed in the system
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const getOperationColor = (operation) => {
+    switch (operation) {
+      case 'create': return 'bg-green-100 text-green-800';
+      case 'update': return 'bg-blue-100 text-blue-800';
+      case 'delete': return 'bg-red-100 text-red-800';
+      case 'read': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Activity</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead>Agent</TableHead>
-            <TableHead>Date & Time</TableHead>
-            <TableHead>Details</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {activities.length > 0 ? (
-            activities.map((activity) => (
-              <TableRow key={activity.id}>
-                <TableCell>
-                  <div className="flex items-center">
-                    <div className="bg-gray-100 rounded-full p-2 mr-3">
-                      {getActivityIcon(activity.type)}
-                    </div>
-                    <span>{activity.action}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="capitalize">{activity.type}</span>
-                </TableCell>
-                <TableCell>
-                  {activity.client ? (
-                    <div 
-                      className="flex items-center text-primary hover:underline cursor-pointer"
-                    >
-                      <Link 
-                        to={activity.clientId ? `/clients/${activity.clientId}` : "#"}
-                        className="flex items-center"
-                      >
-                        <LinkIcon className="h-4 w-4 mr-1" />
-                        {activity.client}
-                      </Link>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div 
-                    className="flex items-center text-primary hover:underline cursor-pointer"
-                  >
-                    <Link 
-                      to={activity.agentId ? `/agents/${activity.agentId}` : "#"}
-                      className="flex items-center"
-                    >
-                      <LinkIcon className="h-4 w-4 mr-1" />
-                      {activity.agent}
-                    </Link>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="text-sm">{formatDate(activity.time)}</div>
-                    <div className="text-xs text-gray-500">{activity.timestamp}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="text-sm">{activity.details}</div>
-                    <div className="flex flex-wrap gap-2 mt-1.5">
-                      {activity.policyId && (
-                        <Link
-                          to={`/policies/${activity.policyId}`}
-                          className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                        >
-                          View Policy
-                        </Link>
-                      )}
-                      {activity.claimId && (
-                        <Link
-                          to={`/claims/${activity.claimId}`}
-                          className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                        >
-                          View Claim
-                        </Link>
-                      )}
-                      {activity.quotationId && (
-                        <Link
-                          to={`/quotations/${activity.quotationId}`}
-                          className="text-xs text-amba-blue hover:text-amba-lightblue mr-2"
-                        >
-                          View Quotation
-                        </Link>
-                      )}
-                      {activity.leadId && (
-                        <Link
-                          to={`/leads/${activity.leadId}`}
-                          className="text-xs text-amba-blue hover:text-amba-lightblue"
-                        >
-                          View Lead
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </TableCell>
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-5 w-5" />
+          Recent Activities ({activities.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Entity</TableHead>
+                <TableHead>Operation</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Date</TableHead>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
-                No activities found matching your filters
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            </TableHeader>
+            <TableBody>
+              {activities.map((activity) => (
+                <TableRow key={activity._id || activity.activityId || activity.id}>
+                  <TableCell>
+                    {getActivityIcon(activity.type)}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {activity.description || activity.action}
+                      </p>
+                      {activity.details && (
+                        <p className="text-xs text-gray-500 truncate max-w-xs">
+                          {activity.details}
+                        </p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {activity.entityName || 'Unknown'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.entityType}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      className={`text-xs ${getOperationColor(activity.operation)}`}
+                      variant="secondary"
+                    >
+                      {activity.operation}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="text-sm font-medium">
+                        {activity.userName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {activity.userRole}
+                      </p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm">
+                      {formatDate(activity.createdAt)}
+                    </p>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {/* Real-time data indicator */}
+        <div className="mt-4 pt-4 border-t text-center">
+          <p className="text-xs text-gray-500">
+            Real-time data from MongoDB • Last updated: {new Date().toLocaleTimeString()}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,10 +1,11 @@
 
 /**
  * Recent Activities API service for backend integration
- * Optimized for MongoDB/Node.js/Express backend
+ * Fully integrated with MongoDB/Node.js/Express backend
  */
 
 import { API_CONFIG, API_ENDPOINTS, HTTP_STATUS } from '../../config/api';
+import { toast } from 'sonner';
 
 class RecentActivitiesApi {
   constructor() {
@@ -34,81 +35,14 @@ class RecentActivitiesApi {
   }
 
   /**
-   * Get sample activities data (offline fallback)
-   */
-  getSampleData() {
-    const stored = localStorage.getItem('activitiesData');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    
-    // Sample activities data
-    const sampleData = [
-      {
-        id: '1',
-        action: 'New client registered',
-        client: 'Vivek Patel',
-        clientId: '12',
-        time: '2025-05-20T10:30:00',
-        timestamp: '2 hours ago',
-        type: 'client',
-        agent: 'Rahul Sharma',
-        agentId: '3',
-        details: 'Client registered with email vivek.patel@email.com',
-        createdAt: '2025-05-20T10:30:00',
-        updatedAt: '2025-05-20T10:30:00'
-      },
-      {
-        id: '2',
-        action: 'Policy issued',
-        client: 'Priya Desai',
-        clientId: '8',
-        time: '2025-05-20T08:15:00',
-        timestamp: '4 hours ago',
-        type: 'policy',
-        agent: 'Neha Gupta',
-        agentId: '5',
-        policyNumber: 'POL-2025-0042',
-        policyId: '42',
-        details: 'Health insurance policy issued',
-        createdAt: '2025-05-20T08:15:00',
-        updatedAt: '2025-05-20T08:15:00'
-      },
-      {
-        id: '3',
-        action: 'Claim approved',
-        client: 'Arjun Singh',
-        clientId: '15',
-        time: '2025-05-20T07:25:00',
-        timestamp: '5 hours ago',
-        type: 'claim',
-        agent: 'Rahul Sharma',
-        agentId: '3',
-        claimId: '28',
-        claimNumber: 'CLM-2025-0028',
-        details: 'Claim approved for ₹45,000',
-        createdAt: '2025-05-20T07:25:00',
-        updatedAt: '2025-05-20T07:25:00'
-      }
-    ];
-    
-    localStorage.setItem('activitiesData', JSON.stringify(sampleData));
-    return sampleData;
-  }
-
-  /**
    * Make HTTP request with error handling
    */
   async makeRequest(endpoint, options = {}) {
-    // Check backend availability first
-    if (!await this.checkBackendHealth()) {
-      throw new Error('Backend unavailable - using offline mode');
-    }
-
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         ...options.headers,
       },
       signal: AbortSignal.timeout(this.timeout),
@@ -116,13 +50,16 @@ class RecentActivitiesApi {
     };
 
     try {
+      console.log(`Making MongoDB request to: ${url}`);
       const response = await fetch(url, config);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('MongoDB response received:', data);
+      return data;
     } catch (error) {
       console.error(`API request failed: ${error.message}`);
       throw error;
@@ -130,7 +67,7 @@ class RecentActivitiesApi {
   }
 
   /**
-   * Get all activities with filtering and pagination
+   * Get all activities with filtering and pagination from MongoDB
    */
   async getActivities(params = {}) {
     try {
@@ -169,31 +106,21 @@ class RecentActivitiesApi {
       const response = await this.makeRequest(endpoint);
       
       return {
-        activities: response.data || response.activities || [],
-        total: response.total || 0,
-        page: response.page || 1,
-        totalPages: response.totalPages || 1,
+        activities: response.data?.activities || response.activities || [],
+        total: response.data?.pagination?.totalCount || response.total || 0,
+        page: response.data?.pagination?.currentPage || response.page || 1,
+        totalPages: response.data?.pagination?.totalPages || response.totalPages || 1,
         success: true
       };
     } catch (error) {
-      console.log('API not available, using offline mode with sample data');
-      this.isOfflineMode = true;
-      
-      const sampleActivities = this.getSampleData();
-      
-      return {
-        activities: sampleActivities,
-        total: sampleActivities.length,
-        page: 1,
-        totalPages: 1,
-        success: true,
-        offline: true
-      };
+      console.error('Failed to fetch activities from MongoDB:', error);
+      toast.error('Failed to load activities from database');
+      throw error;
     }
   }
 
   /**
-   * Get activity by ID
+   * Get activity by ID from MongoDB
    */
   async getActivityById(activityId) {
     try {
@@ -205,26 +132,14 @@ class RecentActivitiesApi {
         success: true
       };
     } catch (error) {
-      console.log('API not available, using offline mode');
-      this.isOfflineMode = true;
-      
-      const sampleActivities = this.getSampleData();
-      const activity = sampleActivities.find(act => act.id === activityId);
-      
-      if (!activity) {
-        throw new Error('Activity not found');
-      }
-      
-      return {
-        activity,
-        success: true,
-        offline: true
-      };
+      console.error('Failed to fetch activity from MongoDB:', error);
+      toast.error('Failed to load activity details');
+      throw error;
     }
   }
 
   /**
-   * Create new activity
+   * Create new activity in MongoDB
    */
   async createActivity(activityData) {
     try {
@@ -234,41 +149,30 @@ class RecentActivitiesApi {
         body: JSON.stringify(activityData),
       });
       
+      // Trigger real-time update
+      window.dispatchEvent(new CustomEvent('activity-created', { detail: response.data }));
+      
       return {
         activity: response.data || response,
         success: true
       };
     } catch (error) {
-      console.log('API not available, creating activity in offline mode');
-      this.isOfflineMode = true;
-      
-      // Create activity locally
-      const newActivity = {
-        id: `ACT_${Date.now()}`,
-        ...activityData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      const existingActivities = this.getSampleData();
-      const updatedActivities = [newActivity, ...existingActivities];
-      localStorage.setItem('activitiesData', JSON.stringify(updatedActivities));
-      
-      return {
-        activity: newActivity,
-        success: true,
-        offline: true
-      };
+      console.error('Failed to create activity in MongoDB:', error);
+      toast.error('Failed to create activity');
+      throw error;
     }
   }
 
   /**
-   * Get activity statistics
+   * Get activity statistics from MongoDB
    */
   async getActivityStats(params = {}) {
     try {
       const queryParams = new URLSearchParams();
       
+      if (params.timeframe) {
+        queryParams.append('timeframe', params.timeframe);
+      }
       if (params.startDate) {
         queryParams.append('startDate', params.startDate);
       }
@@ -287,29 +191,152 @@ class RecentActivitiesApi {
         success: true
       };
     } catch (error) {
-      console.log('API not available, calculating stats from sample data');
-      this.isOfflineMode = true;
+      console.error('Failed to fetch activity stats from MongoDB:', error);
+      toast.error('Failed to load activity statistics');
+      throw error;
+    }
+  }
+
+  /**
+   * Search activities in MongoDB
+   */
+  async searchActivities(query, params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
       
-      const sampleActivities = this.getSampleData();
-      
-      // Calculate basic stats
-      const stats = {
-        total: sampleActivities.length,
-        clients: sampleActivities.filter(act => act.type === 'client').length,
-        policies: sampleActivities.filter(act => act.type === 'policy').length,
-        claims: sampleActivities.filter(act => act.type === 'claim').length,
-        leads: sampleActivities.filter(act => act.type === 'lead').length,
-        today: sampleActivities.filter(act => {
-          const today = new Date().toDateString();
-          return new Date(act.time).toDateString() === today;
-        }).length,
-      };
+      if (params.limit) queryParams.append('limit', params.limit);
+      if (params.type && params.type !== 'all') queryParams.append('type', params.type);
+      if (params.agentId && params.agentId !== 'all') queryParams.append('agentId', params.agentId);
+
+      const endpoint = `${API_ENDPOINTS.ACTIVITIES}/search/${encodeURIComponent(query)}?${queryParams.toString()}`;
+      const response = await this.makeRequest(endpoint);
       
       return {
-        stats,
-        success: true,
-        offline: true
+        activities: response.data || response,
+        success: true
       };
+    } catch (error) {
+      console.error('Failed to search activities in MongoDB:', error);
+      toast.error('Failed to search activities');
+      throw error;
+    }
+  }
+
+  /**
+   * Get filter values from MongoDB
+   */
+  async getFilterValues() {
+    try {
+      const endpoint = `${API_ENDPOINTS.ACTIVITIES}/filters`;
+      const response = await this.makeRequest(endpoint);
+      
+      return {
+        filters: response.data || response,
+        success: true
+      };
+    } catch (error) {
+      console.error('Failed to fetch filter values from MongoDB:', error);
+      return {
+        filters: {
+          types: ['client', 'policy', 'claim', 'lead', 'quotation'],
+          users: [],
+          entityTypes: []
+        },
+        success: false
+      };
+    }
+  }
+
+  /**
+   * Archive expired activities in MongoDB
+   */
+  async archiveExpiredActivities() {
+    try {
+      const endpoint = `${API_ENDPOINTS.ACTIVITIES}/archive-expired`;
+      const response = await this.makeRequest(endpoint, {
+        method: 'POST'
+      });
+      
+      return {
+        archivedCount: response.data?.archivedCount || 0,
+        success: true
+      };
+    } catch (error) {
+      console.error('Failed to archive activities in MongoDB:', error);
+      toast.error('Failed to archive activities');
+      throw error;
+    }
+  }
+
+  /**
+   * Get activities by entity from MongoDB
+   */
+  async getActivitiesByEntity(entityType, entityId, params = {}) {
+    try {
+      const queryParams = new URLSearchParams({
+        entityType,
+        entityId,
+        ...params
+      });
+
+      const endpoint = `${API_ENDPOINTS.ACTIVITIES}?${queryParams.toString()}`;
+      const response = await this.makeRequest(endpoint);
+      
+      return {
+        activities: response.data?.activities || response.activities || [],
+        total: response.data?.pagination?.totalCount || response.total || 0,
+        success: true
+      };
+    } catch (error) {
+      console.error(`Failed to fetch ${entityType} activities from MongoDB:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recent activities (last 24 hours) from MongoDB
+   */
+  async getRecentActivities(limit = 10) {
+    try {
+      const queryParams = new URLSearchParams({
+        limit: limit.toString(),
+        dateFilter: 'today',
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+
+      const endpoint = `${API_ENDPOINTS.ACTIVITIES}?${queryParams.toString()}`;
+      const response = await this.makeRequest(endpoint);
+      
+      return response.data?.activities || response.activities || [];
+    } catch (error) {
+      console.error('Failed to fetch recent activities from MongoDB:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Real-time activity logging helper
+   */
+  async logUserActivity(action, entityType, entityId, entityName, details = '') {
+    try {
+      const activityData = {
+        action,
+        type: entityType,
+        operation: 'create',
+        description: `${action} - ${entityType}`,
+        details,
+        entityType,
+        entityId,
+        entityName,
+        timestamp: new Date().toISOString(),
+        userId: localStorage.getItem('userId'),
+        userName: localStorage.getItem('userName') || 'Unknown User'
+      };
+
+      return await this.createActivity(activityData);
+    } catch (error) {
+      console.error('Failed to log user activity:', error);
     }
   }
 }

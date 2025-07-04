@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
@@ -8,7 +8,10 @@ import {
   Star,
   Clock,
   AlertCircle,
-  TrendingUp
+  TrendingUp,
+  Database,
+  Wifi,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -20,7 +23,7 @@ import { useOptimizedQuery } from '@/hooks/useOptimizedQuery';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useDebouncedValue } from '@/hooks/useDebouncedSearch';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
-import { recentActivitiesApi } from '@/services/api/recentActivitiesApi';
+import { useActivities, useRealtimeActivities } from '@/hooks/useRecentActivities';
 import AdvancedActivityFilters from '@/components/activities/AdvancedActivityFilters';
 import ActivityAnalytics from '@/components/activities/ActivityAnalytics';
 import { Button } from '@/components/ui/button';
@@ -51,15 +54,13 @@ const RecentActivities = () => {
     limit: 100
   }), [debouncedSearchQuery, activeTab, typeFilter, dateFilter, agentFilter]);
 
-  // Use optimized React Query for better performance
-  const { data: activitiesData, isLoading, error } = useOptimizedQuery({
-    queryKey: ['activities', queryParams],
-    queryFn: () => recentActivitiesApi.getActivities(queryParams),
-    staleTime: 30 * 1000, // 30 seconds
-    enabled: true,
-  });
+  // Use MongoDB-connected activities hook
+  const { data: activitiesData, isLoading, error, refetch } = useActivities(queryParams);
 
-  // Memoized activities data
+  // Set up real-time updates
+  const { refreshActivities } = useRealtimeActivities();
+
+  // Memoized activities data from MongoDB
   const activities = useMemo(() => activitiesData?.activities || [], [activitiesData]);
 
   // Memoized filtered activities
@@ -67,9 +68,10 @@ const RecentActivities = () => {
     return activities.filter(activity => {
       const matchesSearch = 
         debouncedSearchQuery === '' ||
+        (activity.description?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
         (activity.action?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
-        (activity.client?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
-        (activity.agent?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
+        (activity.userName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
+        (activity.entityName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '') ||
         (activity.details?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || '');
       
       let matchesTab = true;
@@ -81,11 +83,44 @@ const RecentActivities = () => {
     });
   }, [activities, debouncedSearchQuery, activeTab]);
 
-  // Memoized unique agents
+  // Memoized unique agents from MongoDB data
   const uniqueAgents = useMemo(() => 
-    [...new Set(activities.map(activity => activity.agent))].filter(Boolean).sort(),
+    [...new Set(activities.map(activity => activity.userName))].filter(Boolean).sort(),
     [activities]
   );
+
+  // Set up real-time listeners for cross-module updates
+  useEffect(() => {
+    console.log('Setting up real-time MongoDB listeners for activities');
+    
+    const handleModuleUpdate = (event) => {
+      console.log(`Activities module received ${event.type} event, refreshing data`);
+      toast.info('Activities updated', {
+        description: 'Real-time sync from MongoDB'
+      });
+      refreshActivities();
+    };
+
+    const events = [
+      'client-updated', 'client-created', 'client-deleted',
+      'policy-updated', 'policy-created', 'policy-deleted',
+      'claim-updated', 'claim-created', 'claim-deleted',
+      'lead-updated', 'lead-created', 'lead-deleted',
+      'quotation-updated', 'quotation-created', 'quotation-deleted',
+      'offer-updated', 'offer-created', 'offer-deleted',
+      'broadcast-sent', 'broadcast-created'
+    ];
+
+    events.forEach(eventType => {
+      window.addEventListener(eventType, handleModuleUpdate);
+    });
+
+    return () => {
+      events.forEach(eventType => {
+        window.removeEventListener(eventType, handleModuleUpdate);
+      });
+    };
+  }, [refreshActivities]);
 
   // Memoized callback functions
   const handleResetFilters = useCallback(() => {
@@ -96,6 +131,18 @@ const RecentActivities = () => {
     setAgentFilter('all');
     toast.success('Filters have been reset');
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      console.log('Manual refresh of activities from MongoDB');
+      toast.loading('Refreshing activities from MongoDB...');
+      await refetch();
+      toast.success('Activities refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh activities:', error);
+      toast.error('Failed to refresh activities');
+    }
+  }, [refetch]);
 
   const getActivityIcon = useCallback((type) => {
     switch (type) {
@@ -143,10 +190,41 @@ const RecentActivities = () => {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
+  // Show MongoDB connection error
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center py-12">
+          <Database className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">MongoDB Connection Error</h2>
+          <p className="text-gray-600 mb-6">
+            Unable to connect to MongoDB for activities data.
+          </p>
+          <Button onClick={handleRefresh} className="mr-4">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry Connection
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
       <div className="flex justify-between items-center mb-4 md:mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">Recent Activities</h1>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Recent Activities</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-1 text-green-600">
+              <Wifi className="h-4 w-4" />
+              <span className="text-sm">Connected to MongoDB</span>
+            </div>
+            <div className="flex items-center gap-1 text-blue-600">
+              <Database className="h-4 w-4" />
+              <span className="text-sm">Real-time sync enabled</span>
+            </div>
+          </div>
+        </div>
         <div className="flex space-x-2">
           <Button
             variant={showAnalytics ? "default" : "outline"}
@@ -156,8 +234,14 @@ const RecentActivities = () => {
             <TrendingUp className="mr-2 h-4 w-4" />
             {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
           </Button>
+          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-gray-500">Render time: {renderTime}ms</div>
+            <div className="text-xs text-gray-500 flex items-center">
+              Render: {renderTime}ms
+            </div>
           )}
         </div>
       </div>
@@ -182,13 +266,7 @@ const RecentActivities = () => {
 
           <ActivityTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-          {error ? (
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="p-8 text-center">
-                <p className="text-red-600">Error loading activities: {error.message}</p>
-              </div>
-            </div>
-          ) : isMobile ? (
+          {isMobile ? (
             <ActivitiesMobileView 
               activities={filteredActivities} 
               loading={isLoading} 
@@ -203,6 +281,12 @@ const RecentActivities = () => {
           )}
         </>
       )}
+
+      {/* Real-time Data Footer */}
+      <div className="text-center text-sm text-gray-500 py-4 border-t mt-6">
+        Connected to MongoDB • {filteredActivities.length} activities • 
+        Real-time sync enabled • Last updated: {new Date().toLocaleTimeString()}
+      </div>
     </div>
   );
 };
