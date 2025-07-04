@@ -5,7 +5,7 @@ import { dashboardApi } from '../services/api/dashboardApi';
 import useWebSocket from './useWebSocket';
 
 /**
- * Hook for dashboard overview data with real-time updates
+ * Hook for dashboard overview data with real-time MongoDB updates
  */
 export const useDashboardOverview = () => {
   const queryClient = useQueryClient();
@@ -15,22 +15,39 @@ export const useDashboardOverview = () => {
     queryKey: ['dashboard', 'overview'],
     queryFn: () => dashboardApi.getDashboardOverview(),
     staleTime: 1000 * 60 * 2, // 2 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Error fetching dashboard overview from MongoDB:', error);
+    },
   });
 
-  // Listen for real-time updates
+  // Listen for real-time updates from all modules
   useEffect(() => {
-    const handleDashboardRefresh = () => {
+    const handleModuleUpdate = () => {
+      console.log('Module update detected, refreshing dashboard overview');
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'overview'] });
     };
 
-    window.addEventListener('dashboard-refresh', handleDashboardRefresh);
-    return () => window.removeEventListener('dashboard-refresh', handleDashboardRefresh);
+    const events = [
+      'client-updated', 'policy-updated', 'claim-updated', 
+      'lead-updated', 'quotation-updated', 'offer-updated', 
+      'broadcast-sent', 'dashboard-refresh'
+    ];
+
+    events.forEach(event => {
+      window.addEventListener(event, handleModuleUpdate);
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleModuleUpdate);
+      });
+    };
   }, [queryClient]);
 
   // Auto-refresh on WebSocket messages
   useEffect(() => {
-    if (lastMessage?.type === 'dashboard-update') {
+    if (lastMessage?.type === 'dashboard-update' || lastMessage?.type === 'module-update') {
       query.refetch();
     }
   }, [lastMessage, query]);
@@ -39,7 +56,7 @@ export const useDashboardOverview = () => {
 };
 
 /**
- * Hook for recent activities with real-time updates
+ * Hook for recent activities with real-time MongoDB updates
  */
 export const useRecentActivities = (limit = 10) => {
   const queryClient = useQueryClient();
@@ -48,18 +65,39 @@ export const useRecentActivities = (limit = 10) => {
   const query = useQuery({
     queryKey: ['dashboard', 'activities', limit],
     queryFn: () => dashboardApi.getRecentActivities(limit),
-    staleTime: 1000 * 60 * 1, // 1 minute
-    refetchOnWindowFocus: false
+    staleTime: 1000 * 30, // 30 seconds
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Error fetching recent activities from MongoDB:', error);
+    },
   });
 
-  // Listen for entity updates
+  // Listen for entity updates from all modules
   useEffect(() => {
-    const handleEntityUpdate = (event) => {
+    const handleEntityUpdate = () => {
+      console.log('Entity update detected, refreshing activities');
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'activities'] });
     };
 
-    window.addEventListener('entity-updated', handleEntityUpdate);
-    return () => window.removeEventListener('entity-updated', handleEntityUpdate);
+    const events = [
+      'client-created', 'client-updated', 'client-deleted',
+      'policy-created', 'policy-updated', 'policy-deleted',
+      'claim-created', 'claim-updated', 'claim-deleted',
+      'lead-created', 'lead-updated', 'lead-deleted',
+      'quotation-created', 'quotation-updated', 'quotation-deleted',
+      'offer-created', 'offer-updated', 'offer-deleted',
+      'broadcast-created', 'broadcast-sent'
+    ];
+
+    events.forEach(event => {
+      window.addEventListener(event, handleEntityUpdate);
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleEntityUpdate);
+      });
+    };
   }, [queryClient]);
 
   // Auto-refresh on WebSocket messages
@@ -73,7 +111,7 @@ export const useRecentActivities = (limit = 10) => {
 };
 
 /**
- * Hook for performance metrics
+ * Hook for performance metrics from MongoDB
  */
 export const usePerformanceMetrics = (period = '30d') => {
   const queryClient = useQueryClient();
@@ -82,12 +120,15 @@ export const usePerformanceMetrics = (period = '30d') => {
     queryKey: ['dashboard', 'performance', period],
     queryFn: () => dashboardApi.getPerformanceMetrics(period),
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Error fetching performance metrics from MongoDB:', error);
+    },
   });
 };
 
 /**
- * Hook for charts data with real-time updates
+ * Hook for charts data with real-time MongoDB updates
  */
 export const useChartsData = (type = 'all') => {
   const queryClient = useQueryClient();
@@ -97,8 +138,36 @@ export const useChartsData = (type = 'all') => {
     queryKey: ['dashboard', 'charts', type],
     queryFn: () => dashboardApi.getChartsData(type),
     staleTime: 1000 * 60 * 3, // 3 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Error fetching charts data from MongoDB:', error);
+    },
   });
+
+  // Listen for data changes that affect charts
+  useEffect(() => {
+    const handleDataChange = () => {
+      console.log('Data change detected, refreshing charts');
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'charts'] });
+    };
+
+    const events = [
+      'policy-created', 'policy-updated',
+      'claim-created', 'claim-updated', 
+      'lead-created', 'lead-updated',
+      'quotation-created', 'quotation-updated'
+    ];
+
+    events.forEach(event => {
+      window.addEventListener(event, handleDataChange);
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleDataChange);
+      });
+    };
+  }, [queryClient]);
 
   // Auto-refresh on WebSocket messages
   useEffect(() => {
@@ -111,7 +180,7 @@ export const useChartsData = (type = 'all') => {
 };
 
 /**
- * Hook for quick actions with real-time updates
+ * Hook for quick actions with real-time MongoDB updates
  */
 export const useQuickActions = () => {
   const queryClient = useQueryClient();
@@ -120,9 +189,37 @@ export const useQuickActions = () => {
   const query = useQuery({
     queryKey: ['dashboard', 'quickActions'],
     queryFn: () => dashboardApi.getQuickActions(),
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    refetchOnWindowFocus: false
+    staleTime: 1000 * 60 * 1, // 1 minute
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Error fetching quick actions from MongoDB:', error);
+    },
   });
+
+  // Listen for updates that affect quick actions
+  useEffect(() => {
+    const handleQuickActionUpdate = () => {
+      console.log('Quick action update detected, refreshing');
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'quickActions'] });
+    };
+
+    const events = [
+      'claim-created', 'claim-updated',
+      'policy-updated', 'policy-expiring',
+      'lead-updated', 'lead-overdue',
+      'quotation-created', 'quotation-updated'
+    ];
+
+    events.forEach(event => {
+      window.addEventListener(event, handleQuickActionUpdate);
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, handleQuickActionUpdate);
+      });
+    };
+  }, [queryClient]);
 
   // Auto-refresh on WebSocket messages
   useEffect(() => {
@@ -135,13 +232,15 @@ export const useQuickActions = () => {
 };
 
 /**
- * Hook for refreshing all dashboard data
+ * Hook for refreshing all dashboard data from MongoDB
  */
 export const useRefreshDashboard = () => {
   const queryClient = useQueryClient();
 
   const refreshDashboard = async () => {
     try {
+      console.log('Manually refreshing all dashboard data from MongoDB');
+      
       // Invalidate all dashboard queries to trigger refetch
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       
@@ -153,13 +252,13 @@ export const useRefreshDashboard = () => {
         queryClient.setQueryData(['dashboard', 'overview'], data.overview);
       }
       if (data.activities) {
-        queryClient.setQueryData(['dashboard', 'activities'], data.activities);
+        queryClient.setQueryData(['dashboard', 'activities', 10], data.activities);
       }
       if (data.metrics) {
-        queryClient.setQueryData(['dashboard', 'performance'], data.metrics);
+        queryClient.setQueryData(['dashboard', 'performance', '30d'], data.metrics);
       }
       if (data.charts) {
-        queryClient.setQueryData(['dashboard', 'charts'], data.charts);
+        queryClient.setQueryData(['dashboard', 'charts', 'all'], data.charts);
       }
       if (data.quickActions) {
         queryClient.setQueryData(['dashboard', 'quickActions'], data.quickActions);
@@ -167,7 +266,7 @@ export const useRefreshDashboard = () => {
 
       return data;
     } catch (error) {
-      console.error('Failed to refresh dashboard:', error);
+      console.error('Failed to refresh dashboard from MongoDB:', error);
       throw error;
     }
   };
@@ -176,7 +275,7 @@ export const useRefreshDashboard = () => {
 };
 
 /**
- * Combined hook for all dashboard data with real-time updates
+ * Combined hook for all dashboard data with real-time MongoDB updates
  */
 export const useDashboardData = () => {
   const overview = useDashboardOverview();
@@ -187,6 +286,20 @@ export const useDashboardData = () => {
 
   const isLoading = overview.isLoading || activities.isLoading || metrics.isLoading || charts.isLoading || quickActions.isLoading;
   const isError = overview.isError || activities.isError || metrics.isError || charts.isError || quickActions.isError;
+
+  // Set up real-time module integration
+  useEffect(() => {
+    const subscription = dashboardApi.subscribeToModuleUpdates(() => {
+      console.log('Real-time update received, refreshing dashboard data');
+      overview.refetch();
+      activities.refetch();
+      metrics.refetch();
+      charts.refetch();
+      quickActions.refetch();
+    });
+
+    return subscription;
+  }, [overview, activities, metrics, charts, quickActions]);
 
   return {
     overview: overview.data,

@@ -1,250 +1,186 @@
 
-import React, { useState, Suspense } from 'react';
-import { RefreshCw, TrendingUp, BarChart3, Users, Calendar, Bell, Download } from 'lucide-react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { 
-  useDashboardOverview, 
-  useRecentActivities, 
-  usePerformanceMetrics,
-  useChartsData,
-  useQuickActions,
-  useRefreshDashboard 
-} from '@/hooks/useDashboard';
+import { RefreshCw, Database, Wifi } from 'lucide-react';
+import { toast } from 'sonner';
 import DashboardStats from '@/components/dashboard/DashboardStats';
-import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import RecentActivities from '@/components/dashboard/RecentActivities';
+import QuickActions from '@/components/dashboard/QuickActions';
 import DashboardNotifications from '@/components/dashboard/DashboardNotifications';
 import DashboardTasks from '@/components/dashboard/DashboardTasks';
-import QuickActions from '@/components/dashboard/QuickActions';
-import RecentActivities from '@/components/dashboard/RecentActivities';
+import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import { useDashboardData, useRefreshDashboard } from '@/hooks/useDashboard';
 
-const DashboardContent = ({ isMobile }) => {
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+const Dashboard = () => {
+  console.log('Dashboard component rendering with MongoDB integration');
   
-  // Real-time data hooks
-  const { data: overview, isLoading: overviewLoading, refetch: refetchOverview } = useDashboardOverview();
-  const { data: activities, isLoading: activitiesLoading } = useRecentActivities(10);
-  const { data: metrics, isLoading: metricsLoading } = usePerformanceMetrics('30d');
-  const { data: charts, isLoading: chartsLoading } = useChartsData('all');
-  const { data: quickActions, isLoading: quickActionsLoading } = useQuickActions();
+  const {
+    overview,
+    activities,
+    metrics,
+    charts,
+    quickActions,
+    isLoading,
+    isError,
+    refetch
+  } = useDashboardData();
+
   const { refreshDashboard } = useRefreshDashboard();
 
+  // Set up real-time listeners for module updates
+  useEffect(() => {
+    console.log('Setting up real-time MongoDB listeners for dashboard');
+    
+    const handleModuleUpdate = (event) => {
+      console.log(`Dashboard received ${event.type} event, refreshing data`);
+      toast.info('Dashboard data updated', {
+        description: 'Real-time sync from database'
+      });
+      
+      // Refresh relevant sections based on the update
+      switch (event.type) {
+        case 'client-updated':
+        case 'lead-updated':
+          refetch.overview();
+          refetch.activities();
+          break;
+        case 'policy-updated':
+        case 'claim-updated':
+          refetch.overview();
+          refetch.charts();
+          refetch.quickActions();
+          break;
+        case 'quotation-updated':
+          refetch.overview();
+          refetch.activities();
+          break;
+        case 'offer-updated':
+        case 'broadcast-sent':
+          refetch.metrics();
+          refetch.activities();
+          break;
+        default:
+          // Refresh all data for unknown events
+          Object.values(refetch).forEach(fn => fn());
+      }
+    };
+
+    // Listen to all module update events
+    const events = [
+      'client-updated', 'client-created', 'client-deleted',
+      'policy-updated', 'policy-created', 'policy-deleted',
+      'claim-updated', 'claim-created', 'claim-deleted',
+      'lead-updated', 'lead-created', 'lead-deleted',
+      'quotation-updated', 'quotation-created', 'quotation-deleted',
+      'offer-updated', 'offer-created', 'offer-deleted',
+      'broadcast-sent', 'broadcast-created'
+    ];
+
+    events.forEach(eventType => {
+      window.addEventListener(eventType, handleModuleUpdate);
+    });
+
+    return () => {
+      events.forEach(eventType => {
+        window.removeEventListener(eventType, handleModuleUpdate);
+      });
+    };
+  }, [refetch]);
+
   const handleRefresh = async () => {
-    setRefreshing(true);
     try {
+      console.log('Manual dashboard refresh triggered');
+      toast.loading('Refreshing dashboard data from MongoDB...');
       await refreshDashboard();
+      toast.success('Dashboard refreshed successfully');
     } catch (error) {
-      console.error('Failed to refresh dashboard:', error);
-    } finally {
-      setRefreshing(false);
+      console.error('Dashboard refresh failed:', error);
+      toast.error('Failed to refresh dashboard data');
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Welcome back! Here's what's happening with your business today.
+  if (isError) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="text-center py-12">
+          <Database className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Database Connection Error</h2>
+          <p className="text-gray-600 mb-6">
+            Unable to connect to MongoDB. Please check your backend connection.
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Analytics
-          </Button>
-          <Button 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="bg-blue-600 hover:bg-blue-700"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button onClick={handleRefresh} className="mr-4">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry Connection
           </Button>
         </div>
       </div>
+    );
+  }
 
-      {/* Stats Cards */}
+  return (
+    <div className="container mx-auto px-4 py-6 space-y-6">
+      {/* Header with real-time status */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-1 text-green-600">
+              <Wifi className="h-4 w-4" />
+              <span className="text-sm">Connected to MongoDB</span>
+            </div>
+            <div className="flex items-center gap-1 text-blue-600">
+              <Database className="h-4 w-4" />
+              <span className="text-sm">Real-time sync enabled</span>
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleRefresh} variant="outline" disabled={isLoading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh Data
+        </Button>
+      </div>
+
+      {/* Stats Overview from MongoDB */}
       <DashboardStats 
         overview={overview} 
         metrics={metrics} 
-        isLoading={overviewLoading || metricsLoading} 
+        isLoading={isLoading} 
       />
 
-      {/* Main Dashboard Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="activities">Activities</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-        </TabsList>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Charts and Analytics */}
+        <div className="lg:col-span-2 space-y-6">
+          <DashboardCharts 
+            data={charts} 
+            isLoading={isLoading} 
+          />
+        </div>
 
-        <TabsContent value="overview" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Charts */}
-            <div className="lg:col-span-2">
-              <DashboardCharts 
-                data={charts} 
-                isLoading={chartsLoading}
-              />
-            </div>
+        {/* Right Column - Activities and Actions */}
+        <div className="space-y-6">
+          <QuickActions 
+            data={quickActions} 
+            isLoading={isLoading} 
+          />
+          
+          <RecentActivities 
+            data={activities} 
+            isLoading={isLoading} 
+          />
+        </div>
+      </div>
 
-            {/* Right Column - Quick Actions */}
-            <div className="space-y-6">
-              <QuickActions 
-                data={quickActions} 
-                isLoading={quickActionsLoading}
-              />
-            </div>
-          </div>
-        </TabsContent>
+      {/* Bottom Row - Notifications and Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DashboardNotifications />
+        <DashboardTasks />
+      </div>
 
-        <TabsContent value="analytics" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <Card className="border-none shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Performance Metrics
-                </CardTitle>
-                <CardDescription>
-                  Key performance indicators for the last 30 days
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {metricsLoading ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{metrics?.newClients || 0}</div>
-                      <div className="text-sm text-gray-600">New Clients</div>
-                    </div>
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">₹{(metrics?.totalRevenue || 0).toLocaleString()}</div>
-                      <div className="text-sm text-gray-600">Revenue</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{metrics?.conversionRate || 0}%</div>
-                      <div className="text-sm text-gray-600">Conversion Rate</div>
-                    </div>
-                    <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-2xl font-bold text-orange-600">{metrics?.customerSatisfaction || 0}%</div>
-                      <div className="text-sm text-gray-600">Satisfaction</div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Advanced Analytics
-                </CardTitle>
-                <CardDescription>
-                  Detailed insights and trends
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DashboardCharts 
-                  data={charts} 
-                  isLoading={chartsLoading}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="activities" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <RecentActivities 
-                data={activities} 
-                isLoading={activitiesLoading}
-              />
-            </div>
-            <div className="space-y-6">
-              <DashboardNotifications />
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="tasks" className="space-y-6 mt-6">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <DashboardTasks />
-            <Card className="border-none shadow-md">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Upcoming Events
-                </CardTitle>
-                <CardDescription>
-                  Important dates and deadlines
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div>
-                      <div className="font-medium text-sm">Policy Renewal Meeting</div>
-                      <div className="text-xs text-gray-600">Tomorrow at 2:00 PM</div>
-                    </div>
-                    <div className="text-xs text-blue-600 font-medium">High Priority</div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div>
-                      <div className="font-medium text-sm">Quarterly Review</div>
-                      <div className="text-xs text-gray-600">Friday at 10:00 AM</div>
-                    </div>
-                    <div className="text-xs text-green-600 font-medium">Medium Priority</div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                    <div>
-                      <div className="font-medium text-sm">Training Session</div>
-                      <div className="text-xs text-gray-600">Next Monday at 9:00 AM</div>
-                    </div>
-                    <div className="text-xs text-yellow-600 font-medium">Low Priority</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-const Dashboard = () => {
-  const isMobile = useIsMobile();
-  
-  console.log('Dashboard component rendering with enhanced UI');
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
-        <Suspense fallback={
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        }>
-          <DashboardContent isMobile={isMobile} />
-        </Suspense>
+      {/* Real-time Data Footer */}
+      <div className="text-center text-sm text-gray-500 py-4 border-t">
+        Dashboard connected to MongoDB • Last updated: {new Date().toLocaleTimeString()} • 
+        Real-time sync with all modules enabled
       </div>
     </div>
   );
