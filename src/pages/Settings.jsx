@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +17,15 @@ import SettingsNotifications from '@/components/settings/SettingsNotifications';
 import Protected from '@/components/Protected';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/hooks/useSettings';
+import { useRealtimePermissions } from '@/hooks/useRealtimePermissions';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  
+  // Initialize real-time permissions
+  useRealtimePermissions();
   
   // Use the settings hook for real API integration
   const {
@@ -390,7 +393,9 @@ const Settings = () => {
             <Protected module="settings" action="view_permissions">
               <div className="space-y-6">
                 <PermissionOverview />
-                {user?.role === 'super_admin' && <PermissionEditor />}
+                <Protected module="settings" action="edit">
+                  <PermissionEditor />
+                </Protected>
               </div>
             </Protected>
           )}

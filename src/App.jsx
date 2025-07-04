@@ -1,65 +1,134 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PermissionsProvider } from './contexts/PermissionsContext';
+import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
-import ClientDetail from './pages/ClientDetail';
-import ClientEdit from './pages/ClientEdit';
-import Policies from './pages/Policies';
-import PolicyDetail from './pages/PolicyDetail';
-import Claims from './pages/Claims';
-import ClaimDetail from './pages/ClaimDetail';
-import Leads from './pages/Leads';
-import LeadDetail from './pages/LeadDetail';
-import Quotations from './pages/Quotations';
-import QuotationDetail from './pages/QuotationDetail';
+import ClientsPage from './pages/ClientsPage';
+import AgentsPage from './pages/AgentsPage';
+import PoliciesPage from './pages/PoliciesPage';
+import ClaimsPage from './pages/ClaimsPage';
+import LeadsPage from './pages/LeadsPage';
+import QuotationsPage from './pages/QuotationsPage';
+import InvoicesPage from './pages/InvoicesPage';
+import Settings from './pages/Settings';
 import RecentActivities from './pages/RecentActivities';
-import Communication from './pages/Communication';
-import Broadcast from './pages/Broadcast';
+import ProtectedRoute from './components/ProtectedRoute';
+import AccessDenied from './components/AccessDenied';
+import { LoadingSpinner } from './components/ui/loading-spinner';
+import { useRealtimePermissions } from '@/hooks/useRealtimePermissions';
 
 function App() {
+  const { user, loading } = useAuth();
+  
+  // Initialize real-time permissions system
+  useRealtimePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <LoadingSpinner size="lg" />
+          <p className="text-gray-600">Loading application...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Router>
-      <Routes>
-        {/* Dashboard Route */}
-        <Route path="/" element={<Dashboard />} />
-
-        {/* Client Routes */}
-        <Route path="/clients" element={<Clients />} />
-        <Route path="/clients/:id" element={<ClientDetail />} />
-        <Route path="/clients/:id/edit" element={<ClientEdit />} />
-
-        {/* Policy Routes */}
-        <Route path="/policies" element={<Policies />} />
-        <Route path="/policies/:id" element={<PolicyDetail />} />
-        
-        {/* Claims Routes */}
-        <Route path="/claims" element={<Claims />} />
-        <Route path="/claims/:id" element={<ClaimDetail />} />
-        
-        {/* Leads Routes */  
-        <Route path="/leads" element={<Leads />} />
-        <Route path="/leads/:id" element={<LeadDetail />} />
-
-        {/* Quotations Routes */}
-        <Route path="/quotations" element={<Quotations />} />
-        <Route path="/quotations/:id" element={<QuotationDetail />} />
-
-        {/* Communication Routes */}
-        <Route path="/communication" element={<Communication />} />
-        <Route path="/communication/:id" element={<Communication />} />
-        <Route path="/communication/create" element={<Communication />} />
-        
-        {/* Broadcast Routes */}
-        <Route path="/broadcast" element={<Broadcast />} />
-        <Route path="/broadcast/:id" element={<Broadcast />} />
-        <Route path="/broadcast/create" element={<Broadcast />} />
-        <Route path="/broadcast/analytics" element={<Broadcast />} />
-        
-        {/* Recent Activities Route */}
-        <Route path="/recent-activities" element={<RecentActivities />} />
-      </Routes>
-    </Router>
+    <div className="App">
+      <Router>
+        <AuthProvider>
+          <PermissionsProvider>
+            <Routes>
+              <Route path="/auth" element={<LoginPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/clients"
+                element={
+                  <ProtectedRoute module="clients" action="view">
+                    <ClientsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/agents"
+                element={
+                  <ProtectedRoute module="agents" action="view">
+                    <AgentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/policies"
+                element={
+                  <ProtectedRoute module="policies" action="view">
+                    <PoliciesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/claims"
+                element={
+                  <ProtectedRoute module="claims" action="view">
+                    <ClaimsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leads"
+                element={
+                  <ProtectedRoute module="leads" action="view">
+                    <LeadsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/quotations"
+                element={
+                  <ProtectedRoute module="quotations" action="view">
+                    <QuotationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/invoices"
+                element={
+                  <ProtectedRoute module="invoices" action="view">
+                    <InvoicesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recent-activities"
+                element={
+                  <ProtectedRoute module="activities" action="view">
+                    <RecentActivities />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/access-denied" element={<AccessDenied />} />
+              <Route path="*" element={<AccessDenied />} />
+            </Routes>
+          </PermissionsProvider>
+        </AuthProvider>
+      </Router>
+    </div>
   );
 }
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
@@ -17,10 +16,14 @@ import {
   Gift
 } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRealtimePermissions } from '@/hooks/useRealtimePermissions';
 
 const Sidebar = ({ onNavItemClick }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { hasPermission, userRole } = usePermissions();
+  
+  // Initialize real-time permission updates
+  useRealtimePermissions();
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -74,15 +77,13 @@ const Sidebar = ({ onNavItemClick }) => {
       path: '/agents', 
       icon: <Users size={20} />, 
       name: 'Agents',
-      requiredPermission: { module: 'agents', action: 'view' },
-      adminOnly: true
+      requiredPermission: { module: 'agents', action: 'view' }
     },
     { 
       path: '/invoices', 
       icon: <Receipt size={20} />, 
       name: 'Invoices',
-      requiredPermission: { module: 'invoices', action: 'view' },
-      adminOnly: true
+      requiredPermission: { module: 'invoices', action: 'view' }
     },
     { 
       path: '/recent-activities', 
@@ -100,11 +101,6 @@ const Sidebar = ({ onNavItemClick }) => {
 
   // Filter menu items based on user permissions
   const menuItems = allMenuItems.filter(item => {
-    // Hide admin-only items from non-admin users
-    if (item.adminOnly && userRole !== 'super_admin' && userRole !== 'admin') {
-      return false;
-    }
-    
     // Check permission if required
     if (item.requiredPermission) {
       return hasPermission(item.requiredPermission.module, item.requiredPermission.action);
