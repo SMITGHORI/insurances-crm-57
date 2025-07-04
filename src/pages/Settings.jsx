@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,93 +7,196 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, UserCog } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Shield, CreditCard, UserCog, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import PermissionOverview from '@/components/settings/PermissionOverview';
 import PermissionEditor from '@/components/settings/PermissionEditor';
+import SettingsProfile from '@/components/settings/SettingsProfile';
+import SettingsNotifications from '@/components/settings/SettingsNotifications';
 import Protected from '@/components/Protected';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/hooks/useSettings';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("profile");
-  const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
   const { user } = useAuth();
+  
+  // Use the settings hook for real API integration
+  const {
+    settings,
+    loading,
+    error,
+    updateProfile,
+    updateNotifications,
+    updateSecurity,
+    updatePreferences,
+    changePassword,
+    resetSettings,
+    refreshSettings
+  } = useSettings();
 
-  // Form states
+  // Local form states initialized from API data
   const [profileForm, setProfileForm] = useState({
-    name: "Rahul Sharma",
-    email: "rahul.sharma@ambainsurance.com",
-    phone: "+91 98765 43210",
-    jobTitle: "Senior Insurance Agent"
+    name: '',
+    email: '',
+    phone: '',
+    jobTitle: ''
   });
   
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
-    smsNotifications: true,
-    pushNotifications: false,
-    marketingEmails: false
+    smsNotifications: false,
+    pushNotifications: true,
+    marketingEmails: false,
+    activityNotifications: true,
+    systemAlerts: true,
+    weeklyReports: true,
+    monthlyReports: false
   });
   
   const [securitySettings, setSecuritySettings] = useState({
     twoFactorAuth: false,
-    sessionTimeout: "30",
+    sessionTimeout: 30,
     loginAlerts: true
   });
 
   const [appearance, setAppearance] = useState({
-    compactView: false,
-    showPolicyExpiryWarnings: true,
-    defaultLandingPage: "dashboard"
+    theme: 'system',
+    language: 'en',
+    timezone: 'UTC',
+    dateFormat: 'MM/DD/YYYY',
+    timeFormat: '12h',
+    currency: 'USD',
+    dashboardLayout: 'comfortable',
+    itemsPerPage: 20
   });
 
-  const handleProfileUpdate = (e) => {
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  // Initialize form data when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      setProfileForm({
+        name: settings.profile?.name || '',
+        email: settings.profile?.email || '',
+        phone: settings.profile?.phone || '',
+        jobTitle: settings.profile?.jobTitle || ''
+      });
+      
+      setNotificationSettings({
+        ...notificationSettings,
+        ...settings.notifications
+      });
+      
+      setSecuritySettings({
+        ...securitySettings,
+        ...settings.security
+      });
+      
+      setAppearance({
+        ...appearance,
+        ...settings.preferences
+      });
+    }
+  }, [settings]);
+
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await updateProfile(profileForm);
       toast.success("Profile updated successfully");
-    }, 1000);
+    } catch (error) {
+      toast.error("Failed to update profile: " + error.message);
+    }
   };
 
-  const handleNotificationUpdate = () => {
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+  const handleNotificationUpdate = async () => {
+    try {
+      await updateNotifications(notificationSettings);
       toast.success("Notification preferences updated");
-    }, 800);
+    } catch (error) {
+      toast.error("Failed to update notifications: " + error.message);
+    }
   };
 
-  const handleSecurityUpdate = (e) => {
+  const handleSecurityUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await updateSecurity(securitySettings);
       toast.success("Security settings updated");
-    }, 1200);
+    } catch (error) {
+      toast.error("Failed to update security settings: " + error.message);
+    }
   };
   
-  const handleAppearanceUpdate = () => {
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+  const handleAppearanceUpdate = async () => {
+    try {
+      await updatePreferences(appearance);
       toast.success("Appearance settings updated");
-    }, 600);
+    } catch (error) {
+      toast.error("Failed to update appearance: " + error.message);
+    }
   };
 
-  // Show professional loading skeleton
-  if (loading) {
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("New passwords don't match");
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+    
+    try {
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      toast.success("Password changed successfully");
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      toast.error("Failed to change password: " + error.message);
+    }
+  };
+
+  const handleResetSettings = async () => {
+    try {
+      await resetSettings();
+      await refreshSettings();
+      toast.success("Settings reset to defaults");
+    } catch (error) {
+      toast.error("Failed to reset settings: " + error.message);
+    }
+  };
+
+  // Show loading skeleton while fetching settings
+  if (loading && !settings) {
     return <PageSkeleton isMobile={isMobile} />;
+  }
+
+  // Show error state
+  if (error && !settings) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-red-600 mb-4">Failed to load settings</p>
+            <Button onClick={refreshSettings}>Retry</Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -100,6 +204,7 @@ const Settings = () => {
       <div className="flex items-center mb-6">
         <SettingsIcon className="h-6 w-6 mr-2" />
         <h1 className="text-2xl font-bold">Settings</h1>
+        {loading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
       </div>
       
       <div className="flex flex-col md:flex-row gap-6">
@@ -149,14 +254,6 @@ const Settings = () => {
                   <UserCog className="mr-2 h-4 w-4" />
                   Appearance
                 </Button>
-                <Button 
-                  variant={activeTab === "billing" ? "default" : "ghost"} 
-                  className="w-full justify-start" 
-                  onClick={() => setActiveTab("billing")}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Billing
-                </Button>
               </nav>
             </CardContent>
           </Card>
@@ -164,139 +261,20 @@ const Settings = () => {
         
         <div className="flex-1">
           {activeTab === "profile" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Settings</CardTitle>
-                <CardDescription>
-                  Update your personal information and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleProfileUpdate}>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        value={profileForm.name}
-                        onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          value={profileForm.email}
-                          onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input 
-                          id="phone" 
-                          value={profileForm.phone}
-                          onChange={(e) => setProfileForm({...profileForm, phone: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="jobTitle">Job Title</Label>
-                      <Input 
-                        id="jobTitle" 
-                        value={profileForm.jobTitle}
-                        onChange={(e) => setProfileForm({...profileForm, jobTitle: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6">
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+            <SettingsProfile 
+              profileForm={profileForm}
+              setProfileForm={setProfileForm}
+              handleProfileUpdate={handleProfileUpdate}
+              loading={loading}
+            />
           )}
           
           {activeTab === "notifications" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>
-                  Control how you receive notifications and alerts
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Email Notifications</h3>
-                      <p className="text-sm text-gray-500">Receive notifications via email</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.emailNotifications}
-                      onCheckedChange={(checked) => {
-                        setNotificationSettings({...notificationSettings, emailNotifications: checked});
-                        handleNotificationUpdate();
-                      }}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">SMS Notifications</h3>
-                      <p className="text-sm text-gray-500">Receive notifications via SMS</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.smsNotifications}
-                      onCheckedChange={(checked) => {
-                        setNotificationSettings({...notificationSettings, smsNotifications: checked});
-                        handleNotificationUpdate();
-                      }}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Push Notifications</h3>
-                      <p className="text-sm text-gray-500">Receive push notifications on your devices</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.pushNotifications}
-                      onCheckedChange={(checked) => {
-                        setNotificationSettings({...notificationSettings, pushNotifications: checked});
-                        handleNotificationUpdate();
-                      }}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Marketing Emails</h3>
-                      <p className="text-sm text-gray-500">Receive marketing and promotional emails</p>
-                    </div>
-                    <Switch 
-                      checked={notificationSettings.marketingEmails}
-                      onCheckedChange={(checked) => {
-                        setNotificationSettings({...notificationSettings, marketingEmails: checked});
-                        handleNotificationUpdate();
-                      }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SettingsNotifications 
+              notificationSettings={notificationSettings}
+              setNotificationSettings={setNotificationSettings}
+              handleNotificationUpdate={handleNotificationUpdate}
+            />
           )}
           
           {activeTab === "security" && (
@@ -308,64 +286,102 @@ const Settings = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSecurityUpdate}>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">Two-Factor Authentication</h3>
-                        <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
-                      </div>
-                      <Switch 
-                        checked={securitySettings.twoFactorAuth}
-                        onCheckedChange={(checked) => {
-                          setSecuritySettings({...securitySettings, twoFactorAuth: checked});
-                        }}
-                      />
+                <div className="space-y-6">
+                  {/* Two-Factor Authentication */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">Two-Factor Authentication</h3>
+                      <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
                     </div>
-                    
-                    <Separator />
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Change Password</Label>
-                      <Input id="password" type="password" placeholder="Current password" />
-                      <Input type="password" placeholder="New password" className="mt-2" />
-                      <Input type="password" placeholder="Confirm new password" className="mt-2" />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                      <Input 
-                        id="sessionTimeout" 
-                        type="number" 
-                        value={securitySettings.sessionTimeout}
-                        onChange={(e) => setSecuritySettings({...securitySettings, sessionTimeout: e.target.value})}
-                      />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium">Login Alerts</h3>
-                        <p className="text-sm text-gray-500">Receive alerts for unusual login activity</p>
-                      </div>
-                      <Switch 
-                        checked={securitySettings.loginAlerts}
-                        onCheckedChange={(checked) => {
-                          setSecuritySettings({...securitySettings, loginAlerts: checked});
-                        }}
-                      />
-                    </div>
+                    <Switch 
+                      checked={securitySettings.twoFactorAuth}
+                      onCheckedChange={(checked) => {
+                        setSecuritySettings({...securitySettings, twoFactorAuth: checked});
+                        handleSecurityUpdate({ preventDefault: () => {} });
+                      }}
+                    />
                   </div>
                   
-                  <div className="mt-6">
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Saving..." : "Save Security Settings"}
-                    </Button>
+                  <Separator />
+                  
+                  {/* Change Password Section */}
+                  <form onSubmit={handlePasswordChange}>
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Change Password</h3>
+                      <div className="space-y-2">
+                        <Label htmlFor="currentPassword">Current Password</Label>
+                        <Input 
+                          id="currentPassword" 
+                          type="password" 
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword">New Password</Label>
+                        <Input 
+                          id="newPassword" 
+                          type="password" 
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                        <Input 
+                          id="confirmPassword" 
+                          type="password" 
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <Button type="submit" disabled={loading}>
+                        {loading ? "Changing..." : "Change Password"}
+                      </Button>
+                    </div>
+                  </form>
+                  
+                  <Separator />
+                  
+                  {/* Session Timeout */}
+                  <div className="space-y-2">
+                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
+                    <Input 
+                      id="sessionTimeout" 
+                      type="number" 
+                      value={securitySettings.sessionTimeout}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (value >= 5 && value <= 180) {
+                          setSecuritySettings({...securitySettings, sessionTimeout: value});
+                          handleSecurityUpdate({ preventDefault: () => {} });
+                        }
+                      }}
+                      min="5"
+                      max="180"
+                    />
                   </div>
-                </form>
+                  
+                  <Separator />
+                  
+                  {/* Login Alerts */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">Login Alerts</h3>
+                      <p className="text-sm text-gray-500">Receive alerts for unusual login activity</p>
+                    </div>
+                    <Switch 
+                      checked={securitySettings.loginAlerts}
+                      onCheckedChange={(checked) => {
+                        setSecuritySettings({...securitySettings, loginAlerts: checked});
+                        handleSecurityUpdate({ preventDefault: () => {} });
+                      }}
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -384,157 +400,100 @@ const Settings = () => {
               <CardHeader>
                 <CardTitle>Appearance Settings</CardTitle>
                 <CardDescription>
-                  Customize your experience with Amba Insurance CRM
+                  Customize your experience with the CRM
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Compact View</h3>
-                      <p className="text-sm text-gray-500">Enable compact view for denser information display</p>
-                    </div>
-                    <Switch 
-                      checked={appearance.compactView}
-                      onCheckedChange={(checked) => {
-                        setAppearance({...appearance, compactView: checked});
-                        handleAppearanceUpdate();
-                      }}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium">Policy Expiry Warnings</h3>
-                      <p className="text-sm text-gray-500">Show visual warnings for policies nearing expiration</p>
-                    </div>
-                    <Switch 
-                      checked={appearance.showPolicyExpiryWarnings}
-                      onCheckedChange={(checked) => {
-                        setAppearance({...appearance, showPolicyExpiryWarnings: checked});
-                        handleAppearanceUpdate();
-                      }}
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
+                  {/* Theme Selection */}
                   <div className="space-y-2">
-                    <Label htmlFor="defaultPage">Default Landing Page</Label>
-                    <select
-                      id="defaultPage"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      value={appearance.defaultLandingPage}
+                    <Label htmlFor="theme">Theme</Label>
+                    <select 
+                      id="theme"
+                      className="w-full p-2 border rounded-md"
+                      value={appearance.theme}
                       onChange={(e) => {
-                        setAppearance({...appearance, defaultLandingPage: e.target.value});
+                        setAppearance({...appearance, theme: e.target.value});
                         handleAppearanceUpdate();
                       }}
                     >
-                      <option value="dashboard">Dashboard</option>
-                      <option value="clients">Clients</option>
-                      <option value="policies">Policies</option>
-                      <option value="claims">Claims</option>
+                      <option value="system">System</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </select>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Language Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="language">Language</Label>
+                    <select 
+                      id="language"
+                      className="w-full p-2 border rounded-md"
+                      value={appearance.language}
+                      onChange={(e) => {
+                        setAppearance({...appearance, language: e.target.value});
+                        handleAppearanceUpdate();
+                      }}
+                    >
+                      <option value="en">English</option>
+                      <option value="es">Spanish</option>
+                      <option value="fr">French</option>
+                      <option value="de">German</option>
+                    </select>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Items Per Page */}
+                  <div className="space-y-2">
+                    <Label htmlFor="itemsPerPage">Items Per Page</Label>
+                    <Input 
+                      id="itemsPerPage" 
+                      type="number" 
+                      value={appearance.itemsPerPage}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (value >= 10 && value <= 100) {
+                          setAppearance({...appearance, itemsPerPage: value});
+                          handleAppearanceUpdate();
+                        }
+                      }}
+                      min="10"
+                      max="100"
+                    />
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Dashboard Layout */}
+                  <div className="space-y-2">
+                    <Label htmlFor="dashboardLayout">Dashboard Layout</Label>
+                    <select 
+                      id="dashboardLayout"
+                      className="w-full p-2 border rounded-md"
+                      value={appearance.dashboardLayout}
+                      onChange={(e) => {
+                        setAppearance({...appearance, dashboardLayout: e.target.value});
+                        handleAppearanceUpdate();
+                      }}
+                    >
+                      <option value="comfortable">Comfortable</option>
+                      <option value="compact">Compact</option>
+                      <option value="spacious">Spacious</option>
                     </select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          {activeTab === "billing" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Billing Information</CardTitle>
-                <CardDescription>
-                  Manage your subscription and billing details
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="bg-muted/50 p-4 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-medium">Current Plan</h3>
-                        <p className="text-sm font-bold text-primary">Enterprise Plan</p>
-                      </div>
-                      <Button variant="outline">Upgrade Plan</Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-medium">Payment Method</h3>
-                    <div className="flex items-center space-x-4 p-4 border rounded-md">
-                      <div className="bg-gray-100 p-2 rounded">
-                        <CreditCard className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Visa ending in 4242</p>
-                        <p className="text-sm text-gray-500">Expires 12/2025</p>
-                      </div>
-                      <Button variant="ghost" className="ml-auto" size="sm">Change</Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-medium">Billing Address</h3>
-                    <div className="p-4 border rounded-md">
-                      <p>Amba Insurance Pvt Ltd</p>
-                      <p>123 Business Park, Sector 5</p>
-                      <p>Bengaluru, Karnataka 560001</p>
-                      <p>India</p>
-                    </div>
-                    <Button variant="ghost" size="sm">Edit Address</Button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="font-medium">Billing History</h3>
-                    <div className="border rounded-md overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-muted/50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">May 1, 2023</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">₹24,000</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Paid</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                              <a href="#" className="text-primary hover:text-primary-dark">Download</a>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">Apr 1, 2023</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">₹24,000</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Paid</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                              <a href="#" className="text-primary hover:text-primary-dark">Download</a>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">Mar 1, 2023</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">₹24,000</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Paid</span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                              <a href="#" className="text-primary hover:text-primary-dark">Download</a>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                
+                <div className="mt-6 pt-6 border-t">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleResetSettings}
+                    disabled={loading}
+                  >
+                    {loading ? "Resetting..." : "Reset to Defaults"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
