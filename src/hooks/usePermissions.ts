@@ -1,7 +1,6 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Permission } from '@/types/auth';
 
 /**
  * Interface for the usePermissions hook return type
@@ -12,7 +11,7 @@ export interface UsePermissionsResult {
   isSameBranch(recordBranch: string): boolean;
   userBranch: string | undefined;
   userRole: string | undefined;
-  userPermissions: Permission[];
+  userPermissions: any[];
 }
 
 /**
