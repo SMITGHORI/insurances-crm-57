@@ -10,8 +10,8 @@ import { toast } from 'sonner';
 import { Shield, Users, TrendingUp, Award, Info } from 'lucide-react';
 
 const Auth = () => {
-  const [email, setEmail] = useState('admin@ambainsurance.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('admin@gmail.com');
+  const [password, setPassword] = useState('admin@123');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -37,9 +37,11 @@ const Auth = () => {
         console.log('Login successful, showing success message');
         toast.success('Login successful! Redirecting to dashboard...');
         
-        // Immediate redirect after successful login
-        console.log('Navigating to dashboard');
-        navigate('/dashboard', { replace: true });
+        // Small delay to show the toast
+        setTimeout(() => {
+          console.log('Navigating to dashboard');
+          navigate('/dashboard', { replace: true });
+        }, 500);
       } else {
         console.error('Login failed:', result.error);
         toast.error(result.error || 'Login failed');
@@ -55,7 +57,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Left Column - Branding (Hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-amba-blue via-amba-lightblue to-amba-blue relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 flex flex-col justify-center items-center text-white p-12 w-full">
           <div className="max-w-md text-center space-y-8">
@@ -107,7 +109,7 @@ const Auth = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold text-amba-blue mb-2">AMBA INSURANCE</h1>
+            <h1 className="text-3xl font-bold text-blue-600 mb-2">AMBA INSURANCE</h1>
             <p className="text-gray-600">Professional CRM Platform</p>
           </div>
 
@@ -163,7 +165,7 @@ const Auth = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-11 bg-amba-blue hover:bg-amba-blue/90 text-white font-medium"
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={loading}
                 >
                   {loading ? 'Signing in...' : 'Sign In'}
@@ -172,7 +174,7 @@ const Auth = () => {
               
               <div className="mt-4 text-center space-y-2">
                 <p className="text-sm text-gray-600">
-                  Demo credentials: admin@ambainsurance.com / admin123
+                  Demo credentials: admin@gmail.com / admin@123
                 </p>
                 <p className="text-xs text-gray-500">
                   System automatically detects backend availability
@@ -185,26 +187,26 @@ const Auth = () => {
           <div className="lg:hidden mt-8">
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="space-y-2">
-                <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
-                  <Shield className="w-5 h-5 text-amba-blue" />
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto">
+                  <Shield className="w-5 h-5 text-blue-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-gray-700">Secure</h3>
               </div>
               <div className="space-y-2">
-                <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
-                  <Users className="w-5 h-5 text-amba-blue" />
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto">
+                  <Users className="w-5 h-5 text-blue-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-gray-700">Comprehensive</h3>
               </div>
               <div className="space-y-2">
-                <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
-                  <TrendingUp className="w-5 h-5 text-amba-blue" />
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-gray-700">Analytics</h3>
               </div>
               <div className="space-y-2">
-                <div className="w-10 h-10 bg-amba-blue/10 rounded-lg flex items-center justify-center mx-auto">
-                  <Award className="w-5 h-5 text-amba-blue" />
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mx-auto">
+                  <Award className="w-5 h-5 text-blue-600" />
                 </div>
                 <h3 className="text-sm font-semibold text-gray-700">Performance</h3>
               </div>
