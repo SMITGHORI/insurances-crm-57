@@ -52,7 +52,19 @@ export const API_ENDPOINTS = {
 
   // Settings endpoints
   SETTINGS: '/settings',
-  SETTINGS_BY_KEY: (key) => `/settings/${key}`
+  SETTINGS_BY_KEY: (key) => `/settings/${key}`,
+
+  // Communication endpoints
+  COMMUNICATIONS: '/communications',
+  COMMUNICATION_BY_ID: (id) => `/communications/${id}`,
+
+  // Broadcast endpoints
+  BROADCASTS: '/broadcasts',
+  BROADCAST_BY_ID: (id) => `/broadcasts/${id}`,
+
+  // Activities endpoints
+  ACTIVITIES: '/activities',
+  ACTIVITY_BY_ID: (id) => `/activities/${id}`
 };
 
 export const HTTP_STATUS = {

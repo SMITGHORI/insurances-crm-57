@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { API_CONFIG } from '../config/api';
@@ -175,18 +174,9 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('demoMode');
           
           const decoded = jwtDecode(data.data.token);
-          const userData = data.data.user;
+          const userData = transformUserData(data.data.user);
           
-          setUser({
-            id: userData._id || userData.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role?.name || userData.role,
-            branch: userData.branch || 'main',
-            permissions: data.data.permissions || userData.permissions || [],
-            flatPermissions: userData.flatPermissions || []
-          });
-
+          setUser(userData);
           console.log('Real backend login successful');
           return { success: true };
         } else {
@@ -200,6 +190,19 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to transform user data from backend
+  const transformUserData = (userData) => {
+    return {
+      id: userData._id || userData.id,
+      email: userData.email,
+      name: userData.name || `${userData.firstName} ${userData.lastName}`.trim(),
+      role: userData.role?.name || userData.role,
+      branch: userData.branch || 'main',
+      permissions: userData.permissions || [],
+      flatPermissions: userData.flatPermissions || []
+    };
   };
 
   const logout = async () => {

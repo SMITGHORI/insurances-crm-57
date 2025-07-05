@@ -1,100 +1,81 @@
 
 import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 /**
- * Hook for real-time permission updates
- * Listens for permission changes and updates user permissions accordingly
+ * Real-time permissions hook
+ * Handles permission updates and WebSocket connections
  */
 export const useRealtimePermissions = () => {
-  const queryClient = useQueryClient();
   const { user, refreshPermissions } = useAuth();
 
   useEffect(() => {
     if (!user) return;
 
-    const handlePermissionUpdate = async (event) => {
-      const { roleId, permissions } = event.detail;
-      
-      console.log('Permission update received:', { roleId, permissions });
-      
-      // Check if this update affects the current user
-      if (user.role && roleId) {
-        // Get user's role ID and compare
+    // Skip for demo users
+    if (localStorage.getItem('demoMode')) {
+      console.log('Demo mode active, skipping real-time permissions');
+      return;
+    }
+
+    // Set up WebSocket connection for real-time permission updates
+    let ws;
+    
+    try {
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5001';
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected for permission updates');
+        // Send user identification
+        ws.send(JSON.stringify({
+          type: 'auth',
+          userId: user.id,
+          token: localStorage.getItem('authToken')
+        }));
+      };
+
+      ws.onmessage = (event) => {
         try {
-          const response = await fetch('/api/roles');
-          const roles = await response.json();
-          const userRole = roles.data?.find(r => r.name === user.role);
+          const data = JSON.parse(event.data);
           
-          if (userRole && userRole._id === roleId) {
-            console.log('Permission update applies to current user');
-            
-            // Refresh user permissions
-            await refreshPermissions();
-            
-            // Show notification
-            toast.info('Your permissions have been updated', {
-              description: 'Please refresh the page if you experience any issues.'
-            });
-            
-            // Invalidate all queries to force refresh
-            queryClient.invalidateQueries();
-            
-            // Trigger a page refresh after a short delay to ensure all components update
-            setTimeout(() => {
-              window.location.reload();
-            }, 2000);
+          if (data.type === 'permission_update' && data.userId === user.id) {
+            console.log('Received permission update', data);
+            refreshPermissions();
           }
         } catch (error) {
-          console.error('Error checking permission update:', error);
+          console.error('Error parsing WebSocket message:', error);
         }
+      };
+
+      ws.onerror = (error) => {
+        console.warn('WebSocket error:', error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+
+    } catch (error) {
+      console.warn('WebSocket not available:', error);
+    }
+
+    // Cleanup function
+    return () => {
+      if (ws) {
+        ws.close();
       }
     };
+  }, [user, refreshPermissions]);
 
-    const handleUserUpdate = () => {
-      console.log('User update detected - refreshing permissions');
+  // Periodic permission refresh (fallback)
+  useEffect(() => {
+    if (!user || localStorage.getItem('demoMode')) return;
+
+    const interval = setInterval(() => {
       refreshPermissions();
-      queryClient.invalidateQueries();
-    };
+    }, 5 * 60 * 1000); // Every 5 minutes
 
-    const handleRoleUpdate = () => {
-      console.log('Role update detected - refreshing all role-related data');
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-      queryClient.invalidateQueries({ queryKey: ['rolePermissions'] });
-    };
-
-    // Event listeners for real-time updates
-    const events = [
-      { name: 'permissions-updated', handler: handlePermissionUpdate },
-      { name: 'user-permissions-changed', handler: handleUserUpdate },
-      { name: 'role-updated', handler: handleRoleUpdate },
-      { name: 'user-role-changed', handler: handleUserUpdate }
-    ];
-
-    // Add event listeners
-    events.forEach(({ name, handler }) => {
-      window.addEventListener(name, handler);
-    });
-
-    // Cleanup event listeners
-    return () => {
-      events.forEach(({ name, handler }) => {
-        window.removeEventListener(name, handler);
-      });
-    };
-  }, [queryClient, user, refreshPermissions]);
-
-  // Function to trigger permission refresh
-  const triggerPermissionRefresh = () => {
-    refreshPermissions();
-    queryClient.invalidateQueries();
-  };
-
-  return {
-    triggerPermissionRefresh
-  };
+    return () => clearInterval(interval);
+  }, [user, refreshPermissions]);
 };
-
-export default useRealtimePermissions;

@@ -1,157 +1,174 @@
+
 const express = require('express');
 const router = express.Router();
-const clientController = require('../controllers/clientController');
+const Client = require('../models/Client');
 const authMiddleware = require('../middleware/auth');
-const { roleMiddleware, clientAccessMiddleware } = require('../middleware/roleMiddleware');
-const uploadMiddleware = require('../middleware/upload');
-const { validationMiddleware } = require('../middleware/validation');
-const { clientValidation, updateClientValidation, documentValidation } = require('../validations/clientValidation');
-const { clientExportValidation } = require('../validations/exportValidation');
+const { AppError } = require('../utils/errorHandler');
 
-// Apply authentication to all routes
+// Apply auth middleware to all routes
 router.use(authMiddleware);
 
-/**
- * @route GET /api/clients
- * @desc Get all clients with filtering, pagination, and search
- * @access Private (Super Admin: all clients, Agent: assigned clients only)
- */
-router.get('/', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  clientController.getAllClients
-);
+// GET /api/clients - Get all clients with pagination and filtering
+router.get('/', async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      clientType,
+      assignedAgentId
+    } = req.query;
 
-/**
- * @route POST /api/clients/export
- * @desc Export clients data
- * @access Private (All roles with role-based filtering)
- */
-router.post('/export',
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  validationMiddleware(clientExportValidation),
-  clientController.exportClients
-);
+    let query = {};
 
-/**
- * @route GET /api/clients/:id
- * @desc Get client by ID
- * @access Private (Super Admin: any client, Agent: assigned clients only)
- */
-router.get('/:id', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  clientController.getClientById
-);
+    // Add search functionality
+    if (search) {
+      query.$text = { $search: search };
+    }
 
-/**
- * @route POST /api/clients
- * @desc Create new client
- * @access Private (Super Admin, Manager, Agent - but agents can only assign to themselves)
- */
-router.post('/', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  validationMiddleware(clientValidation),
-  clientController.createClient
-);
+    // Add filters
+    if (status) query.status = status;
+    if (clientType) query.clientType = clientType;
+    if (assignedAgentId) query.assignedAgentId = assignedAgentId;
 
-/**
- * @route PUT /api/clients/:id
- * @desc Update client (Limited access for agents)
- * @access Private (Super Admin: any client, Agent: assigned clients only, limited fields)
- */
-router.put('/:id', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  validationMiddleware(updateClientValidation),
-  clientController.updateClient
-);
+    // Apply branch filtering for non-admin users
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin') {
+      query.assignedAgentId = req.user._id;
+    }
 
-/**
- * @route DELETE /api/clients/:id
- * @desc Delete client
- * @access Private (Super Admin and Manager only)
- */
-router.delete('/:id', 
-  roleMiddleware(['super_admin', 'manager']),
-  clientController.deleteClient
-);
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate: [
+        { path: 'assignedAgentId', select: 'name email' },
+        { path: 'createdBy', select: 'name email' }
+      ]
+    };
 
-/**
- * @route POST /api/clients/:id/documents
- * @desc Upload client document
- * @access Private (All roles can upload documents for assigned clients)
- */
-router.post('/:id/documents', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  uploadMiddleware.single('document'),
-  validationMiddleware(documentValidation),
-  clientController.uploadDocument
-);
+    const clients = await Client.paginate(query, options);
 
-/**
- * @route GET /api/clients/:id/documents
- * @desc Get client documents
- * @access Private (All roles can view documents for assigned clients)
- */
-router.get('/:id/documents', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  clientController.getClientDocuments
-);
+    res.json({
+      success: true,
+      data: clients.docs,
+      pagination: {
+        currentPage: clients.page,
+        totalPages: clients.totalPages,
+        totalItems: clients.totalDocs,
+        itemsPerPage: clients.limit
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-/**
- * @route DELETE /api/clients/:id/documents/:documentId
- * @desc Delete client document
- * @access Private (Super Admin, Manager, Agent for assigned clients)
- */
-router.delete('/:id/documents/:documentId', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  clientController.deleteDocument
-);
+// GET /api/clients/:id - Get client by ID
+router.get('/:id', async (req, res, next) => {
+  try {
+    const client = await Client.findById(req.params.id)
+      .populate('assignedAgentId', 'name email')
+      .populate('createdBy', 'name email');
 
-/**
- * @route GET /api/clients/search/:query
- * @desc Search clients
- * @access Private (Role-based filtered results)
- */
-router.get('/search/:query', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientAccessMiddleware,
-  clientController.searchClients
-);
+    if (!client) {
+      throw new AppError('Client not found', 404);
+    }
 
-/**
- * @route GET /api/clients/agent/:agentId
- * @desc Get clients assigned to specific agent
- * @access Private (Super Admin, Manager can view any agent, Agent can only view own)
- */
-router.get('/agent/:agentId', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientController.getClientsByAgent
-);
+    res.json({
+      success: true,
+      data: client
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-/**
- * @route PUT /api/clients/:id/assign
- * @desc Assign client to agent
- * @access Private (Super Admin, Manager only)
- */
-router.put('/:id/assign', 
-  roleMiddleware(['super_admin', 'manager']),
-  clientController.assignClientToAgent
-);
+// POST /api/clients - Create new client
+router.post('/', async (req, res, next) => {
+  try {
+    const clientData = {
+      ...req.body,
+      createdBy: req.user._id,
+      assignedAgentId: req.body.assignedAgentId || req.user._id
+    };
 
-/**
- * @route GET /api/clients/stats/summary
- * @desc Get client statistics summary
- * @access Private (Role-based filtered stats)
- */
-router.get('/stats/summary', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
-  clientController.getClientStats
-);
+    const client = new Client(clientData);
+    await client.save();
+
+    res.status(201).json({
+      success: true,
+      data: client,
+      message: 'Client created successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/clients/:id - Update client
+router.put('/:id', async (req, res, next) => {
+  try {
+    const client = await Client.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedBy: req.user._id },
+      { new: true, runValidators: true }
+    );
+
+    if (!client) {
+      throw new AppError('Client not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: client,
+      message: 'Client updated successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/clients/:id - Delete client
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const client = await Client.findByIdAndDelete(req.params.id);
+
+    if (!client) {
+      throw new AppError('Client not found', 404);
+    }
+
+    res.json({
+      success: true,
+      message: 'Client deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/clients/search - Search clients
+router.get('/search', async (req, res, next) => {
+  try {
+    const { q: query, limit = 10 } = req.query;
+
+    if (!query) {
+      throw new AppError('Search query is required', 400);
+    }
+
+    const clients = await Client.find({
+      $text: { $search: query }
+    })
+    .limit(parseInt(limit))
+    .sort({ score: { $meta: 'textScore' } });
+
+    res.json({
+      success: true,
+      data: clients
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;
