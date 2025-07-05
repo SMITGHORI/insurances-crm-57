@@ -1,6 +1,5 @@
-
 import { toast } from 'sonner';
-import leadsBackendApi from './leadsApiBackend';
+import { leadsBackendApi } from './leadsApiBackend';
 
 /**
  * Frontend API service for leads operations
