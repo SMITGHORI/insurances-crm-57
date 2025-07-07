@@ -1,196 +1,184 @@
 
 const Joi = require('joi');
 
-// Common validation schemas
-const commonFields = {
-  email: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid email address',
-    'any.required': 'Email is required'
-  }),
-  phone: Joi.string().pattern(/^\d{10}$/).required().messages({
-    'string.pattern.base': 'Phone number must be 10 digits',
-    'any.required': 'Phone number is required'
-  }),
-  altPhone: Joi.string().pattern(/^\d{10}$/).optional().messages({
-    'string.pattern.base': 'Alternate phone number must be 10 digits'
-  }),
-  address: Joi.string().min(1).max(500).required().messages({
-    'string.min': 'Address is required',
-    'string.max': 'Address cannot exceed 500 characters'
-  }),
-  city: Joi.string().min(1).max(100).required().messages({
-    'string.min': 'City is required',
-    'string.max': 'City cannot exceed 100 characters'
-  }),
-  state: Joi.string().min(1).max(100).required().messages({
-    'string.min': 'State is required',
-    'string.max': 'State cannot exceed 100 characters'
-  }),
-  pincode: Joi.string().pattern(/^\d{6}$/).required().messages({
-    'string.pattern.base': 'PIN code must be 6 digits',
-    'any.required': 'PIN code is required'
-  }),
-  country: Joi.string().max(100).default('India'),
-  source: Joi.string().valid('referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other').optional(),
-  notes: Joi.string().max(1000).optional().messages({
-    'string.max': 'Notes cannot exceed 1000 characters'
-  }),
-  assignedAgentId: Joi.string().hex().length(24).optional().messages({
-    'string.hex': 'Invalid agent ID format',
-    'string.length': 'Invalid agent ID length'
-  })
-};
-
-// Individual client validation
-const individualClientValidation = Joi.object({
-  clientType: Joi.string().valid('individual').required(),
-  firstName: Joi.string().min(1).max(50).required().messages({
-    'string.min': 'First name is required',
-    'string.max': 'First name cannot exceed 50 characters'
-  }),
-  lastName: Joi.string().min(1).max(50).required().messages({
-    'string.min': 'Last name is required',
-    'string.max': 'Last name cannot exceed 50 characters'
-  }),
-  dob: Joi.date().max('now').required().messages({
-    'date.max': 'Date of birth must be in the past',
-    'any.required': 'Date of birth is required'
-  }),
-  gender: Joi.string().valid('male', 'female', 'other').required().messages({
-    'any.only': 'Gender must be male, female, or other',
-    'any.required': 'Gender is required'
-  }),
-  panNumber: Joi.string().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/).required().messages({
-    'string.pattern.base': 'Invalid PAN number format (e.g., ABCDE1234F)',
-    'any.required': 'PAN number is required'
-  }),
-  aadharNumber: Joi.string().pattern(/^\d{4}\s?\d{4}\s?\d{4}$/).optional().messages({
-    'string.pattern.base': 'Invalid Aadhar number format'
-  }),
-  occupation: Joi.string().max(100).optional(),
-  annualIncome: Joi.number().positive().optional().messages({
-    'number.positive': 'Annual income must be positive'
-  }),
-  maritalStatus: Joi.string().valid('single', 'married', 'divorced', 'widowed').optional(),
-  nomineeName: Joi.string().max(100).optional(),
-  nomineeRelation: Joi.string().max(50).optional(),
-  nomineeContact: Joi.string().pattern(/^\d{10}$/).optional().messages({
-    'string.pattern.base': 'Nominee contact must be 10 digits'
-  }),
-  ...commonFields
+// Individual client validation schema
+const individualDataSchema = Joi.object({
+  firstName: Joi.string().required().trim().max(50),
+  lastName: Joi.string().required().trim().max(50),
+  dob: Joi.date().required().max('now'),
+  gender: Joi.string().required().valid('male', 'female', 'other'),
+  panNumber: Joi.string().required().uppercase().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
+  aadharNumber: Joi.string().optional().pattern(/^\d{4}\s?\d{4}\s?\d{4}$/),
+  occupation: Joi.string().optional().trim().max(100),
+  annualIncome: Joi.number().optional().min(0),
+  maritalStatus: Joi.string().optional().valid('single', 'married', 'divorced', 'widowed'),
+  nomineeName: Joi.string().optional().trim().max(100),
+  nomineeRelation: Joi.string().optional().trim().max(50),
+  nomineeContact: Joi.string().optional().pattern(/^\d{10}$/)
 });
 
-// Corporate client validation
-const corporateClientValidation = Joi.object({
-  clientType: Joi.string().valid('corporate').required(),
-  companyName: Joi.string().min(1).max(200).required().messages({
-    'string.min': 'Company name is required',
-    'string.max': 'Company name cannot exceed 200 characters'
-  }),
-  registrationNo: Joi.string().min(1).required().messages({
-    'string.min': 'Registration number is required'
-  }),
-  gstNumber: Joi.string().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/).optional().messages({
-    'string.pattern.base': 'Invalid GST number format'
-  }),
-  industry: Joi.string().valid('IT', 'Manufacturing', 'Healthcare', 'Finance', 'Retail', 'Education', 'Hospitality', 'Construction', 'Transport', 'Agriculture', 'Other').required(),
-  employeeCount: Joi.number().positive().required().messages({
-    'number.positive': 'Employee count must be positive',
-    'any.required': 'Employee count is required'
-  }),
-  turnover: Joi.number().positive().optional().messages({
-    'number.positive': 'Turnover must be positive'
-  }),
-  yearEstablished: Joi.number().min(1900).max(new Date().getFullYear()).optional().messages({
-    'number.min': 'Year established must be after 1900',
-    'number.max': 'Year established cannot be in the future'
-  }),
-  website: Joi.string().uri().optional().messages({
-    'string.uri': 'Please provide a valid website URL'
-  }),
-  contactPersonName: Joi.string().min(1).max(100).required().messages({
-    'string.min': 'Contact person name is required',
-    'string.max': 'Contact person name cannot exceed 100 characters'
-  }),
-  contactPersonDesignation: Joi.string().min(1).max(100).required().messages({
-    'string.min': 'Contact person designation is required',
-    'string.max': 'Contact person designation cannot exceed 100 characters'
-  }),
-  contactPersonEmail: Joi.string().email().required().messages({
-    'string.email': 'Please provide a valid contact person email',
-    'any.required': 'Contact person email is required'
-  }),
-  contactPersonPhone: Joi.string().pattern(/^\d{10}$/).required().messages({
-    'string.pattern.base': 'Contact person phone must be 10 digits',
-    'any.required': 'Contact person phone is required'
-  }),
-  ...commonFields
+// Corporate client validation schema
+const corporateDataSchema = Joi.object({
+  companyName: Joi.string().required().trim().max(200),
+  registrationNo: Joi.string().required().trim(),
+  gstNumber: Joi.string().optional().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
+  industry: Joi.string().required().valid('IT', 'Manufacturing', 'Healthcare', 'Finance', 'Retail', 'Education', 'Hospitality', 'Construction', 'Transport', 'Agriculture', 'Other'),
+  employeeCount: Joi.number().required().min(1),
+  turnover: Joi.number().optional().min(0),
+  yearEstablished: Joi.number().optional().min(1900).max(new Date().getFullYear()),
+  website: Joi.string().optional().pattern(/^https?:\/\/.+/),
+  contactPersonName: Joi.string().required().trim().max(100),
+  contactPersonDesignation: Joi.string().required().trim().max(100),
+  contactPersonEmail: Joi.string().required().email(),
+  contactPersonPhone: Joi.string().required().pattern(/^\d{10}$/)
 });
 
-// Group client validation
-const groupClientValidation = Joi.object({
-  clientType: Joi.string().valid('group').required(),
-  groupName: Joi.string().min(1).max(200).required().messages({
-    'string.min': 'Group name is required',
-    'string.max': 'Group name cannot exceed 200 characters'
-  }),
-  groupType: Joi.string().valid('family', 'association', 'trust', 'society', 'community', 'other').required(),
-  memberCount: Joi.number().min(2).required().messages({
-    'number.min': 'Member count must be at least 2',
-    'any.required': 'Member count is required'
-  }),
-  primaryContactName: Joi.string().min(1).max(100).required().messages({
-    'string.min': 'Primary contact name is required',
-    'string.max': 'Primary contact name cannot exceed 100 characters'
-  }),
-  relationshipWithGroup: Joi.string().max(100).optional(),
-  registrationID: Joi.string().optional(),
-  groupFormationDate: Joi.date().max('now').optional().messages({
-    'date.max': 'Group formation date cannot be in the future'
-  }),
-  groupCategory: Joi.string().valid('general', 'religious', 'educational', 'professional', 'social', 'other').optional(),
-  groupPurpose: Joi.string().max(500).optional().messages({
-    'string.max': 'Group purpose cannot exceed 500 characters'
-  }),
-  ...commonFields
+// Group client validation schema
+const groupDataSchema = Joi.object({
+  groupName: Joi.string().required().trim().max(200),
+  groupType: Joi.string().required().valid('family', 'association', 'trust', 'society', 'community', 'other'),
+  memberCount: Joi.number().required().min(2),
+  primaryContactName: Joi.string().required().trim().max(100),
+  relationshipWithGroup: Joi.string().optional().trim().max(100),
+  registrationID: Joi.string().optional().trim(),
+  groupFormationDate: Joi.date().optional(),
+  groupCategory: Joi.string().optional().valid('general', 'religious', 'educational', 'professional', 'social', 'other'),
+  groupPurpose: Joi.string().optional().trim().max(500)
 });
 
-// Main client validation (discriminated union)
-const clientValidation = Joi.alternatives().try(
-  individualClientValidation,
-  corporateClientValidation,
-  groupClientValidation
-).required();
+// Communication preferences schema
+const communicationPreferencesSchema = Joi.object({
+  email: Joi.object({
+    offers: Joi.boolean().default(true),
+    newsletters: Joi.boolean().default(true),
+    reminders: Joi.boolean().default(true),
+    birthday: Joi.boolean().default(true),
+    anniversary: Joi.boolean().default(true)
+  }).optional(),
+  whatsapp: Joi.object({
+    offers: Joi.boolean().default(true),
+    newsletters: Joi.boolean().default(true),
+    reminders: Joi.boolean().default(true),
+    birthday: Joi.boolean().default(true),
+    anniversary: Joi.boolean().default(true)
+  }).optional(),
+  sms: Joi.object({
+    offers: Joi.boolean().default(false),
+    newsletters: Joi.boolean().default(false),
+    reminders: Joi.boolean().default(true),
+    birthday: Joi.boolean().default(false),
+    anniversary: Joi.boolean().default(false)
+  }).optional()
+});
 
-// Update client validation (all fields optional except clientType)
-const updateClientValidation = Joi.alternatives().try(
-  individualClientValidation.fork(Object.keys(individualClientValidation.describe().keys), (schema) => schema.optional()),
-  corporateClientValidation.fork(Object.keys(corporateClientValidation.describe().keys), (schema) => schema.optional()),
-  groupClientValidation.fork(Object.keys(groupClientValidation.describe().keys), (schema) => schema.optional())
-).required();
+// Main client validation schema
+const clientValidation = Joi.object({
+  clientType: Joi.string().required().valid('individual', 'corporate', 'group'),
+  email: Joi.string().required().email().lowercase(),
+  phone: Joi.string().required().pattern(/^\d{10}$/),
+  altPhone: Joi.string().optional().pattern(/^\d{10}$/),
+  address: Joi.string().required().trim().max(500),
+  city: Joi.string().required().trim().max(100),
+  state: Joi.string().required().trim().max(100),
+  pincode: Joi.string().required().pattern(/^\d{6}$/),
+  country: Joi.string().optional().trim().max(100).default('India'),
+  status: Joi.string().optional().valid('Active', 'Inactive', 'Pending').default('Active'),
+  source: Joi.string().optional().valid('referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other').default('direct'),
+  notes: Joi.string().optional().trim().max(1000),
+  assignedAgentId: Joi.string().required().regex(/^[0-9a-fA-F]{24}$/),
+  
+  // Type-specific data - conditional validation
+  individualData: Joi.when('clientType', {
+    is: 'individual',
+    then: individualDataSchema.required(),
+    otherwise: Joi.forbidden()
+  }),
+  
+  corporateData: Joi.when('clientType', {
+    is: 'corporate',
+    then: corporateDataSchema.required(),
+    otherwise: Joi.forbidden()
+  }),
+  
+  groupData: Joi.when('clientType', {
+    is: 'group',
+    then: groupDataSchema.required(),
+    otherwise: Joi.forbidden()
+  }),
+  
+  communicationPreferences: communicationPreferencesSchema.optional()
+});
 
-// Document validation
+// Update client validation (all fields optional except critical ones)
+const updateClientValidation = Joi.object({
+  email: Joi.string().optional().email().lowercase(),
+  phone: Joi.string().optional().pattern(/^\d{10}$/),
+  altPhone: Joi.string().optional().pattern(/^\d{10}$/),
+  address: Joi.string().optional().trim().max(500),
+  city: Joi.string().optional().trim().max(100),
+  state: Joi.string().optional().trim().max(100),
+  pincode: Joi.string().optional().pattern(/^\d{6}$/),
+  country: Joi.string().optional().trim().max(100),
+  status: Joi.string().optional().valid('Active', 'Inactive', 'Pending'),
+  source: Joi.string().optional().valid('referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other'),
+  notes: Joi.string().optional().trim().max(1000),
+  assignedAgentId: Joi.string().optional().regex(/^[0-9a-fA-F]{24}$/),
+  
+  // Type-specific updates
+  individualData: Joi.object({
+    firstName: Joi.string().optional().trim().max(50),
+    lastName: Joi.string().optional().trim().max(50),
+    dob: Joi.date().optional().max('now'),
+    gender: Joi.string().optional().valid('male', 'female', 'other'),
+    panNumber: Joi.string().optional().uppercase().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/),
+    aadharNumber: Joi.string().optional().pattern(/^\d{4}\s?\d{4}\s?\d{4}$/),
+    occupation: Joi.string().optional().trim().max(100),
+    annualIncome: Joi.number().optional().min(0),
+    maritalStatus: Joi.string().optional().valid('single', 'married', 'divorced', 'widowed'),
+    nomineeName: Joi.string().optional().trim().max(100),
+    nomineeRelation: Joi.string().optional().trim().max(50),
+    nomineeContact: Joi.string().optional().pattern(/^\d{10}$/)
+  }).optional(),
+  
+  corporateData: Joi.object({
+    companyName: Joi.string().optional().trim().max(200),
+    registrationNo: Joi.string().optional().trim(),
+    gstNumber: Joi.string().optional().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/),
+    industry: Joi.string().optional().valid('IT', 'Manufacturing', 'Healthcare', 'Finance', 'Retail', 'Education', 'Hospitality', 'Construction', 'Transport', 'Agriculture', 'Other'),
+    employeeCount: Joi.number().optional().min(1),
+    turnover: Joi.number().optional().min(0),
+    yearEstablished: Joi.number().optional().min(1900).max(new Date().getFullYear()),
+    website: Joi.string().optional().pattern(/^https?:\/\/.+/),
+    contactPersonName: Joi.string().optional().trim().max(100),
+    contactPersonDesignation: Joi.string().optional().trim().max(100),
+    contactPersonEmail: Joi.string().optional().email(),
+    contactPersonPhone: Joi.string().optional().pattern(/^\d{10}$/)
+  }).optional(),
+  
+  groupData: Joi.object({
+    groupName: Joi.string().optional().trim().max(200),
+    groupType: Joi.string().optional().valid('family', 'association', 'trust', 'society', 'community', 'other'),
+    memberCount: Joi.number().optional().min(2),
+    primaryContactName: Joi.string().optional().trim().max(100),
+    relationshipWithGroup: Joi.string().optional().trim().max(100),
+    registrationID: Joi.string().optional().trim(),
+    groupFormationDate: Joi.date().optional(),
+    groupCategory: Joi.string().optional().valid('general', 'religious', 'educational', 'professional', 'social', 'other'),
+    groupPurpose: Joi.string().optional().trim().max(500)
+  }).optional(),
+  
+  communicationPreferences: communicationPreferencesSchema.optional()
+});
+
+// Document validation schema
 const documentValidation = Joi.object({
-  documentType: Joi.string().valid('pan', 'aadhaar', 'idProof', 'addressProof', 'gst', 'registration').required().messages({
-    'any.only': 'Invalid document type',
-    'any.required': 'Document type is required'
-  })
+  documentType: Joi.string().required().valid('pan', 'aadhaar', 'idProof', 'addressProof', 'gst', 'registration'),
+  name: Joi.string().optional().trim().max(100)
 });
 
-// Query parameters validation
-const queryValidation = Joi.object({
-  page: Joi.number().min(1).default(1),
-  limit: Joi.number().min(1).max(100).default(10),
-  search: Joi.string().optional(),
-  type: Joi.string().valid('all', 'individual', 'corporate', 'group').default('all'),
-  status: Joi.string().valid('All', 'Active', 'Inactive', 'Pending').default('All'),
-  sortField: Joi.string().valid('name', 'createdAt', 'status', 'type').default('createdAt'),
-  sortDirection: Joi.string().valid('asc', 'desc').default('desc')
-});
-
+// Export validation schemas
 module.exports = {
   clientValidation,
   updateClientValidation,
-  documentValidation,
-  queryValidation
+  documentValidation
 };

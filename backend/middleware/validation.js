@@ -1,87 +1,60 @@
 
-const { AppError } = require('../utils/errorHandler');
+const { validationResult } = require('express-validator');
 
 /**
- * Joi validation middleware
- * @param {Object} schema - Joi validation schema
- * @param {String} property - Property to validate (body, query, params)
- * @returns {Function} Middleware function
+ * Middleware factory for Joi validation
  */
-const validationMiddleware = (schema, property = 'body') => {
+const validationMiddleware = (schema) => {
   return (req, res, next) => {
-    try {
-      const { error, value } = schema.validate(req[property], {
-        abortEarly: false, // Show all validation errors
-        allowUnknown: false, // Don't allow unknown fields
-        stripUnknown: true // Remove unknown fields
+    const { error, value } = schema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
+
+    if (error) {
+      const errors = error.details.map(detail => ({
+        field: detail.path.join('.'),
+        message: detail.message,
+        value: detail.context.value
+      }));
+
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors
       });
-
-      if (error) {
-        const errors = error.details.map(detail => ({
-          field: detail.path.join('.'),
-          message: detail.message.replace(/"/g, ''),
-          value: detail.context.value
-        }));
-
-        throw new AppError('Validation failed', 400, true, errors);
-      }
-
-      // Replace request property with validated and sanitized value
-      req[property] = value;
-      next();
-    } catch (err) {
-      next(err);
     }
+
+    // Replace req.body with validated and sanitized data
+    req.body = value;
+    next();
   };
 };
 
 /**
- * Custom validation middleware for complex validations
+ * Express validator error handler
  */
-const customValidationMiddleware = (validationFunction) => {
-  return async (req, res, next) => {
-    try {
-      const result = await validationFunction(req);
-      
-      if (!result.isValid) {
-        throw new AppError(result.message || 'Validation failed', 400, true, result.errors);
-      }
-      
-      next();
-    } catch (err) {
-      next(err);
-    }
-  };
-};
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  
+  if (!errors.isEmpty()) {
+    const formattedErrors = errors.array().map(error => ({
+      field: error.param,
+      message: error.msg,
+      value: error.value
+    }));
 
-/**
- * Sanitize input middleware
- */
-const sanitizeInput = (req, res, next) => {
-  // Remove potentially dangerous characters
-  const sanitize = (obj) => {
-    if (typeof obj === 'string') {
-      return obj.trim().replace(/[<>]/g, '');
-    }
-    
-    if (typeof obj === 'object' && obj !== null) {
-      for (const key in obj) {
-        obj[key] = sanitize(obj[key]);
-      }
-    }
-    
-    return obj;
-  };
-
-  req.body = sanitize(req.body);
-  req.query = sanitize(req.query);
-  req.params = sanitize(req.params);
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: formattedErrors
+    });
+  }
   
   next();
 };
 
 module.exports = {
   validationMiddleware,
-  customValidationMiddleware,
-  sanitizeInput
+  handleValidationErrors
 };

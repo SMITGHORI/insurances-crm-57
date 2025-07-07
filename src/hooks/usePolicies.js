@@ -1,367 +1,281 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { policiesBackendApi } from '../services/api/policiesApiBackend';
 import { toast } from 'sonner';
-import { policiesApi } from '../services/api/policiesApi';
 
-/**
- * React Query hooks for policy management with MongoDB integration
- * All operations connect directly to the database
- */
-
-// Query keys for cache management
-export const policiesQueryKeys = {
-  all: ['policies'],
-  lists: () => [...policiesQueryKeys.all, 'list'],
-  list: (params) => [...policiesQueryKeys.lists(), params],
-  details: () => [...policiesQueryKeys.all, 'detail'],
-  detail: (id) => [...policiesQueryKeys.details(), id],
-  documents: (id) => [...policiesQueryKeys.all, 'documents', id],
-  payments: (id) => [...policiesQueryKeys.all, 'payments', id],
-  notes: (id) => [...policiesQueryKeys.all, 'notes', id],
-  stats: () => [...policiesQueryKeys.all, 'stats'],
-};
-
-/**
- * Hook to fetch policies from MongoDB with filtering and pagination
- */
+// Get all policies with filters
 export const usePolicies = (params = {}) => {
   return useQuery({
-    queryKey: policiesQueryKeys.list(params),
-    queryFn: async () => {
-      console.log('Fetching policies from MongoDB with params:', params);
-      const result = await policiesApi.getPolicies(params);
-      console.log('Policies fetched from MongoDB:', result);
-      return result;
-    },
-    staleTime: 30 * 1000, // 30 seconds
-    retry: 2,
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 10000),
-    onError: (error) => {
-      console.error('Error fetching policies from MongoDB:', error);
-      toast.error(`Failed to load policies: ${error.message}`);
-    },
+    queryKey: ['policies', params],
+    queryFn: () => policiesBackendApi.getPolicies(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Get single policy by ID
+export const usePolicy = (id) => {
+  return useQuery({
+    queryKey: ['policy', id],
+    queryFn: () => policiesBackendApi.getPolicyById(id),
+    enabled: !!id,
+  });
+};
+
+// Create policy mutation
+export const useCreatePolicy = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: policiesBackendApi.createPolicy,
     onSuccess: (data) => {
-      console.log('Successfully loaded policies from MongoDB:', data);
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast.success('Policy created successfully');
+    },
+    onError: (error) => {
+      console.error('Create policy error:', error);
+      toast.error(error.message || 'Failed to create policy');
     }
   });
 };
 
-/**
- * Hook to fetch a single policy from MongoDB by ID
- */
-export const usePolicy = (policyId) => {
-  return useQuery({
-    queryKey: policiesQueryKeys.detail(policyId),
-    queryFn: async () => {
-      console.log('Fetching policy from MongoDB:', policyId);
-      const result = await policiesApi.getPolicyById(policyId);
-      console.log('Policy fetched from MongoDB:', result);
-      return result;
-    },
-    enabled: !!policyId,
-    staleTime: 30 * 1000,
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching policy from MongoDB:', error);
-      toast.error(`Failed to load policy: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to create a new policy in MongoDB
- */
-export const useCreatePolicy = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (policyData) => {
-      console.log('Creating policy in MongoDB:', policyData);
-      
-      // Basic validation
-      if (!policyData.client?.id || !policyData.type || !policyData.premium || !policyData.sumAssured) {
-        throw new Error('Missing required fields: client, type, premium, or sum assured');
-      }
-
-      const result = await policiesApi.createPolicy(policyData);
-      console.log('Policy created in MongoDB:', result);
-      return result;
-    },
-    onSuccess: (data, variables) => {
-      console.log('Policy successfully created in MongoDB:', data);
-      
-      // Invalidate and refetch policies list to get fresh data from database
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-      
-      toast.success(`Policy "${data.policyNumber}" created successfully in database`);
-    },
-    onError: (error, variables) => {
-      console.error('Error creating policy in MongoDB:', error);
-      toast.error(`Failed to create policy: ${error.message}`);
-    },
-  });
-};
-
-/**
- * Hook to update an existing policy in MongoDB
- */
+// Update policy mutation
 export const useUpdatePolicy = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: async ({ id, policyData }) => {
-      console.log('Updating policy in MongoDB:', { id, policyData });
-      
-      // Basic validation
-      if (!policyData.client?.id || !policyData.type || !policyData.premium || !policyData.sumAssured) {
-        throw new Error('Missing required fields: client, type, premium, or sum assured');
-      }
-
-      const result = await policiesApi.updatePolicy(id, policyData);
-      console.log('Policy updated in MongoDB:', result);
-      return result;
-    },
+    mutationFn: ({ id, policyData }) => policiesBackendApi.updatePolicy(id, policyData),
     onSuccess: (data, variables) => {
-      const { id } = variables;
-      console.log('Policy successfully updated in MongoDB:', data);
-      
-      // Update specific policy in cache
-      queryClient.setQueryData(policiesQueryKeys.detail(id), data);
-      
-      // Invalidate lists to refresh them with database data
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-      
-      toast.success(`Policy "${data.policyNumber}" updated successfully in database`);
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.id] });
+      toast.success('Policy updated successfully');
     },
-    onError: (error, variables) => {
-      console.error('Error updating policy in MongoDB:', error);
-      toast.error(`Failed to update policy: ${error.message}`);
-    },
+    onError: (error) => {
+      console.error('Update policy error:', error);
+      toast.error(error.message || 'Failed to update policy');
+    }
   });
 };
 
-/**
- * Hook to delete a policy from MongoDB
- */
+// Delete policy mutation
 export const useDeletePolicy = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: async (policyId) => {
-      console.log('Deleting policy from MongoDB:', policyId);
-      const result = await policiesApi.deletePolicy(policyId);
-      console.log('Policy deleted from MongoDB:', result);
-      return result;
-    },
-    onSuccess: (data, policyId) => {
-      console.log('Policy successfully deleted from MongoDB:', policyId);
-      
-      // Remove policy from cache
-      queryClient.removeQueries({ queryKey: policiesQueryKeys.detail(policyId) });
-      
-      // Invalidate lists to refresh them with database data
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-      
-      toast.success('Policy deleted successfully from database');
+    mutationFn: policiesBackendApi.deletePolicy,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast.success('Policy deleted successfully');
     },
     onError: (error) => {
-      console.error('Error deleting policy from MongoDB:', error);
-      toast.error(`Failed to delete policy: ${error.message}`);
-    },
+      console.error('Delete policy error:', error);
+      toast.error(error.message || 'Failed to delete policy');
+    }
   });
 };
 
-/**
- * Hook to upload policy documents to MongoDB
- */
-export const useUploadDocument = () => {
-  const queryClient = useQueryClient();
-
+// Search policies
+export const useSearchPolicies = () => {
   return useMutation({
-    mutationFn: async ({ policyId, documentType, file, name }) => {
-      console.log('Uploading document to MongoDB:', { policyId, documentType, fileName: file.name });
-      const result = await policiesApi.uploadDocument(policyId, documentType, file, name);
-      console.log('Document uploaded to MongoDB:', result);
-      return result;
-    },
-    onSuccess: (data, variables) => {
-      const { policyId, documentType } = variables;
-      console.log('Document successfully uploaded to MongoDB:', data);
-      
-      // Invalidate policy documents cache to fetch fresh data from database
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.documents(policyId) });
-      
-      // Also invalidate policy details to refresh document list
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.detail(policyId) });
-      
-      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully to database`);
-    },
-    onError: (error, variables) => {
-      console.error('Error uploading document to MongoDB:', error);
-      const { documentType } = variables;
-      toast.error(`Failed to upload ${documentType} document: ${error.message}`);
-    },
+    mutationFn: ({ query, limit }) => policiesBackendApi.searchPolicies(query, limit),
   });
 };
 
-/**
- * Hook to fetch policy documents from MongoDB
- */
+// Upload document mutation
+export const useUploadPolicyDocument = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, documentType, file, name }) => 
+      policiesBackendApi.uploadDocument(policyId, documentType, file, name),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      queryClient.invalidateQueries({ queryKey: ['policyDocuments', variables.policyId] });
+      toast.success('Document uploaded successfully');
+    },
+    onError: (error) => {
+      console.error('Upload document error:', error);
+      toast.error(error.message || 'Failed to upload document');
+    }
+  });
+};
+
+// Get policy documents
 export const usePolicyDocuments = (policyId) => {
   return useQuery({
-    queryKey: policiesQueryKeys.documents(policyId),
-    queryFn: async () => {
-      console.log('Fetching policy documents from MongoDB:', policyId);
-      const result = await policiesApi.getPolicyDocuments(policyId);
-      console.log('Policy documents fetched from MongoDB:', result);
-      return result;
-    },
+    queryKey: ['policyDocuments', policyId],
+    queryFn: () => policiesBackendApi.getPolicyDocuments(policyId),
     enabled: !!policyId,
-    staleTime: 30 * 1000,
-    onError: (error) => {
-      console.error('Error fetching policy documents from MongoDB:', error);
-      toast.error(`Failed to load policy documents: ${error.message}`);
-    },
   });
 };
 
-/**
- * Hook to delete policy document from MongoDB
- */
-export const useDeleteDocument = () => {
+// Delete document mutation
+export const useDeletePolicyDocument = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
-    mutationFn: async ({ policyId, documentId }) => {
-      console.log('Deleting document from MongoDB:', { policyId, documentId });
-      const result = await policiesApi.deleteDocument(policyId, documentId);
-      console.log('Document deleted from MongoDB:', result);
-      return result;
-    },
+    mutationFn: ({ policyId, documentId }) => 
+      policiesBackendApi.deleteDocument(policyId, documentId),
     onSuccess: (data, variables) => {
-      const { policyId } = variables;
-      console.log('Document successfully deleted from MongoDB:', data);
-      
-      // Invalidate policy documents cache to fetch fresh data from database
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.documents(policyId) });
-      
-      toast.success('Document deleted successfully from database');
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      queryClient.invalidateQueries({ queryKey: ['policyDocuments', variables.policyId] });
+      toast.success('Document deleted successfully');
     },
     onError: (error) => {
-      console.error('Error deleting document from MongoDB:', error);
-      toast.error(`Failed to delete document: ${error.message}`);
-    },
+      console.error('Delete document error:', error);
+      toast.error(error.message || 'Failed to delete document');
+    }
   });
 };
 
-/**
- * Hook to get policy statistics from MongoDB
- */
+// Add payment mutation
+export const useAddPayment = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, paymentData }) => 
+      policiesBackendApi.addPayment(policyId, paymentData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      queryClient.invalidateQueries({ queryKey: ['paymentHistory', variables.policyId] });
+      toast.success('Payment record added successfully');
+    },
+    onError: (error) => {
+      console.error('Add payment error:', error);
+      toast.error(error.message || 'Failed to add payment record');
+    }
+  });
+};
+
+// Get payment history
+export const usePaymentHistory = (policyId) => {
+  return useQuery({
+    queryKey: ['paymentHistory', policyId],
+    queryFn: () => policiesBackendApi.getPaymentHistory(policyId),
+    enabled: !!policyId,
+  });
+};
+
+// Renew policy mutation
+export const useRenewPolicy = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, renewalData }) => 
+      policiesBackendApi.renewPolicy(policyId, renewalData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast.success('Policy renewed successfully');
+    },
+    onError: (error) => {
+      console.error('Renew policy error:', error);
+      toast.error(error.message || 'Failed to renew policy');
+    }
+  });
+};
+
+// Add note mutation
+export const useAddPolicyNote = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, noteData }) => 
+      policiesBackendApi.addNote(policyId, noteData),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      queryClient.invalidateQueries({ queryKey: ['policyNotes', variables.policyId] });
+      toast.success('Note added successfully');
+    },
+    onError: (error) => {
+      console.error('Add note error:', error);
+      toast.error(error.message || 'Failed to add note');
+    }
+  });
+};
+
+// Get policy notes
+export const usePolicyNotes = (policyId) => {
+  return useQuery({
+    queryKey: ['policyNotes', policyId],
+    queryFn: () => policiesBackendApi.getPolicyNotes(policyId),
+    enabled: !!policyId,
+  });
+};
+
+// Get policy statistics
 export const usePolicyStats = () => {
   return useQuery({
-    queryKey: policiesQueryKeys.stats(),
-    queryFn: async () => {
-      console.log('Fetching policy statistics from MongoDB');
-      const result = await policiesApi.getPolicyStats();
-      console.log('Policy statistics fetched from MongoDB:', result);
-      return result;
-    },
-    staleTime: 60 * 1000, // 1 minute
-    retry: 2,
-    onError: (error) => {
-      console.error('Error fetching policy statistics from MongoDB:', error);
-      toast.error(`Failed to load policy statistics: ${error.message}`);
-    },
+    queryKey: ['policyStats'],
+    queryFn: policiesBackendApi.getPolicyStats,
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
-/**
- * Hook for bulk policy operations
- */
-export const useBulkPolicyOperations = () => {
-  const queryClient = useQueryClient();
-
-  const bulkUpdate = useMutation({
-    mutationFn: async ({ policyIds, updateData }) => {
-      console.log('Bulk updating policies in MongoDB:', { policyIds, updateData });
-      const result = await policiesApi.bulkUpdatePolicies(policyIds, updateData);
-      console.log('Bulk update completed in MongoDB:', result);
-      return result;
-    },
-    onSuccess: () => {
-      console.log('Bulk update successfully completed in MongoDB');
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-    },
-    onError: (error) => {
-      console.error('Error in bulk update in MongoDB:', error);
-    },
+// Get expiring policies
+export const useExpiringPolicies = (days = 30) => {
+  return useQuery({
+    queryKey: ['expiringPolicies', days],
+    queryFn: () => policiesBackendApi.getExpiringPolicies(days),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
-
-  const bulkDelete = useMutation({
-    mutationFn: async (policyIds) => {
-      console.log('Bulk deleting policies from MongoDB:', policyIds);
-      const result = await policiesApi.bulkDeletePolicies(policyIds);
-      console.log('Bulk delete completed in MongoDB:', result);
-      return result;
-    },
-    onSuccess: () => {
-      console.log('Bulk delete successfully completed in MongoDB');
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-    },
-    onError: (error) => {
-      console.error('Error in bulk delete in MongoDB:', error);
-    },
-  });
-
-  const bulkAssign = useMutation({
-    mutationFn: async ({ policyIds, agentId }) => {
-      console.log('Bulk assigning policies in MongoDB:', { policyIds, agentId });
-      const result = await policiesApi.bulkAssignPolicies(policyIds, agentId);
-      console.log('Bulk assign completed in MongoDB:', result);
-      return result;
-    },
-    onSuccess: () => {
-      console.log('Bulk assign successfully completed in MongoDB');
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: policiesQueryKeys.stats() });
-      toast.success('Policies assigned successfully in database');
-    },
-    onError: (error) => {
-      console.error('Error in bulk assign in MongoDB:', error);
-      toast.error(`Failed to assign policies: ${error.message}`);
-    },
-  });
-
-  return {
-    bulkUpdate,
-    bulkDelete,
-    bulkAssign,
-  };
 };
 
-/**
- * Hook for policy export from MongoDB
- */
-export const usePolicyExport = () => {
+// Get policies due for renewal
+export const usePoliciesDueForRenewal = (days = 30) => {
+  return useQuery({
+    queryKey: ['policiesDueForRenewal', days],
+    queryFn: () => policiesBackendApi.getPoliciesDueForRenewal(days),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Export policies
+export const useExportPolicies = () => {
   return useMutation({
-    mutationFn: async (exportData) => {
-      console.log('Exporting policies from MongoDB:', exportData);
-      const result = await policiesApi.exportPolicies(exportData);
-      console.log('Policy export completed from MongoDB:', result);
-      return result;
-    },
+    mutationFn: policiesBackendApi.exportPolicies,
     onSuccess: () => {
-      console.log('Policy export successfully completed from MongoDB');
-      toast.success('Policies exported successfully from database');
+      toast.success('Policies exported successfully');
     },
     onError: (error) => {
-      console.error('Error exporting policies from MongoDB:', error);
-      toast.error(`Failed to export policies: ${error.message}`);
+      console.error('Export policies error:', error);
+      toast.error(error.message || 'Failed to export policies');
+    }
+  });
+};
+
+// Assign policy to agent
+export const useAssignPolicy = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyId, agentId }) => 
+      policiesBackendApi.assignPolicyToAgent(policyId, agentId),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
+      toast.success('Policy assigned successfully');
     },
+    onError: (error) => {
+      console.error('Assign policy error:', error);
+      toast.error(error.message || 'Failed to assign policy');
+    }
+  });
+};
+
+// Bulk assign policies
+export const useBulkAssignPolicies = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ policyIds, agentId }) => 
+      policiesBackendApi.bulkAssignPolicies(policyIds, agentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast.success('Policies assigned successfully');
+    },
+    onError: (error) => {
+      console.error('Bulk assign policies error:', error);
+      toast.error(error.message || 'Failed to assign policies');
+    }
   });
 };

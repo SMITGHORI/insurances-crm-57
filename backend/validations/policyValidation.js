@@ -1,455 +1,170 @@
 
 const Joi = require('joi');
 
-/**
- * Premium validation schema
- */
-const premiumSchema = Joi.object({
-  amount: Joi.number()
-    .positive()
-    .precision(2)
-    .required()
-    .messages({
-      'number.base': 'Premium amount must be a number',
-      'number.positive': 'Premium amount must be positive',
-      'any.required': 'Premium amount is required'
-    }),
-  
-  frequency: Joi.string()
-    .valid('monthly', 'quarterly', 'semi-annual', 'annual')
-    .required()
-    .messages({
-      'string.base': 'Premium frequency must be a string',
-      'any.only': 'Premium frequency must be monthly, quarterly, semi-annual, or annual',
-      'any.required': 'Premium frequency is required'
-    }),
-  
-  nextDueDate: Joi.date()
-    .min('now')
-    .optional()
-    .messages({
-      'date.base': 'Next due date must be a valid date',
-      'date.min': 'Next due date must be in the future'
-    })
+// Vehicle details schema for motor insurance
+const vehicleDetailsSchema = Joi.object({
+  registrationNumber: Joi.string().optional().trim(),
+  make: Joi.string().optional().trim(),
+  model: Joi.string().optional().trim(),
+  variant: Joi.string().optional().trim(),
+  yearOfManufacture: Joi.number().optional().min(1950).max(new Date().getFullYear()),
+  engineNumber: Joi.string().optional().trim(),
+  chassisNumber: Joi.string().optional().trim(),
+  fuelType: Joi.string().optional().valid('petrol', 'diesel', 'cng', 'electric', 'hybrid'),
+  cubicCapacity: Joi.number().optional().min(50),
+  seatingCapacity: Joi.number().optional().min(1),
+  vehicleType: Joi.string().optional().valid('two_wheeler', 'car', 'commercial', 'truck', 'bus')
 });
 
-/**
- * Coverage validation schema
- */
-const coverageSchema = Joi.object({
-  amount: Joi.number()
-    .positive()
-    .precision(2)
-    .required()
-    .messages({
-      'number.base': 'Coverage amount must be a number',
-      'number.positive': 'Coverage amount must be positive',
-      'any.required': 'Coverage amount is required'
-    }),
-  
-  deductible: Joi.number()
-    .min(0)
-    .precision(2)
-    .default(0)
-    .messages({
-      'number.base': 'Deductible must be a number',
-      'number.min': 'Deductible cannot be negative'
-    }),
-  
-  benefits: Joi.array()
-    .items(Joi.string().trim().max(200))
-    .default([])
-    .messages({
-      'array.base': 'Benefits must be an array',
-      'string.max': 'Each benefit cannot exceed 200 characters'
-    }),
-  
-  exclusions: Joi.array()
-    .items(Joi.string().trim().max(200))
-    .default([])
-    .messages({
-      'array.base': 'Exclusions must be an array',
-      'string.max': 'Each exclusion cannot exceed 200 characters'
-    })
+// Health details schema for health insurance
+const healthDetailsSchema = Joi.object({
+  preExistingDiseases: Joi.array().items(Joi.string()).optional(),
+  familyMedicalHistory: Joi.string().optional().trim(),
+  coverageType: Joi.string().optional().valid('individual', 'family_floater', 'group'),
+  roomRentLimit: Joi.number().optional().min(0),
+  copaymentPercentage: Joi.number().optional().min(0).max(100),
+  waitingPeriod: Joi.number().optional().min(0)
 });
 
-/**
- * Commission validation schema
- */
+// Travel details schema for travel insurance
+const travelDetailsSchema = Joi.object({
+  destination: Joi.string().optional().trim(),
+  travelStartDate: Joi.date().optional(),
+  travelEndDate: Joi.date().optional().greater(Joi.ref('travelStartDate')),
+  travelPurpose: Joi.string().optional().valid('leisure', 'business', 'education', 'medical'),
+  numberOfTravelers: Joi.number().optional().min(1)
+});
+
+// Nominees schema for life insurance
+const nomineeSchema = Joi.object({
+  name: Joi.string().required().trim().max(100),
+  relationship: Joi.string().required().trim().max(50),
+  percentage: Joi.number().required().min(0).max(100),
+  dateOfBirth: Joi.date().optional(),
+  address: Joi.string().optional().trim().max(500)
+});
+
+// Commission schema
 const commissionSchema = Joi.object({
-  rate: Joi.number()
-    .min(0)
-    .max(100)
-    .precision(2)
-    .required()
-    .messages({
-      'number.base': 'Commission rate must be a number',
-      'number.min': 'Commission rate cannot be negative',
-      'number.max': 'Commission rate cannot exceed 100%',
-      'any.required': 'Commission rate is required'
-    }),
-  
-  amount: Joi.number()
-    .positive()
-    .precision(2)
-    .required()
-    .messages({
-      'number.base': 'Commission amount must be a number',
-      'number.positive': 'Commission amount must be positive',
-      'any.required': 'Commission amount is required'
-    }),
-  
-  paid: Joi.boolean()
-    .default(false),
-  
-  paidDate: Joi.date()
-    .max('now')
-    .when('paid', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.forbidden()
-    })
-    .messages({
-      'date.base': 'Paid date must be a valid date',
-      'date.max': 'Paid date cannot be in the future',
-      'any.required': 'Paid date is required when commission is marked as paid',
-      'any.unknown': 'Paid date should not be provided when commission is not paid'
-    })
+  percentage: Joi.number().required().min(0).max(100),
+  amount: Joi.number().required().min(0),
+  type: Joi.string().optional().valid('first_year', 'renewal', 'bonus').default('first_year'),
+  status: Joi.string().optional().valid('pending', 'paid', 'hold').default('pending'),
+  paidDate: Joi.date().optional()
 });
 
-/**
- * Create policy validation schema
- */
+// Main policy validation schema
 const policyValidation = Joi.object({
-  policyNumber: Joi.string()
-    .pattern(/^POL-\d{4}-\d{3,}$/)
-    .uppercase()
-    .optional()
-    .messages({
-      'string.base': 'Policy number must be a string',
-      'string.pattern.base': 'Policy number must follow format: POL-YYYY-XXX'
-    }),
+  policyNumber: Joi.string().optional().trim(), // Generated automatically if not provided
+  clientId: Joi.string().required().regex(/^[0-9a-fA-F]{24}$/),
+  type: Joi.string().required().valid(
+    'life', 'health', 'motor', 'home', 'travel', 'marine', 'fire', 
+    'personal_accident', 'group_health', 'group_life', 'commercial', 'other'
+  ),
+  category: Joi.string().optional().valid('individual', 'family', 'group', 'corporate').default('individual'),
+  insuranceCompany: Joi.string().required().trim().max(200),
+  planName: Joi.string().required().trim().max(200),
+  sumAssured: Joi.number().required().min(1),
+  premium: Joi.number().required().min(1),
+  paymentFrequency: Joi.string().optional().valid('monthly', 'quarterly', 'half_yearly', 'yearly', 'single').default('yearly'),
+  startDate: Joi.date().required(),
+  endDate: Joi.date().required().greater(Joi.ref('startDate')),
+  maturityDate: Joi.date().optional().greater(Joi.ref('startDate')),
+  status: Joi.string().optional().valid('Proposal', 'Active', 'Lapsed', 'Matured', 'Cancelled', 'Expired', 'Suspended').default('Proposal'),
+  gracePeriod: Joi.number().optional().min(0).default(30),
+  policyTermYears: Joi.number().optional().min(1),
+  premiumPaymentTermYears: Joi.number().optional().min(1),
+  lockInPeriod: Joi.number().optional().min(0).default(0),
+  gstNumber: Joi.string().optional().trim().uppercase(),
+  discountPercentage: Joi.number().optional().min(0).max(100).default(0),
+  nextYearPremium: Joi.number().optional().min(0),
+  assignedAgentId: Joi.string().required().regex(/^[0-9a-fA-F]{24}$/),
   
-  clientId: Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      'string.base': 'Client ID must be a string',
-      'string.pattern.base': 'Client ID must be a valid ObjectId',
-      'any.required': 'Client ID is required'
-    }),
-  
-  type: Joi.string()
-    .valid('life', 'health', 'auto', 'home', 'business', 'travel', 'disability', 'other')
-    .required()
-    .messages({
-      'string.base': 'Policy type must be a string',
-      'any.only': 'Policy type must be one of: life, health, auto, home, business, travel, disability, other',
-      'any.required': 'Policy type is required'
-    }),
-  
-  subType: Joi.string()
-    .trim()
-    .max(100)
-    .optional()
-    .messages({
-      'string.base': 'Policy subtype must be a string',
-      'string.max': 'Policy subtype cannot exceed 100 characters'
-    }),
-  
-  status: Joi.string()
-    .valid('active', 'pending', 'expired', 'cancelled', 'suspended', 'lapsed')
-    .default('pending')
-    .messages({
-      'string.base': 'Policy status must be a string',
-      'any.only': 'Policy status must be one of: active, pending, expired, cancelled, suspended, lapsed'
-    }),
-  
-  company: Joi.string()
-    .trim()
-    .max(200)
-    .required()
-    .messages({
-      'string.base': 'Insurance company must be a string',
-      'string.max': 'Insurance company name cannot exceed 200 characters',
-      'any.required': 'Insurance company is required'
-    }),
-  
-  companyPolicyNumber: Joi.string()
-    .trim()
-    .max(100)
-    .optional()
-    .messages({
-      'string.base': 'Company policy number must be a string',
-      'string.max': 'Company policy number cannot exceed 100 characters'
-    }),
-  
-  premium: premiumSchema.required(),
-  coverage: coverageSchema.required(),
-  
-  startDate: Joi.date()
-    .required()
-    .messages({
-      'date.base': 'Start date must be a valid date',
-      'any.required': 'Start date is required'
-    }),
-  
-  endDate: Joi.date()
-    .greater(Joi.ref('startDate'))
-    .required()
-    .messages({
-      'date.base': 'End date must be a valid date',
-      'date.greater': 'End date must be after start date',
-      'any.required': 'End date is required'
-    }),
-  
-  assignedAgentId: Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      'string.base': 'Assigned agent ID must be a string',
-      'string.pattern.base': 'Assigned agent ID must be a valid ObjectId',
-      'any.required': 'Assigned agent ID is required'
-    }),
-  
-  commission: commissionSchema.required(),
-  
-  tags: Joi.array()
-    .items(Joi.string().trim().lowercase().max(50))
-    .default([])
-    .messages({
-      'array.base': 'Tags must be an array',
-      'string.max': 'Each tag cannot exceed 50 characters'
-    }),
-  
-  priority: Joi.string()
-    .valid('low', 'medium', 'high', 'urgent')
-    .default('medium')
-    .messages({
-      'string.base': 'Priority must be a string',
-      'any.only': 'Priority must be one of: low, medium, high, urgent'
-    }),
-  
-  isAutoRenewal: Joi.boolean()
-    .default(false),
-  
-  lastContactDate: Joi.date()
-    .max('now')
-    .optional()
-    .messages({
-      'date.base': 'Last contact date must be a valid date',
-      'date.max': 'Last contact date cannot be in the future'
-    }),
-  
-  nextFollowUpDate: Joi.date()
-    .min('now')
-    .optional()
-    .messages({
-      'date.base': 'Next follow up date must be a valid date',
-      'date.min': 'Next follow up date must be in the future'
-    })
+  // Optional specific details
+  nominees: Joi.array().items(nomineeSchema).optional(),
+  typeSpecificDetails: Joi.object().optional(),
+  vehicleDetails: vehicleDetailsSchema.optional(),
+  healthDetails: healthDetailsSchema.optional(),
+  travelDetails: travelDetailsSchema.optional(),
+  commission: commissionSchema.optional(),
+  source: Joi.string().optional().valid('direct', 'referral', 'online', 'campaign', 'renewal').default('direct')
 });
 
-/**
- * Update policy validation schema (all fields optional)
- */
-const updatePolicyValidation = policyValidation.fork(
-  [
-    'clientId',
-    'type',
-    'company',
-    'premium',
-    'coverage',
-    'startDate',
-    'endDate',
-    'assignedAgentId',
-    'commission'
-  ],
-  (schema) => schema.optional()
-);
+// Update policy validation (all fields optional except critical ones)
+const updatePolicyValidation = Joi.object({
+  clientId: Joi.string().optional().regex(/^[0-9a-fA-F]{24}$/),
+  type: Joi.string().optional().valid(
+    'life', 'health', 'motor', 'home', 'travel', 'marine', 'fire', 
+    'personal_accident', 'group_health', 'group_life', 'commercial', 'other'
+  ),
+  category: Joi.string().optional().valid('individual', 'family', 'group', 'corporate'),
+  insuranceCompany: Joi.string().optional().trim().max(200),
+  planName: Joi.string().optional().trim().max(200),
+  sumAssured: Joi.number().optional().min(1),
+  premium: Joi.number().optional().min(1),
+  paymentFrequency: Joi.string().optional().valid('monthly', 'quarterly', 'half_yearly', 'yearly', 'single'),
+  startDate: Joi.date().optional(),
+  endDate: Joi.date().optional(),
+  maturityDate: Joi.date().optional(),
+  status: Joi.string().optional().valid('Proposal', 'Active', 'Lapsed', 'Matured', 'Cancelled', 'Expired', 'Suspended'),
+  gracePeriod: Joi.number().optional().min(0),
+  policyTermYears: Joi.number().optional().min(1),
+  premiumPaymentTermYears: Joi.number().optional().min(1),
+  lockInPeriod: Joi.number().optional().min(0),
+  gstNumber: Joi.string().optional().trim().uppercase(),
+  discountPercentage: Joi.number().optional().min(0).max(100),
+  nextYearPremium: Joi.number().optional().min(0),
+  assignedAgentId: Joi.string().optional().regex(/^[0-9a-fA-F]{24}$/),
+  
+  // Optional updates
+  nominees: Joi.array().items(nomineeSchema).optional(),
+  typeSpecificDetails: Joi.object().optional(),
+  vehicleDetails: vehicleDetailsSchema.optional(),
+  healthDetails: healthDetailsSchema.optional(),
+  travelDetails: travelDetailsSchema.optional(),
+  commission: commissionSchema.optional(),
+  source: Joi.string().optional().valid('direct', 'referral', 'online', 'campaign', 'renewal')
+});
 
-/**
- * Policy document validation schema
- */
+// Policy document validation
 const policyDocumentValidation = Joi.object({
-  documentType: Joi.string()
-    .valid(
-      'policy_document',
-      'application_form',
-      'medical_report',
-      'claim_form',
-      'amendment',
-      'renewal_document',
-      'payment_receipt',
-      'beneficiary_form',
-      'other'
-    )
-    .required()
-    .messages({
-      'string.base': 'Document type must be a string',
-      'any.only': 'Document type must be a valid type',
-      'any.required': 'Document type is required'
-    }),
-  
-  name: Joi.string()
-    .trim()
-    .max(255)
-    .optional()
-    .messages({
-      'string.base': 'Document name must be a string',
-      'string.max': 'Document name cannot exceed 255 characters'
-    })
+  documentType: Joi.string().required().valid('policy_document', 'certificate', 'endorsement', 'claim_form', 'medical_report', 'other'),
+  name: Joi.string().optional().trim().max(200)
 });
 
-/**
- * Payment validation schema
- */
+// Payment validation
 const paymentValidation = Joi.object({
-  amount: Joi.number()
-    .positive()
-    .precision(2)
-    .required()
-    .messages({
-      'number.base': 'Payment amount must be a number',
-      'number.positive': 'Payment amount must be positive',
-      'any.required': 'Payment amount is required'
-    }),
-  
-  method: Joi.string()
-    .valid('cash', 'check', 'bank_transfer', 'credit_card', 'debit_card', 'online', 'other')
-    .required()
-    .messages({
-      'string.base': 'Payment method must be a string',
-      'any.only': 'Payment method must be valid',
-      'any.required': 'Payment method is required'
-    }),
-  
-  status: Joi.string()
-    .valid('pending', 'completed', 'failed', 'refunded')
-    .default('completed')
-    .messages({
-      'string.base': 'Payment status must be a string',
-      'any.only': 'Payment status must be valid'
-    }),
-  
-  transactionId: Joi.string()
-    .trim()
-    .max(100)
-    .optional()
-    .messages({
-      'string.base': 'Transaction ID must be a string',
-      'string.max': 'Transaction ID cannot exceed 100 characters'
-    }),
-  
-  notes: Joi.string()
-    .trim()
-    .max(500)
-    .optional()
-    .messages({
-      'string.base': 'Payment notes must be a string',
-      'string.max': 'Payment notes cannot exceed 500 characters'
-    })
+  amount: Joi.number().required().min(1),
+  paymentDate: Joi.date().required(),
+  paymentMethod: Joi.string().required().valid('cash', 'cheque', 'online', 'card', 'bank_transfer', 'upi'),
+  transactionId: Joi.string().optional().trim(),
+  status: Joi.string().optional().valid('pending', 'completed', 'failed', 'cancelled').default('completed'),
+  notes: Joi.string().optional().trim().max(500)
 });
 
-/**
- * Renewal validation schema
- */
+// Renewal validation
 const renewalValidation = Joi.object({
-  newEndDate: Joi.date()
-    .min('now')
-    .required()
-    .messages({
-      'date.base': 'New end date must be a valid date',
-      'date.min': 'New end date must be in the future',
-      'any.required': 'New end date is required'
-    }),
-  
-  premium: Joi.number()
-    .positive()
-    .precision(2)
-    .optional()
-    .messages({
-      'number.base': 'Renewal premium must be a number',
-      'number.positive': 'Renewal premium must be positive'
-    }),
-  
-  agentId: Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .optional()
-    .messages({
-      'string.base': 'Agent ID must be a string',
-      'string.pattern.base': 'Agent ID must be a valid ObjectId'
-    }),
-  
-  notes: Joi.string()
-    .trim()
-    .max(500)
-    .optional()
-    .messages({
-      'string.base': 'Renewal notes must be a string',
-      'string.max': 'Renewal notes cannot exceed 500 characters'
-    })
+  newEndDate: Joi.date().required(),
+  newPremium: Joi.number().optional().min(1),
+  renewalType: Joi.string().optional().valid('automatic', 'manual').default('manual'),
+  notes: Joi.string().optional().trim().max(500)
 });
 
-/**
- * Note validation schema
- */
-const noteValidation = Joi.object({
-  content: Joi.string()
-    .trim()
-    .min(1)
-    .max(1000)
-    .required()
-    .messages({
-      'string.base': 'Note content must be a string',
-      'string.min': 'Note content cannot be empty',
-      'string.max': 'Note content cannot exceed 1000 characters',
-      'any.required': 'Note content is required'
-    }),
-  
-  isPrivate: Joi.boolean()
-    .default(false),
-  
-  tags: Joi.array()
-    .items(Joi.string().trim().lowercase().max(50))
-    .default([])
-    .messages({
-      'array.base': 'Tags must be an array',
-      'string.max': 'Each tag cannot exceed 50 characters'
-    })
+// Endorsement validation
+const endorsementValidation = Joi.object({
+  endorsementNumber: Joi.string().required().trim(),
+  endorsementDate: Joi.date().required(),
+  endorsementType: Joi.string().required().valid('addition', 'deletion', 'modification', 'cancellation'),
+  description: Joi.string().required().trim().max(1000),
+  premiumImpact: Joi.number().optional().default(0)
 });
 
-/**
- * Bulk assign validation schema
- */
-const bulkAssignValidation = Joi.object({
-  policyIds: Joi.array()
-    .items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/))
-    .min(1)
-    .required()
-    .messages({
-      'array.base': 'Policy IDs must be an array',
-      'array.min': 'At least one policy ID is required',
-      'string.pattern.base': 'Each policy ID must be a valid ObjectId',
-      'any.required': 'Policy IDs are required'
-    }),
-  
-  agentId: Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      'string.base': 'Agent ID must be a string',
-      'string.pattern.base': 'Agent ID must be a valid ObjectId',
-      'any.required': 'Agent ID is required'
-    })
-});
-
+// Export validation schemas
 module.exports = {
   policyValidation,
   updatePolicyValidation,
   policyDocumentValidation,
   paymentValidation,
   renewalValidation,
-  noteValidation,
-  bulkAssignValidation
+  endorsementValidation
 };

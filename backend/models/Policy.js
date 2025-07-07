@@ -1,588 +1,648 @@
 
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
+const { Schema } = mongoose;
 
-/**
- * Premium Schema
- * Represents the premium structure for a policy
- */
-const PremiumSchema = new mongoose.Schema({
-  amount: {
-    type: Number,
-    required: [true, 'Premium amount is required'],
-    min: [0, 'Premium amount must be positive'],
-    validate: {
-      validator: function(value) {
-        return value > 0;
-      },
-      message: 'Premium amount must be greater than 0'
-    }
-  },
-  frequency: {
+// Document sub-schema
+const documentSchema = new Schema({
+  documentType: {
     type: String,
-    required: [true, 'Premium frequency is required'],
-    enum: {
-      values: ['monthly', 'quarterly', 'semi-annual', 'annual'],
-      message: 'Premium frequency must be monthly, quarterly, semi-annual, or annual'
-    }
+    required: true,
+    enum: ['policy_document', 'certificate', 'endorsement', 'claim_form', 'medical_report', 'other']
   },
-  nextDueDate: {
-    type: Date,
-    validate: {
-      validator: function(value) {
-        return !value || value > new Date();
-      },
-      message: 'Next due date must be in the future'
-    }
-  }
-}, { _id: false });
-
-/**
- * Coverage Schema
- * Represents the coverage details for a policy
- */
-const CoverageSchema = new mongoose.Schema({
-  amount: {
-    type: Number,
-    required: [true, 'Coverage amount is required'],
-    min: [0, 'Coverage amount must be positive']
-  },
-  deductible: {
-    type: Number,
-    default: 0,
-    min: [0, 'Deductible must be positive']
-  },
-  benefits: [{
-    type: String,
-    trim: true
-  }],
-  exclusions: [{
-    type: String,
-    trim: true
-  }]
-}, { _id: false });
-
-/**
- * Commission Schema
- * Represents the commission structure for a policy
- */
-const CommissionSchema = new mongoose.Schema({
-  rate: {
-    type: Number,
-    required: [true, 'Commission rate is required'],
-    min: [0, 'Commission rate must be between 0 and 100'],
-    max: [100, 'Commission rate must be between 0 and 100']
-  },
-  amount: {
-    type: Number,
-    required: [true, 'Commission amount is required'],
-    min: [0, 'Commission amount must be positive']
-  },
-  paid: {
-    type: Boolean,
-    default: false
-  },
-  paidDate: {
-    type: Date,
-    validate: {
-      validator: function(value) {
-        return !value || (this.paid && value <= new Date());
-      },
-      message: 'Paid date cannot be in the future'
-    }
-  }
-}, { _id: false });
-
-/**
- * Document Schema
- * Represents documents attached to a policy
- */
-const DocumentSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Document name is required'],
-    trim: true,
-    maxlength: [255, 'Document name cannot exceed 255 characters']
-  },
-  type: {
-    type: String,
-    required: [true, 'Document type is required'],
-    enum: {
-      values: [
-        'policy_document',
-        'application_form',
-        'medical_report',
-        'claim_form',
-        'amendment',
-        'renewal_document',
-        'payment_receipt',
-        'beneficiary_form',
-        'other'
-      ],
-      message: 'Invalid document type'
-    }
-  },
-  url: {
-    type: String,
-    required: [true, 'Document URL is required'],
+    required: true,
     trim: true
   },
-  size: {
+  fileName: {
+    type: String,
+    required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  fileSize: {
     type: Number,
-    min: [0, 'Document size must be positive']
-  },
-  mimeType: {
-    type: String,
-    trim: true
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Document uploader is required']
+    required: true
   },
   uploadedAt: {
     type: Date,
     default: Date.now
+  },
+  uploadedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 });
 
-/**
- * Payment History Schema
- * Represents payment records for a policy
- */
-const PaymentSchema = new mongoose.Schema({
+// Payment sub-schema
+const paymentSchema = new Schema({
   amount: {
     type: Number,
-    required: [true, 'Payment amount is required'],
-    min: [0, 'Payment amount must be positive']
+    required: true,
+    min: 0
   },
-  date: {
+  paymentDate: {
     type: Date,
-    required: [true, 'Payment date is required'],
-    default: Date.now
+    required: true
   },
-  method: {
+  paymentMethod: {
     type: String,
-    required: [true, 'Payment method is required'],
-    enum: {
-      values: ['cash', 'check', 'bank_transfer', 'credit_card', 'debit_card', 'online', 'other'],
-      message: 'Invalid payment method'
-    }
-  },
-  status: {
-    type: String,
-    required: [true, 'Payment status is required'],
-    enum: {
-      values: ['pending', 'completed', 'failed', 'refunded'],
-      message: 'Invalid payment status'
-    },
-    default: 'completed'
+    required: true,
+    enum: ['cash', 'cheque', 'online', 'card', 'bank_transfer', 'upi']
   },
   transactionId: {
     type: String,
-    trim: true,
-    unique: true,
-    sparse: true
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'completed', 'failed', 'cancelled'],
+    default: 'completed'
   },
   notes: {
     type: String,
-    trim: true,
-    maxlength: [500, 'Payment notes cannot exceed 500 characters']
+    trim: true
+  },
+  recordedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  recordedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
-/**
- * Renewal History Schema
- * Represents renewal records for a policy
- */
-const RenewalSchema = new mongoose.Schema({
+// Renewal sub-schema
+const renewalSchema = new Schema({
   renewalDate: {
     type: Date,
-    required: [true, 'Renewal date is required']
+    required: true
   },
   previousEndDate: {
     type: Date,
-    required: [true, 'Previous end date is required']
+    required: true
   },
-  premium: {
+  newEndDate: {
+    type: Date,
+    required: true
+  },
+  previousPremium: {
     type: Number,
-    required: [true, 'Renewal premium is required'],
-    min: [0, 'Renewal premium must be positive']
+    required: true
   },
-  agentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Renewal agent is required']
+  newPremium: {
+    type: Number,
+    required: true
+  },
+  renewalType: {
+    type: String,
+    enum: ['automatic', 'manual'],
+    default: 'manual'
   },
   notes: {
     type: String,
-    trim: true,
-    maxlength: [500, 'Renewal notes cannot exceed 500 characters']
+    trim: true
+  },
+  renewedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 });
 
-/**
- * Note Schema
- * Represents notes added to a policy
- */
-const NoteSchema = new mongoose.Schema({
-  content: {
+// Notes sub-schema
+const noteSchema = new Schema({
+  note: {
     type: String,
-    required: [true, 'Note content is required'],
+    required: true,
     trim: true,
-    maxlength: [1000, 'Note content cannot exceed 1000 characters']
+    maxlength: 1000
   },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
+  addedBy: {
+    type: Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Note creator is required']
+    required: true
   },
-  createdAt: {
+  addedAt: {
     type: Date,
     default: Date.now
-  },
-  isPrivate: {
-    type: Boolean,
-    default: false
-  },
-  tags: [{
-    type: String,
-    trim: true,
-    lowercase: true
-  }]
+  }
 });
 
-/**
- * Main Policy Schema
- * Represents an insurance policy in the system
- */
-const PolicySchema = new mongoose.Schema({
-  policyNumber: {
-    type: String,
-    required: [true, 'Policy number is required'],
-    unique: true,
-    trim: true,
-    uppercase: true,
-    match: [/^POL-\d{4}-\d{3,}$/, 'Policy number must follow format: POL-YYYY-XXX'],
-    index: true
+// Commission sub-schema
+const commissionSchema = new Schema({
+  percentage: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 100
   },
-  
-  clientId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Client',
-    required: [true, 'Client is required'],
-    index: true
+  amount: {
+    type: Number,
+    required: true,
+    min: 0
   },
-  
   type: {
     type: String,
-    required: [true, 'Policy type is required'],
-    enum: {
-      values: ['life', 'health', 'auto', 'home', 'business', 'travel', 'disability', 'other'],
-      message: 'Invalid policy type'
-    },
-    index: true
+    enum: ['first_year', 'renewal', 'bonus'],
+    default: 'first_year'
   },
-  
-  subType: {
-    type: String,
-    trim: true,
-    maxlength: [100, 'Policy subtype cannot exceed 100 characters']
-  },
-  
   status: {
     type: String,
-    required: [true, 'Policy status is required'],
-    enum: {
-      values: ['active', 'pending', 'expired', 'cancelled', 'suspended', 'lapsed'],
-      message: 'Invalid policy status'
-    },
-    default: 'pending',
+    enum: ['pending', 'paid', 'hold'],
+    default: 'pending'
+  },
+  paidDate: {
+    type: Date
+  }
+});
+
+// Main policy schema
+const policySchema = new Schema({
+  policyNumber: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
     index: true
   },
-  
-  company: {
-    type: String,
-    required: [true, 'Insurance company is required'],
-    trim: true,
-    maxlength: [200, 'Company name cannot exceed 200 characters'],
+  clientId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Client',
+    required: true,
     index: true
   },
-  
-  companyPolicyNumber: {
+  type: {
     type: String,
-    trim: true,
-    maxlength: [100, 'Company policy number cannot exceed 100 characters']
+    required: true,
+    enum: [
+      'life',
+      'health',
+      'motor',
+      'home',
+      'travel',
+      'marine',
+      'fire',
+      'personal_accident',
+      'group_health',
+      'group_life',
+      'commercial',
+      'other'
+    ],
+    index: true
   },
-  
+  category: {
+    type: String,
+    enum: ['individual', 'family', 'group', 'corporate'],
+    default: 'individual'
+  },
+  insuranceCompany: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true
+  },
+  planName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  sumAssured: {
+    type: Number,
+    required: true,
+    min: 0
+  },
   premium: {
-    type: PremiumSchema,
-    required: [true, 'Premium information is required']
+    type: Number,
+    required: true,
+    min: 0
   },
-  
-  coverage: {
-    type: CoverageSchema,
-    required: [true, 'Coverage information is required']
+  paymentFrequency: {
+    type: String,
+    required: true,
+    enum: ['monthly', 'quarterly', 'half_yearly', 'yearly', 'single'],
+    default: 'yearly'
   },
-  
   startDate: {
     type: Date,
-    required: [true, 'Policy start date is required'],
+    required: true,
     index: true
   },
-  
   endDate: {
     type: Date,
-    required: [true, 'Policy end date is required'],
-    validate: {
-      validator: function(value) {
-        return value > this.startDate;
-      },
-      message: 'End date must be after start date'
-    },
+    required: true,
     index: true
   },
-  
-  assignedAgentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Assigned agent is required'],
+  maturityDate: {
+    type: Date
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ['Proposal', 'Active', 'Lapsed', 'Matured', 'Cancelled', 'Expired', 'Suspended'],
+    default: 'Proposal',
     index: true
   },
-  
-  commission: {
-    type: CommissionSchema,
-    required: [true, 'Commission information is required']
+  gracePeriod: {
+    type: Number,
+    default: 30,
+    min: 0
   },
-  
-  // Embedded subdocuments
-  documents: [DocumentSchema],
-  paymentHistory: [PaymentSchema],
-  renewalHistory: [RenewalSchema],
-  notes: [NoteSchema],
-  
-  // Additional fields
-  tags: [{
+  policyTermYears: {
+    type: Number,
+    min: 1
+  },
+  premiumPaymentTermYears: {
+    type: Number,
+    min: 1
+  },
+  lockInPeriod: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  gstNumber: {
     type: String,
     trim: true,
-    lowercase: true
-  }],
-  
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium'
+    uppercase: true
   },
-  
-  isAutoRenewal: {
-    type: Boolean,
-    default: false
+  discountPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
   },
-  
-  lastContactDate: {
+  nextYearPremium: {
+    type: Number,
+    min: 0
+  },
+  totalPremiumPaid: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  lastPremiumPaidDate: {
     type: Date
   },
-  
-  nextFollowUpDate: {
-    type: Date,
+  nextPremiumDueDate: {
+    type: Date
+  },
+  // Nominees for life insurance
+  nominees: [{
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    relationship: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    percentage: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100
+    },
+    dateOfBirth: {
+      type: Date
+    },
+    address: {
+      type: String,
+      trim: true
+    }
+  }],
+  // Type-specific details
+  typeSpecificDetails: {
+    type: Schema.Types.Mixed,
+    default: {}
+  },
+  // Motor insurance specific fields
+  vehicleDetails: {
+    registrationNumber: String,
+    make: String,
+    model: String,
+    variant: String,
+    yearOfManufacture: Number,
+    engineNumber: String,
+    chassisNumber: String,
+    fuelType: {
+      type: String,
+      enum: ['petrol', 'diesel', 'cng', 'electric', 'hybrid']
+    },
+    cubicCapacity: Number,
+    seatingCapacity: Number,
+    vehicleType: {
+      type: String,
+      enum: ['two_wheeler', 'car', 'commercial', 'truck', 'bus']
+    }
+  },
+  // Health insurance specific fields
+  healthDetails: {
+    preExistingDiseases: [String],
+    familyMedicalHistory: String,
+    coverageType: {
+      type: String,
+      enum: ['individual', 'family_floater', 'group']
+    },
+    roomRentLimit: Number,
+    copaymentPercentage: Number,
+    waitingPeriod: Number
+  },
+  // Travel insurance specific fields
+  travelDetails: {
+    destination: String,
+    travelStartDate: Date,
+    travelEndDate: Date,
+    travelPurpose: {
+      type: String,
+      enum: ['leisure', 'business', 'education', 'medical']
+    },
+    numberOfTravelers: Number
+  },
+  // Agent and commission details
+  assignedAgentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
     index: true
   },
-  
+  commission: commissionSchema,
+  // Related documents
+  documents: [documentSchema],
+  // Payment history
+  payments: [paymentSchema],
+  // Renewal history
+  renewals: [renewalSchema],
+  // Notes and comments
+  notes: [noteSchema],
+  // Policy source
+  source: {
+    type: String,
+    enum: ['direct', 'referral', 'online', 'campaign', 'renewal'],
+    default: 'direct'
+  },
+  // Endorsements
+  endorsements: [{
+    endorsementNumber: {
+      type: String,
+      required: true
+    },
+    endorsementDate: {
+      type: Date,
+      required: true
+    },
+    endorsementType: {
+      type: String,
+      required: true,
+      enum: ['addition', 'deletion', 'modification', 'cancellation']
+    },
+    description: {
+      type: String,
+      required: true
+    },
+    premiumImpact: {
+      type: Number,
+      default: 0
+    },
+    processedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    }
+  }],
   // Audit fields
   createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Creator is required']
+    required: true
   },
-  
   updatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User'
   },
-  
-  // Soft delete
-  isDeleted: {
+  isActive: {
     type: Boolean,
-    default: false,
-    index: true
-  },
-  
-  deletedAt: {
-    type: Date
-  },
-  
-  deletedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    default: true
   }
 }, {
   timestamps: true,
-  toJSON: { 
-    virtuals: true,
-    transform: function(doc, ret) {
-      delete ret.__v;
-      delete ret.isDeleted;
-      return ret;
-    }
-  },
+  toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Indexes for performance optimization
-PolicySchema.index({ clientId: 1, status: 1 });
-PolicySchema.index({ assignedAgentId: 1, status: 1 });
-PolicySchema.index({ company: 1, type: 1 });
-PolicySchema.index({ startDate: 1, endDate: 1 });
-PolicySchema.index({ 'premium.nextDueDate': 1 });
-PolicySchema.index({ nextFollowUpDate: 1 });
-PolicySchema.index({ createdAt: -1 });
-PolicySchema.index({ 
-  policyNumber: 'text', 
-  company: 'text', 
-  subType: 'text' 
-}, {
-  weights: {
-    policyNumber: 10,
-    company: 5,
-    subType: 1
-  }
+// Indexes for performance
+policySchema.index({ clientId: 1, status: 1 });
+policySchema.index({ assignedAgentId: 1, status: 1 });
+policySchema.index({ type: 1, status: 1 });
+policySchema.index({ endDate: 1, status: 1 });
+policySchema.index({ nextPremiumDueDate: 1 });
+policySchema.index({ createdAt: -1 });
+
+// Text index for search functionality
+policySchema.index({
+  policyNumber: 'text',
+  planName: 'text',
+  insuranceCompany: 'text'
 });
 
-// Virtual fields
-PolicySchema.virtual('daysUntilExpiry').get(function() {
+// Virtual for days until expiry
+policySchema.virtual('daysUntilExpiry').get(function() {
   if (!this.endDate) return null;
   const today = new Date();
-  const expiry = new Date(this.endDate);
-  const diffTime = expiry - today;
+  const diffTime = this.endDate - today;
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
 
-PolicySchema.virtual('isExpiringSoon').get(function() {
-  const daysUntilExpiry = this.daysUntilExpiry;
-  return daysUntilExpiry !== null && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+// Virtual for policy age in days
+policySchema.virtual('policyAgeInDays').get(function() {
+  if (!this.startDate) return null;
+  const today = new Date();
+  const diffTime = today - this.startDate;
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 });
 
-PolicySchema.virtual('totalPremiumPaid').get(function() {
-  return this.paymentHistory
-    .filter(payment => payment.status === 'completed')
-    .reduce((total, payment) => total + payment.amount, 0);
+// Virtual for next premium due status
+policySchema.virtual('isPremiumDue').get(function() {
+  if (!this.nextPremiumDueDate) return false;
+  const today = new Date();
+  return this.nextPremiumDueDate <= today;
 });
 
-PolicySchema.virtual('lastPaymentDate').get(function() {
-  const completedPayments = this.paymentHistory
-    .filter(payment => payment.status === 'completed')
-    .sort((a, b) => b.date - a.date);
-  return completedPayments.length > 0 ? completedPayments[0].date : null;
-});
-
-// Pre-save middleware
-PolicySchema.pre('save', function(next) {
-  // Set updatedBy field
-  if (this.isModified() && !this.isNew) {
-    this.updatedBy = this.constructor.currentUser || null;
-  }
-  
-  // Calculate commission amount if not provided
-  if (this.isModified('premium') || this.isModified('commission.rate')) {
-    this.commission.amount = (this.premium.amount * this.commission.rate) / 100;
-  }
-  
-  // Set next due date based on frequency
-  if (this.isModified('premium.frequency') || this.isModified('startDate')) {
-    const startDate = new Date(this.startDate);
-    switch (this.premium.frequency) {
-      case 'monthly':
-        this.premium.nextDueDate = new Date(startDate.setMonth(startDate.getMonth() + 1));
-        break;
-      case 'quarterly':
-        this.premium.nextDueDate = new Date(startDate.setMonth(startDate.getMonth() + 3));
-        break;
-      case 'semi-annual':
-        this.premium.nextDueDate = new Date(startDate.setMonth(startDate.getMonth() + 6));
-        break;
-      case 'annual':
-        this.premium.nextDueDate = new Date(startDate.setFullYear(startDate.getFullYear() + 1));
-        break;
+// Virtual for total commission earned
+policySchema.virtual('totalCommissionEarned').get(function() {
+  return this.payments.reduce((total, payment) => {
+    if (payment.status === 'completed' && this.commission) {
+      return total + (payment.amount * this.commission.percentage / 100);
     }
+    return total;
+  }, 0);
+});
+
+// Pre-save middleware to generate policy number
+policySchema.pre('save', async function(next) {
+  if (this.isNew && !this.policyNumber) {
+    const count = await this.constructor.countDocuments();
+    const year = new Date().getFullYear();
+    this.policyNumber = `POL${year}${String(count + 1).padStart(6, '0')}`;
   }
-  
   next();
 });
 
-// Static methods
-PolicySchema.statics.findByAgent = function(agentId) {
-  return this.find({ 
-    assignedAgentId: agentId, 
-    isDeleted: false 
-  }).populate('clientId', 'name email phone');
-};
+// Pre-save middleware for calculating next premium due date
+policySchema.pre('save', function(next) {
+  if (this.isModified('startDate') || this.isModified('paymentFrequency')) {
+    const start = new Date(this.startDate);
+    
+    switch (this.paymentFrequency) {
+      case 'monthly':
+        start.setMonth(start.getMonth() + 1);
+        break;
+      case 'quarterly':
+        start.setMonth(start.getMonth() + 3);
+        break;
+      case 'half_yearly':
+        start.setMonth(start.getMonth() + 6);
+        break;
+      case 'yearly':
+        start.setFullYear(start.getFullYear() + 1);
+        break;
+      default:
+        start.setFullYear(start.getFullYear() + 1);
+    }
+    
+    this.nextPremiumDueDate = start;
+  }
+  next();
+});
 
-PolicySchema.statics.findExpiringSoon = function(days = 30) {
-  const futureDate = new Date();
-  futureDate.setDate(futureDate.getDate() + days);
+// Pre-save middleware for audit trail
+policySchema.pre('save', function(next) {
+  if (this.isModified() && !this.isNew) {
+    this.updatedBy = this.modifiedBy; // Set by middleware
+  }
+  next();
+});
+
+// Instance methods
+policySchema.methods.addPayment = function(paymentData) {
+  this.payments.push(paymentData);
   
-  return this.find({
-    endDate: { $lte: futureDate, $gt: new Date() },
-    status: 'active',
-    isDeleted: false
-  }).populate('clientId assignedAgentId', 'name email phone');
+  // Update total premium paid
+  this.totalPremiumPaid = this.payments
+    .filter(p => p.status === 'completed')
+    .reduce((total, p) => total + p.amount, 0);
+  
+  // Update last premium paid date
+  const completedPayments = this.payments.filter(p => p.status === 'completed');
+  if (completedPayments.length > 0) {
+    this.lastPremiumPaidDate = Math.max(...completedPayments.map(p => p.paymentDate));
+  }
+  
+  return this.save();
 };
 
-PolicySchema.statics.getStatistics = function() {
+policySchema.methods.addDocument = function(documentData) {
+  this.documents.push(documentData);
+  return this.save();
+};
+
+policySchema.methods.renewPolicy = function(renewalData) {
+  // Add to renewal history
+  const renewal = {
+    renewalDate: new Date(),
+    previousEndDate: this.endDate,
+    newEndDate: renewalData.newEndDate,
+    previousPremium: this.premium,
+    newPremium: renewalData.newPremium || this.premium,
+    renewalType: renewalData.renewalType || 'manual',
+    notes: renewalData.notes,
+    renewedBy: renewalData.renewedBy
+  };
+  
+  this.renewals.push(renewal);
+  
+  // Update policy details
+  this.endDate = renewalData.newEndDate;
+  this.premium = renewalData.newPremium || this.premium;
+  this.status = 'Active';
+  
+  return this.save();
+};
+
+policySchema.methods.addEndorsement = function(endorsementData) {
+  this.endorsements.push(endorsementData);
+  
+  // Apply premium impact
+  if (endorsementData.premiumImpact) {
+    this.premium += endorsementData.premiumImpact;
+  }
+  
+  return this.save();
+};
+
+// Static methods
+policySchema.statics.findByAgent = function(agentId, filters = {}) {
+  return this.find({ assignedAgentId: agentId, ...filters });
+};
+
+policySchema.statics.findExpiring = function(days = 30, agentId = null) {
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + days);
+  
+  let filter = {
+    status: 'Active',
+    endDate: { $lte: expiryDate }
+  };
+  
+  if (agentId) {
+    filter.assignedAgentId = agentId;
+  }
+  
+  return this.find(filter).sort({ endDate: 1 });
+};
+
+policySchema.statics.findDueForRenewal = function(days = 30, agentId = null) {
+  const renewalDate = new Date();
+  renewalDate.setDate(renewalDate.getDate() + days);
+  
+  let filter = {
+    status: 'Active',
+    endDate: { $lte: renewalDate }
+  };
+  
+  if (agentId) {
+    filter.assignedAgentId = agentId;
+  }
+  
+  return this.find(filter).sort({ endDate: 1 });
+};
+
+policySchema.statics.getAgentStats = function(agentId) {
   return this.aggregate([
-    { $match: { isDeleted: false } },
+    { $match: { assignedAgentId: mongoose.Types.ObjectId(agentId) } },
     {
       $group: {
         _id: null,
         totalPolicies: { $sum: 1 },
         activePolicies: {
-          $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
+          $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] }
         },
-        expiredPolicies: {
-          $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] }
-        },
-        cancelledPolicies: {
-          $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
-        },
-        totalPremium: { $sum: '$premium.amount' },
-        avgPremium: { $avg: '$premium.amount' }
+        totalPremium: { $sum: '$premium' },
+        totalCommission: { $sum: '$commission.amount' }
       }
     }
   ]);
 };
 
-// Instance methods
-PolicySchema.methods.addPayment = function(paymentData) {
-  this.paymentHistory.push(paymentData);
-  return this.save();
-};
+// Add pagination plugin
+policySchema.plugin(mongoosePaginate);
 
-PolicySchema.methods.addNote = function(noteData) {
-  this.notes.push(noteData);
-  return this.save();
-};
-
-PolicySchema.methods.softDelete = function(deletedBy) {
-  this.isDeleted = true;
-  this.deletedAt = new Date();
-  this.deletedBy = deletedBy;
-  return this.save();
-};
-
-PolicySchema.methods.renew = function(renewalData) {
-  const renewal = {
-    renewalDate: new Date(),
-    previousEndDate: this.endDate,
-    premium: renewalData.premium || this.premium.amount,
-    agentId: renewalData.agentId || this.assignedAgentId,
-    notes: renewalData.notes
-  };
-  
-  this.renewalHistory.push(renewal);
-  this.endDate = renewalData.newEndDate;
-  this.premium.amount = renewalData.premium || this.premium.amount;
-  this.status = 'active';
-  
-  return this.save();
-};
-
-module.exports = mongoose.model('Policy', PolicySchema);
+module.exports = mongoose.model('Policy', policySchema);

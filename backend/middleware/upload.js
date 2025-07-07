@@ -3,44 +3,100 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../uploads/documents');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Ensure upload directories exist
+const ensureDirectoryExists = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
 
 // Configure storage
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads/documents');
+    ensureDirectoryExists(uploadPath);
+    cb(null, uploadPath);
   },
-  filename: function (req, file, cb) {
+  filename: (req, file, cb) => {
     // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    const extension = path.extname(file.originalname);
+    const filename = `${file.fieldname}-${uniqueSuffix}${extension}`;
+    cb(null, filename);
   }
 });
 
-// File filter
+// File filter function
 const fileFilter = (req, file, cb) => {
-  // Check file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  
+  // Allowed file types
+  const allowedTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ];
+
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, PDF, DOC, and DOCX files are allowed.'), false);
+    cb(new Error('Invalid file type. Only images, PDF, Word, and Excel files are allowed.'), false);
   }
 };
 
 // Configure multer
 const upload = multer({
-  storage: storage,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: fileFilter
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 5 // Maximum 5 files at once
+  }
 });
 
-module.exports = upload;
+// Error handling middleware for multer
+const handleMulterErrors = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File too large. Maximum size is 10MB.'
+      });
+    }
+    
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many files. Maximum 5 files allowed.'
+      });
+    }
+    
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Unexpected field name for file upload.'
+      });
+    }
+  }
+  
+  if (error.message === 'Invalid file type. Only images, PDF, Word, and Excel files are allowed.') {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+  
+  // Pass other errors to the next error handler
+  next(error);
+};
+
+module.exports = {
+  single: upload.single.bind(upload),
+  array: upload.array.bind(upload),
+  fields: upload.fields.bind(upload),
+  handleMulterErrors
+};
