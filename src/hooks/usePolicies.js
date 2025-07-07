@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { policiesBackendApi } from '../services/api/policiesApiBackend';
 import { toast } from 'sonner';
@@ -19,8 +20,20 @@ export const policiesQueryKeys = {
 export const usePolicies = (params = {}) => {
   return useQuery({
     queryKey: ['policies', params],
-    queryFn: () => policiesBackendApi.getPolicies(params),
+    queryFn: async () => {
+      try {
+        console.log('Fetching policies with params:', params);
+        const result = await policiesBackendApi.getPolicies(params);
+        console.log('Policies fetched successfully:', result);
+        return result;
+      } catch (error) {
+        console.error('Error fetching policies:', error);
+        // Don't throw error, let it be handled by error state
+        throw error;
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Only retry once on failure
   });
 };
 
@@ -30,6 +43,7 @@ export const usePolicy = (id) => {
     queryKey: ['policy', id],
     queryFn: () => policiesBackendApi.getPolicyById(id),
     enabled: !!id,
+    retry: 1,
   });
 };
 
@@ -41,11 +55,10 @@ export const useCreatePolicy = () => {
     mutationFn: policiesBackendApi.createPolicy,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Policy created successfully');
+      console.log('Policy created successfully:', data);
     },
     onError: (error) => {
       console.error('Create policy error:', error);
-      toast.error(error.message || 'Failed to create policy');
     }
   });
 };
@@ -59,11 +72,10 @@ export const useUpdatePolicy = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
       queryClient.invalidateQueries({ queryKey: ['policy', variables.id] });
-      toast.success('Policy updated successfully');
+      console.log('Policy updated successfully:', data);
     },
     onError: (error) => {
       console.error('Update policy error:', error);
-      toast.error(error.message || 'Failed to update policy');
     }
   });
 };
@@ -76,11 +88,10 @@ export const useDeletePolicy = () => {
     mutationFn: policiesBackendApi.deletePolicy,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Policy deleted successfully');
+      console.log('Policy deleted successfully');
     },
     onError: (error) => {
       console.error('Delete policy error:', error);
-      toast.error(error.message || 'Failed to delete policy');
     }
   });
 };
@@ -102,11 +113,9 @@ export const useUploadPolicyDocument = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
       queryClient.invalidateQueries({ queryKey: ['policyDocuments', variables.policyId] });
-      toast.success('Document uploaded successfully');
     },
     onError: (error) => {
       console.error('Upload document error:', error);
-      toast.error(error.message || 'Failed to upload document');
     }
   });
 };
@@ -130,11 +139,9 @@ export const useDeletePolicyDocument = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
       queryClient.invalidateQueries({ queryKey: ['policyDocuments', variables.policyId] });
-      toast.success('Document deleted successfully');
     },
     onError: (error) => {
       console.error('Delete document error:', error);
-      toast.error(error.message || 'Failed to delete document');
     }
   });
 };
@@ -149,11 +156,9 @@ export const useAddPayment = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
       queryClient.invalidateQueries({ queryKey: ['paymentHistory', variables.policyId] });
-      toast.success('Payment record added successfully');
     },
     onError: (error) => {
       console.error('Add payment error:', error);
-      toast.error(error.message || 'Failed to add payment record');
     }
   });
 };
@@ -177,11 +182,9 @@ export const useRenewPolicy = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
       queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Policy renewed successfully');
     },
     onError: (error) => {
       console.error('Renew policy error:', error);
-      toast.error(error.message || 'Failed to renew policy');
     }
   });
 };
@@ -196,11 +199,9 @@ export const useAddPolicyNote = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
       queryClient.invalidateQueries({ queryKey: ['policyNotes', variables.policyId] });
-      toast.success('Note added successfully');
     },
     onError: (error) => {
       console.error('Add note error:', error);
-      toast.error(error.message || 'Failed to add note');
     }
   });
 };
@@ -218,8 +219,9 @@ export const usePolicyNotes = (policyId) => {
 export const usePolicyStats = () => {
   return useQuery({
     queryKey: ['policyStats'],
-    queryFn: policiesBackendApi.getPolicyStats,
+    queryFn: () => policiesBackendApi.getPolicyStats(),
     staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: 1,
   });
 };
 
@@ -246,11 +248,10 @@ export const useExportPolicies = () => {
   return useMutation({
     mutationFn: policiesBackendApi.exportPolicies,
     onSuccess: () => {
-      toast.success('Policies exported successfully');
+      console.log('Policies exported successfully');
     },
     onError: (error) => {
       console.error('Export policies error:', error);
-      toast.error(error.message || 'Failed to export policies');
     }
   });
 };
@@ -265,11 +266,9 @@ export const useAssignPolicy = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
       queryClient.invalidateQueries({ queryKey: ['policy', variables.policyId] });
-      toast.success('Policy assigned successfully');
     },
     onError: (error) => {
       console.error('Assign policy error:', error);
-      toast.error(error.message || 'Failed to assign policy');
     }
   });
 };
@@ -283,11 +282,9 @@ export const useBulkAssignPolicies = () => {
       policiesBackendApi.bulkAssignPolicies(policyIds, agentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
-      toast.success('Policies assigned successfully');
     },
     onError: (error) => {
       console.error('Bulk assign policies error:', error);
-      toast.error(error.message || 'Failed to assign policies');
     }
   });
 };

@@ -22,7 +22,7 @@ import { PageSkeleton } from '@/components/ui/professional-skeleton';
 const Policies = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { getFilteredData } = usePermissions();
   
   // State for filters and pagination
@@ -39,7 +39,12 @@ const Policies = () => {
   const [selectedPolicies, setSelectedPolicies] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   
-  // Fetch policies from MongoDB backend
+  // Check permissions
+  const canViewPolicies = hasPermission('policies', 'view');
+  const canCreatePolicies = hasPermission('policies', 'create');
+  const canExportPolicies = hasPermission('policies', 'export');
+  
+  // Fetch policies from backend
   const { 
     data: policiesResponse, 
     isLoading, 
@@ -56,7 +61,16 @@ const Policies = () => {
   const totalPolicies = policiesResponse?.total || 0;
   const totalPages = policiesResponse?.totalPages || 1;
 
-  console.log('Policies from MongoDB:', { policies, totalPolicies, isLoading, error });
+  console.log('Policies data:', { policies, totalPolicies, isLoading, error });
+
+  // Check permissions on component mount
+  useEffect(() => {
+    if (!canViewPolicies) {
+      toast.error('You do not have permission to view policies');
+      navigate('/dashboard');
+      return;
+    }
+  }, [canViewPolicies, navigate]);
 
   // Handle search
   const handleSearch = (searchTerm) => {
@@ -92,55 +106,80 @@ const Policies = () => {
 
   // Handle policy deletion
   const handleDeletePolicy = async (policyId) => {
+    if (!hasPermission('policies', 'delete')) {
+      toast.error('You do not have permission to delete policies');
+      return;
+    }
+
     try {
-      console.log('Deleting policy from MongoDB:', policyId);
+      console.log('Deleting policy:', policyId);
       await deletePolicy.mutateAsync(policyId);
+      toast.success('Policy deleted successfully');
       refetch();
     } catch (error) {
-      console.error('Error deleting policy from MongoDB:', error);
-      toast.error('Failed to delete policy from database');
+      console.error('Error deleting policy:', error);
+      toast.error(`Failed to delete policy: ${error.message}`);
     }
   };
 
   // Handle bulk operations
   const handleBulkAssign = async (agentId) => {
+    if (!hasPermission('policies', 'edit')) {
+      toast.error('You do not have permission to assign policies');
+      return;
+    }
+
     try {
-      console.log('Bulk assigning policies in MongoDB:', { selectedPolicies, agentId });
+      console.log('Bulk assigning policies:', { selectedPolicies, agentId });
       await bulkAssignPolicies.mutateAsync({
         policyIds: selectedPolicies,
         agentId
       });
       setSelectedPolicies([]);
+      toast.success('Policies assigned successfully');
       refetch();
     } catch (error) {
-      console.error('Error bulk assigning policies in MongoDB:', error);
-      toast.error('Failed to assign policies in database');
+      console.error('Error bulk assigning policies:', error);
+      toast.error(`Failed to assign policies: ${error.message}`);
     }
   };
 
   // Handle export
   const handleExport = async () => {
+    if (!canExportPolicies) {
+      toast.error('You do not have permission to export policies');
+      return;
+    }
+
     try {
-      console.log('Exporting policies from MongoDB');
+      console.log('Exporting policies');
       await exportPolicies.mutateAsync(filters);
+      toast.success('Policies exported successfully');
     } catch (error) {
-      console.error('Error exporting policies from MongoDB:', error);
-      toast.error('Failed to export policies from database');
+      console.error('Error exporting policies:', error);
+      toast.error(`Failed to export policies: ${error.message}`);
     }
   };
+
+  // Don't render if user doesn't have permission
+  if (!canViewPolicies) {
+    return null;
+  }
 
   // Show loading skeleton
   if (isLoading) {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
-  // Show error state
+  // Show error state with retry option
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Policies</h2>
-          <p className="text-gray-600 mb-4">Failed to load policies from database: {error.message}</p>
+          <p className="text-gray-600 mb-4">
+            {error.message || 'Failed to load policies from database'}
+          </p>
           <Button onClick={() => refetch()}>Try Again</Button>
         </div>
       </div>
@@ -154,7 +193,7 @@ const Policies = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Policies</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Connected to MongoDB • {totalPolicies} policies found
+            {totalPolicies} policies found • Role: {user?.role}
           </p>
         </div>
         <div className="flex gap-2">
@@ -166,19 +205,23 @@ const Policies = () => {
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={exportPolicies.isLoading}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={() => navigate('/policies/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Policy
-          </Button>
+          {canExportPolicies && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={exportPolicies.isLoading}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          )}
+          {canCreatePolicies && (
+            <Button onClick={() => navigate('/policies/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Policy
+            </Button>
+          )}
         </div>
       </div>
 
@@ -221,16 +264,17 @@ const Policies = () => {
               >
                 Clear Selection
               </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  // This would open a modal to select agent
-                  toast.info('Bulk assign feature would open agent selection modal');
-                }}
-              >
-                <Users className="h-4 w-4 mr-2" />
-                Assign to Agent
-              </Button>
+              {hasPermission('policies', 'edit') && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    toast.info('Bulk assign feature would open agent selection modal');
+                  }}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Assign to Agent
+                </Button>
+              )}
             </div>
           </div>
         </div>

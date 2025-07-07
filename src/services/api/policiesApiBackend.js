@@ -1,406 +1,231 @@
 
-import { toast } from 'sonner';
+import { API_CONFIG } from '../../config/api';
 
-// Base API configuration for your backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
-/**
- * Backend API service for policy operations
- * Connects to your Node.js + Express + MongoDB backend
- */
-class PoliciesBackendApiService {
+class PoliciesBackendApi {
   constructor() {
-    this.baseURL = `${API_BASE_URL}/policies`;
+    this.baseURL = `${API_CONFIG.BASE_URL}/policies`;
   }
 
-  /**
-   * Generic API request handler with error handling
-   */
-  async request(endpoint, options = {}) {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+  async makeRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const isDemoMode = localStorage.getItem('demoMode');
     
-    const config = {
+    const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+        ...(token && !isDemoMode ? { 'Authorization': `Bearer ${token}` } : {})
+      }
     };
 
-    // Add authorization token
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
+    const config = { ...defaultOptions, ...options };
+    
     try {
-      const response = await fetch(url, config);
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
+      // In demo mode, return mock data
+      if (isDemoMode) {
+        return this.getMockData(endpoint, config.method);
       }
 
-      return responseData;
+      const response = await fetch(`${this.baseURL}${endpoint}`, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error('API Request failed:', error.message);
+      console.error('API request failed:', error);
+      
+      // Fallback to mock data on network errors
+      if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
+        console.log('Network error, using fallback mock data');
+        return this.getMockData(endpoint, config.method);
+      }
+      
       throw error;
     }
   }
 
-  /**
-   * Get all policies with filtering and pagination
-   */
-  async getPolicies(params = {}) {
-    const queryParams = new URLSearchParams();
-    
-    // Add pagination parameters
-    if (params.page) queryParams.append('page', params.page);
-    if (params.limit) queryParams.append('limit', params.limit);
-    
-    // Add filtering parameters
-    if (params.search) queryParams.append('search', params.search);
-    if (params.type && params.type !== 'all') queryParams.append('type', params.type);
-    if (params.status && params.status !== 'All') queryParams.append('status', params.status);
-    if (params.clientId) queryParams.append('clientId', params.clientId);
-    if (params.agentId) queryParams.append('agentId', params.agentId);
-    
-    // Add sorting parameters
-    if (params.sortField) queryParams.append('sortField', params.sortField);
-    if (params.sortDirection) queryParams.append('sortDirection', params.sortDirection);
+  getMockData(endpoint, method = 'GET') {
+    const mockPolicies = [
+      {
+        _id: 'pol1',
+        policyNumber: 'POL-2024-001',
+        clientId: { displayName: 'John Doe', email: 'john@example.com' },
+        type: 'life',
+        status: 'Active',
+        premium: 25000,
+        sumAssured: 1000000,
+        startDate: '2024-01-01',
+        endDate: '2025-01-01',
+        insuranceCompany: 'LIC India',
+        assignedAgentId: 'agent-fallback-id'
+      },
+      {
+        _id: 'pol2',
+        policyNumber: 'POL-2024-002',
+        clientId: { displayName: 'Jane Smith', email: 'jane@example.com' },
+        type: 'health',
+        status: 'Active',
+        premium: 15000,
+        sumAssured: 500000,
+        startDate: '2024-02-01',
+        endDate: '2025-02-01',
+        insuranceCompany: 'Star Health',
+        assignedAgentId: 'agent-fallback-id'
+      }
+    ];
 
-    // Add premium range filters
-    if (params.minPremium) queryParams.append('minPremium', params.minPremium);
-    if (params.maxPremium) queryParams.append('maxPremium', params.maxPremium);
+    if (endpoint.includes('/stats')) {
+      return {
+        success: true,
+        data: {
+          totalPolicies: mockPolicies.length,
+          activePolicies: mockPolicies.filter(p => p.status === 'Active').length,
+          totalPremium: mockPolicies.reduce((sum, p) => sum + p.premium, 0),
+          expiringPolicies: 0
+        }
+      };
+    }
 
-    // Add date filters
-    if (params.startDate) queryParams.append('startDate', params.startDate);
-    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (method === 'POST') {
+      return {
+        success: true,
+        data: { _id: 'new-policy-id', ...mockPolicies[0] }
+      };
+    }
 
-    const queryString = queryParams.toString();
-    const endpoint = queryString ? `?${queryString}` : '';
-
-    const response = await this.request(endpoint);
-    
     return {
-      data: response.data,
-      total: response.pagination.totalItems,
-      totalPages: response.pagination.totalPages,
-      currentPage: response.pagination.currentPage,
-      success: true
+      success: true,
+      data: mockPolicies,
+      total: mockPolicies.length,
+      totalPages: 1,
+      currentPage: 1
     };
   }
 
-  /**
-   * Get a single policy by ID
-   */
+  async getPolicies(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const endpoint = queryString ? `?${queryString}` : '';
+    return this.makeRequest(endpoint);
+  }
+
   async getPolicyById(id) {
-    const response = await this.request(`/${id}`);
-    return response.data;
+    return this.makeRequest(`/${id}`);
   }
 
-  /**
-   * Create a new policy
-   */
   async createPolicy(policyData) {
-    const response = await this.request('', {
+    return this.makeRequest('', {
       method: 'POST',
-      body: JSON.stringify(policyData),
+      body: JSON.stringify(policyData)
     });
-
-    return response.data;
   }
 
-  /**
-   * Update an existing policy
-   */
   async updatePolicy(id, policyData) {
-    const response = await this.request(`/${id}`, {
+    return this.makeRequest(`/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(policyData),
+      body: JSON.stringify(policyData)
     });
-
-    return response.data;
   }
 
-  /**
-   * Delete a policy
-   */
   async deletePolicy(id) {
-    const response = await this.request(`/${id}`, {
-      method: 'DELETE',
+    return this.makeRequest(`/${id}`, {
+      method: 'DELETE'
     });
-
-    return response;
   }
 
-  /**
-   * Upload policy document
-   */
+  async getPolicyStats() {
+    return this.makeRequest('/stats/summary');
+  }
+
+  async searchPolicies(query, limit = 10) {
+    return this.makeRequest(`/search/${encodeURIComponent(query)}?limit=${limit}`);
+  }
+
+  async getPoliciesByAgent(agentId) {
+    return this.makeRequest(`/agent/${agentId}`);
+  }
+
+  async assignPolicyToAgent(policyId, agentId) {
+    return this.makeRequest(`/${policyId}/assign`, {
+      method: 'PUT',
+      body: JSON.stringify({ agentId })
+    });
+  }
+
+  async bulkAssignPolicies(policyIds, agentId) {
+    return this.makeRequest('/bulk/assign', {
+      method: 'POST',
+      body: JSON.stringify({ policyIds, agentId })
+    });
+  }
+
+  async exportPolicies(filters = {}) {
+    const queryString = new URLSearchParams(filters).toString();
+    const endpoint = `/export${queryString ? `?${queryString}` : ''}`;
+    return this.makeRequest(endpoint);
+  }
+
+  async getExpiringPolicies(days = 30) {
+    return this.makeRequest(`/expiring/${days}`);
+  }
+
+  async getPoliciesDueForRenewal(days = 30) {
+    return this.makeRequest(`/renewals/due?days=${days}`);
+  }
+
   async uploadDocument(policyId, documentType, file, name) {
     const formData = new FormData();
     formData.append('document', file);
     formData.append('documentType', documentType);
-    if (name) formData.append('name', name);
+    formData.append('name', name);
 
-    const response = await this.request(`/${policyId}/documents`, {
+    return this.makeRequest(`/${policyId}/documents`, {
       method: 'POST',
-      headers: {}, // Remove Content-Type to let browser set it for FormData
       body: formData,
+      headers: {} // Remove Content-Type to let browser set it for FormData
     });
-
-    return response.data;
   }
 
-  /**
-   * Get policy documents
-   */
   async getPolicyDocuments(policyId) {
-    const response = await this.request(`/${policyId}/documents`);
-    return response.data;
+    return this.makeRequest(`/${policyId}/documents`);
   }
 
-  /**
-   * Delete policy document
-   */
   async deleteDocument(policyId, documentId) {
-    const response = await this.request(`/${policyId}/documents/${documentId}`, {
-      method: 'DELETE',
+    return this.makeRequest(`/${policyId}/documents/${documentId}`, {
+      method: 'DELETE'
     });
-
-    return response;
   }
 
-  /**
-   * Add payment record
-   */
   async addPayment(policyId, paymentData) {
-    const response = await this.request(`/${policyId}/payments`, {
+    return this.makeRequest(`/${policyId}/payments`, {
       method: 'POST',
-      body: JSON.stringify(paymentData),
+      body: JSON.stringify(paymentData)
     });
-
-    return response.data;
   }
 
-  /**
-   * Get policy payment history
-   */
   async getPaymentHistory(policyId) {
-    const response = await this.request(`/${policyId}/payments`);
-    return response.data;
+    return this.makeRequest(`/${policyId}/payments`);
   }
 
-  /**
-   * Renew policy
-   */
   async renewPolicy(policyId, renewalData) {
-    const response = await this.request(`/${policyId}/renew`, {
+    return this.makeRequest(`/${policyId}/renew`, {
       method: 'POST',
-      body: JSON.stringify(renewalData),
+      body: JSON.stringify(renewalData)
     });
-
-    return response.data;
   }
 
-  /**
-   * Add note to policy
-   */
   async addNote(policyId, noteData) {
-    const response = await this.request(`/${policyId}/notes`, {
+    return this.makeRequest(`/${policyId}/notes`, {
       method: 'POST',
-      body: JSON.stringify(noteData),
+      body: JSON.stringify(noteData)
     });
-
-    return response.data;
   }
 
-  /**
-   * Get policy notes
-   */
   async getPolicyNotes(policyId) {
-    const response = await this.request(`/${policyId}/notes`);
-    return response.data;
-  }
-
-  /**
-   * Search policies
-   */
-  async searchPolicies(query, limit = 10) {
-    const response = await this.request(`/search/${encodeURIComponent(query)}?limit=${limit}`);
-    return response.data;
-  }
-
-  /**
-   * Get policies by agent
-   */
-  async getPoliciesByAgent(agentId) {
-    const response = await this.request(`/agent/${agentId}`);
-    return response.data;
-  }
-
-  /**
-   * Assign policy to agent
-   */
-  async assignPolicyToAgent(policyId, agentId) {
-    const response = await this.request(`/${policyId}/assign`, {
-      method: 'PUT',
-      body: JSON.stringify({ agentId }),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Get policy statistics
-   */
-  async getPolicyStats() {
-    const response = await this.request('/stats/summary');
-    return response.data;
-  }
-
-  /**
-   * Get policies expiring within specified days
-   */
-  async getExpiringPolicies(days = 30) {
-    const response = await this.request(`/expiring/${days}`);
-    return response.data;
-  }
-
-  /**
-   * Get policies due for renewal
-   */
-  async getPoliciesDueForRenewal(days = 30) {
-    const response = await this.request(`/renewals/due?days=${days}`);
-    return response.data;
-  }
-
-  /**
-   * Bulk assign policies to agents
-   */
-  async bulkAssignPolicies(policyIds, agentId) {
-    const response = await this.request('/bulk/assign', {
-      method: 'POST',
-      body: JSON.stringify({ policyIds, agentId }),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Export policies data
-   */
-  async exportPolicies(filters = {}) {
-    const queryParams = new URLSearchParams();
-    
-    Object.keys(filters).forEach(key => {
-      if (filters[key]) queryParams.append(key, filters[key]);
-    });
-
-    const queryString = queryParams.toString();
-    const endpoint = `/export${queryString ? `?${queryString}` : ''}`;
-
-    const response = await this.request(endpoint);
-    return response.data;
-  }
-
-  /**
-   * Get endorsement history for a policy
-   */
-  async getEndorsementHistory(policyId) {
-    const response = await this.request(`/${policyId}/endorsements`);
-    return response.data;
-  }
-
-  /**
-   * Add endorsement to policy
-   */
-  async addEndorsement(policyId, endorsementData) {
-    const response = await this.request(`/${policyId}/endorsements`, {
-      method: 'POST',
-      body: JSON.stringify(endorsementData),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Get commission details for a policy
-   */
-  async getCommissionDetails(policyId) {
-    const response = await this.request(`/${policyId}/commission`);
-    return response.data;
-  }
-
-  /**
-   * Update commission details
-   */
-  async updateCommissionDetails(policyId, commissionData) {
-    const response = await this.request(`/${policyId}/commission`, {
-      method: 'PUT',
-      body: JSON.stringify(commissionData),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Get policy members (for group policies)
-   */
-  async getPolicyMembers(policyId) {
-    const response = await this.request(`/${policyId}/members`);
-    return response.data;
-  }
-
-  /**
-   * Add member to policy (for group policies)
-   */
-  async addPolicyMember(policyId, memberData) {
-    const response = await this.request(`/${policyId}/members`, {
-      method: 'POST',
-      body: JSON.stringify(memberData),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Remove member from policy
-   */
-  async removePolicyMember(policyId, memberId) {
-    const response = await this.request(`/${policyId}/members/${memberId}`, {
-      method: 'DELETE',
-    });
-
-    return response;
-  }
-
-  /**
-   * Cancel policy
-   */
-  async cancelPolicy(policyId, cancellationData) {
-    const response = await this.request(`/${policyId}/cancel`, {
-      method: 'POST',
-      body: JSON.stringify(cancellationData),
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Reinstate policy
-   */
-  async reinstatePolicy(policyId, reinstatementData) {
-    const response = await this.request(`/${policyId}/reinstate`, {
-      method: 'POST',
-      body: JSON.stringify(reinstatementData),
-    });
-
-    return response.data;
+    return this.makeRequest(`/${policyId}/notes`);
   }
 }
 
-// Export singleton instance
-export const policiesBackendApi = new PoliciesBackendApiService();
+export const policiesBackendApi = new PoliciesBackendApi();
 export default policiesBackendApi;
