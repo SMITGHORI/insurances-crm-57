@@ -1,9 +1,10 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_CONFIG } from '@/config/api';
 
 /**
- * Real-time permissions hook
+ * Real-time permissions hook with MongoDB integration
  * Handles permission updates and WebSocket connections
  */
 export const useRealtimePermissions = () => {
@@ -22,11 +23,11 @@ export const useRealtimePermissions = () => {
     let ws;
     
     try {
-      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5001';
+      const wsUrl = API_CONFIG.WS_URL;
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('WebSocket connected for permission updates');
+        console.log('MongoDB WebSocket connected for permission updates');
         // Send user identification
         ws.send(JSON.stringify({
           type: 'auth',
@@ -40,7 +41,7 @@ export const useRealtimePermissions = () => {
           const data = JSON.parse(event.data);
           
           if (data.type === 'permission_update' && data.userId === user.id) {
-            console.log('Received permission update', data);
+            console.log('Received MongoDB permission update', data);
             refreshPermissions();
           }
         } catch (error) {
@@ -49,15 +50,15 @@ export const useRealtimePermissions = () => {
       };
 
       ws.onerror = (error) => {
-        console.warn('WebSocket error:', error);
+        console.warn('MongoDB WebSocket error:', error);
       };
 
       ws.onclose = () => {
-        console.log('WebSocket connection closed');
+        console.log('MongoDB WebSocket connection closed');
       };
 
     } catch (error) {
-      console.warn('WebSocket not available:', error);
+      console.warn('MongoDB WebSocket not available:', error);
     }
 
     // Cleanup function

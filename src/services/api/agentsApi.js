@@ -1,101 +1,59 @@
 
-import { API_CONFIG, API_ENDPOINTS, HTTP_STATUS } from '../../config/api.js';
+import MongoDBApiService from './mongodbApiService.js';
+import { API_ENDPOINTS } from '../../config/api.js';
 
 /**
- * Agents API Service
- * Handles all agent-related API operations
+ * Agents API Service with MongoDB Integration
  */
-class AgentsApiService {
+class AgentsApiService extends MongoDBApiService {
   constructor() {
-    this.baseURL = API_CONFIG.BASE_URL;
-  }
-
-  async getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && token !== 'demo-token-admin' && token !== 'demo-token-agent' && {
-        'Authorization': `Bearer ${token}`
-      })
-    };
-  }
-
-  async makeRequest(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const headers = await this.getAuthHeaders();
-    
-    const config = {
-      headers,
-      ...options
-    };
-
-    try {
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Agents API Request failed:', error);
-      throw error;
-    }
+    super(API_ENDPOINTS.AGENTS);
   }
 
   async getAgents(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `${API_ENDPOINTS.AGENTS}?${queryString}` : API_ENDPOINTS.AGENTS;
-    return this.makeRequest(endpoint);
+    return this.getAll(params);
   }
 
   async getAgentById(agentId) {
-    return this.makeRequest(API_ENDPOINTS.AGENT_BY_ID(agentId));
+    return this.getById(agentId);
   }
 
   async createAgent(agentData) {
-    return this.makeRequest(API_ENDPOINTS.AGENTS, {
-      method: 'POST',
-      body: JSON.stringify(agentData)
-    });
+    return this.create(agentData);
   }
 
   async updateAgent(agentId, agentData) {
-    return this.makeRequest(API_ENDPOINTS.AGENT_BY_ID(agentId), {
-      method: 'PUT',
-      body: JSON.stringify(agentData)
-    });
+    return this.update(agentId, agentData);
   }
 
   async deleteAgent(agentId) {
-    return this.makeRequest(API_ENDPOINTS.AGENT_BY_ID(agentId), {
-      method: 'DELETE'
-    });
+    return this.delete(agentId);
   }
 
   async getAgentClients(agentId, params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `${API_ENDPOINTS.AGENT_CLIENTS(agentId)}?${queryString}` : API_ENDPOINTS.AGENT_CLIENTS(agentId);
+    const endpoint = queryString ? `/${agentId}/clients?${queryString}` : `/${agentId}/clients`;
     return this.makeRequest(endpoint);
   }
 
   async getAgentPolicies(agentId, params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `${API_ENDPOINTS.AGENT_POLICIES(agentId)}?${queryString}` : API_ENDPOINTS.AGENT_POLICIES(agentId);
+    const endpoint = queryString ? `/${agentId}/policies?${queryString}` : `/${agentId}/policies`;
     return this.makeRequest(endpoint);
   }
 
   async getAgentCommissions(agentId, params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `${API_ENDPOINTS.AGENT_COMMISSIONS(agentId)}?${queryString}` : API_ENDPOINTS.AGENT_COMMISSIONS(agentId);
+    const endpoint = queryString ? `/${agentId}/commissions?${queryString}` : `/${agentId}/commissions`;
     return this.makeRequest(endpoint);
   }
 
   async getAgentPerformance(agentId, params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `${API_ENDPOINTS.AGENT_PERFORMANCE(agentId)}?${queryString}` : API_ENDPOINTS.AGENT_PERFORMANCE(agentId);
+    const endpoint = queryString ? `/${agentId}/performance?${queryString}` : `/${agentId}/performance`;
     return this.makeRequest(endpoint);
   }
 }
 
 export const agentsApi = new AgentsApiService();
+export default agentsApi;
