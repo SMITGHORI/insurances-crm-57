@@ -1,7 +1,19 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { policiesBackendApi } from '../services/api/policiesApiBackend';
 import { toast } from 'sonner';
+
+// Query keys for policies
+export const policiesQueryKeys = {
+  all: ['policies'],
+  lists: () => [...policiesQueryKeys.all, 'list'],
+  list: (filters) => [...policiesQueryKeys.lists(), { filters }],
+  details: () => [...policiesQueryKeys.all, 'detail'],
+  detail: (id) => [...policiesQueryKeys.details(), id],
+  documents: (id) => [...policiesQueryKeys.all, 'documents', id],
+  payments: (id) => [...policiesQueryKeys.all, 'payments', id],
+  notes: (id) => [...policiesQueryKeys.all, 'notes', id],
+  stats: () => [...policiesQueryKeys.all, 'stats'],
+};
 
 // Get all policies with filters
 export const usePolicies = (params = {}) => {

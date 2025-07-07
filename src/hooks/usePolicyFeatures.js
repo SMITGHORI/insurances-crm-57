@@ -1,7 +1,6 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { policiesApi } from '../services/api/policiesApi';
+import { policiesBackendApi } from '../services/api/policiesApiBackend';
 import { policiesQueryKeys } from './usePolicies';
 
 /**
@@ -15,7 +14,7 @@ export const usePolicySearch = () => {
   return useMutation({
     mutationFn: async ({ query, limit = 10 }) => {
       console.log('Searching policies in MongoDB:', { query, limit });
-      const result = await policiesApi.searchPolicies(query, limit);
+      const result = await policiesBackendApi.searchPolicies(query, limit);
       console.log('Policy search results from MongoDB:', result);
       return result;
     },
@@ -34,7 +33,7 @@ export const usePoliciesByAgent = (agentId) => {
     queryKey: ['policies', 'agent', agentId],
     queryFn: async () => {
       console.log('Fetching policies by agent from MongoDB:', agentId);
-      const result = await policiesApi.getPoliciesByAgent(agentId);
+      const result = await policiesBackendApi.getPoliciesByAgent(agentId);
       console.log('Agent policies fetched from MongoDB:', result);
       return result;
     },
@@ -56,7 +55,7 @@ export const useAssignPolicy = () => {
   return useMutation({
     mutationFn: async ({ policyId, agentId }) => {
       console.log('Assigning policy to agent in MongoDB:', { policyId, agentId });
-      const result = await policiesApi.assignPolicyToAgent(policyId, agentId);
+      const result = await policiesBackendApi.assignPolicyToAgent(policyId, agentId);
       console.log('Policy assigned to agent in MongoDB:', result);
       return result;
     },
@@ -86,7 +85,7 @@ export const usePolicyStats = () => {
     queryKey: policiesQueryKeys.stats(),
     queryFn: async () => {
       console.log('Fetching policy statistics from MongoDB');
-      const result = await policiesApi.getPolicyStats();
+      const result = await policiesBackendApi.getPolicyStats();
       console.log('Policy statistics fetched from MongoDB:', result);
       return result;
     },
@@ -107,7 +106,7 @@ export const usePolicyDocuments = (policyId) => {
     queryKey: policiesQueryKeys.documents(policyId),
     queryFn: async () => {
       console.log('Fetching policy documents from MongoDB:', policyId);
-      const result = await policiesApi.getPolicyDocuments(policyId);
+      const result = await policiesBackendApi.getPolicyDocuments(policyId);
       console.log('Policy documents fetched from MongoDB:', result);
       return result;
     },
@@ -128,7 +127,7 @@ export const useUploadDocument = () => {
 
   return useMutation({
     mutationFn: ({ policyId, documentType, file, name }) => 
-      policiesApi.uploadDocument(policyId, documentType, file, name),
+      policiesBackendApi.uploadDocument(policyId, documentType, file, name),
     onSuccess: (data, variables) => {
       console.log('Document successfully uploaded to MongoDB:', data);
       queryClient.invalidateQueries({ queryKey: policiesQueryKeys.documents(variables.policyId) });
@@ -149,7 +148,7 @@ export const usePolicyPayments = (policyId) => {
     queryKey: policiesQueryKeys.payments(policyId),
     queryFn: async () => {
       console.log('Fetching payment history from MongoDB:', policyId);
-      const result = await policiesApi.getPaymentHistory(policyId);
+      const result = await policiesBackendApi.getPaymentHistory(policyId);
       console.log('Payment history fetched from MongoDB:', result);
       return result;
     },
@@ -170,7 +169,7 @@ export const useAddPayment = () => {
 
   return useMutation({
     mutationFn: ({ policyId, paymentData }) => 
-      policiesApi.addPayment(policyId, paymentData),
+      policiesBackendApi.addPayment(policyId, paymentData),
     onSuccess: (data, variables) => {
       console.log('Payment successfully added to MongoDB:', data);
       queryClient.invalidateQueries({ queryKey: policiesQueryKeys.payments(variables.policyId) });
@@ -191,7 +190,7 @@ export const usePolicyNotes = (policyId) => {
     queryKey: policiesQueryKeys.notes(policyId),
     queryFn: async () => {
       console.log('Fetching policy notes from MongoDB:', policyId);
-      const result = await policiesApi.getPolicyNotes(policyId);
+      const result = await policiesBackendApi.getPolicyNotes(policyId);
       console.log('Policy notes fetched from MongoDB:', result);
       return result;
     },
@@ -212,7 +211,7 @@ export const useAddNote = () => {
 
   return useMutation({
     mutationFn: ({ policyId, noteData }) => 
-      policiesApi.addNote(policyId, noteData),
+      policiesBackendApi.addNote(policyId, noteData),
     onSuccess: (data, variables) => {
       console.log('Note successfully added to MongoDB:', data);
       queryClient.invalidateQueries({ queryKey: policiesQueryKeys.notes(variables.policyId) });
@@ -233,7 +232,7 @@ export const useRenewPolicy = () => {
 
   return useMutation({
     mutationFn: ({ policyId, renewalData }) => 
-      policiesApi.renewPolicy(policyId, renewalData),
+      policiesBackendApi.renewPolicy(policyId, renewalData),
     onSuccess: (data, variables) => {
       console.log('Policy successfully renewed in MongoDB:', data);
       queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
@@ -255,7 +254,7 @@ export const useExpiringPolicies = (days = 30) => {
     queryKey: ['expiringPolicies', days],
     queryFn: async () => {
       console.log('Fetching expiring policies from MongoDB:', days);
-      const result = await policiesApi.getExpiringPolicies(days);
+      const result = await policiesBackendApi.getExpiringPolicies(days);
       console.log('Expiring policies fetched from MongoDB:', result);
       return result;
     },
@@ -275,7 +274,7 @@ export const usePoliciesDueForRenewal = (days = 30) => {
     queryKey: ['policiesDueForRenewal', days],
     queryFn: async () => {
       console.log('Fetching policies due for renewal from MongoDB:', days);
-      const result = await policiesApi.getPoliciesDueForRenewal(days);
+      const result = await policiesBackendApi.getPoliciesDueForRenewal(days);
       console.log('Policies due for renewal fetched from MongoDB:', result);
       return result;
     },
@@ -295,7 +294,7 @@ export const useBulkPolicyOperations = () => {
 
   const bulkAssignMutation = useMutation({
     mutationFn: ({ policyIds, agentId }) => 
-      policiesApi.bulkAssignPolicies(policyIds, agentId),
+      policiesBackendApi.bulkAssignPolicies(policyIds, agentId),
     onSuccess: () => {
       console.log('Bulk assign successfully completed in MongoDB');
       queryClient.invalidateQueries({ queryKey: policiesQueryKeys.lists() });
@@ -318,7 +317,7 @@ export const useBulkPolicyOperations = () => {
  */
 export const usePolicyExport = () => {
   return useMutation({
-    mutationFn: (exportData) => policiesApi.exportPolicies(exportData),
+    mutationFn: (exportData) => policiesBackendApi.exportPolicies(exportData),
     onSuccess: (data) => {
       console.log('Policy export successfully completed from MongoDB');
       
