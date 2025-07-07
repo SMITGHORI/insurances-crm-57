@@ -18,6 +18,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AccessDenied from './components/AccessDenied';
 import { LoadingSpinner } from './components/ui/loading-spinner';
 import { useRealtimePermissions } from '@/hooks/useRealtimePermissions';
+import DeveloperPermissions from './components/developer/DeveloperPermissions';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -126,6 +127,7 @@ function AppContent() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/developer" element={<DeveloperPermissions />} />
               <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="*" element={<AccessDenied />} />
             </Routes>

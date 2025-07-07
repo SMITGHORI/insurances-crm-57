@@ -240,10 +240,24 @@ exports.createClient = async (req, res) => {
 
     // Create type-specific data structure
     const clientDoc = {
-      ...clientData,
-      individualData: clientData.clientType === 'individual' ? clientData : undefined,
-      corporateData: clientData.clientType === 'corporate' ? clientData : undefined,
-      groupData: clientData.clientType === 'group' ? clientData : undefined
+      clientType: clientData.clientType,
+      email: clientData.email,
+      phone: clientData.phone,
+      altPhone: clientData.altPhone,
+      address: clientData.address,
+      city: clientData.city,
+      state: clientData.state,
+      pincode: clientData.pincode,
+      country: clientData.country || 'India',
+      status: clientData.status || 'Active',
+      source: clientData.source,
+      notes: clientData.notes,
+      assignedAgentId: clientData.assignedAgentId,
+      createdBy: clientData.createdBy,
+      documents: clientData.documents,
+      individualData: clientData.clientType === 'individual' ? clientData.individualData : undefined,
+      corporateData: clientData.clientType === 'corporate' ? clientData.corporateData : undefined,
+      groupData: clientData.clientType === 'group' ? clientData.groupData : undefined
     };
 
     const client = new Client(clientDoc);
@@ -329,16 +343,16 @@ exports.updateClient = async (req, res) => {
 
     // Update type-specific data
     if (updateData.clientType) {
-      if (updateData.clientType === 'individual') {
-        updateData.individualData = updateData;
+      if (updateData.clientType === 'individual' && updateData.individualData) {
+        updateData.individualData = updateData.individualData;
         updateData.corporateData = undefined;
         updateData.groupData = undefined;
-      } else if (updateData.clientType === 'corporate') {
-        updateData.corporateData = updateData;
+      } else if (updateData.clientType === 'corporate' && updateData.corporateData) {
+        updateData.corporateData = updateData.corporateData;
         updateData.individualData = undefined;
         updateData.groupData = undefined;
-      } else if (updateData.clientType === 'group') {
-        updateData.groupData = updateData;
+      } else if (updateData.clientType === 'group' && updateData.groupData) {
+        updateData.groupData = updateData.groupData;
         updateData.individualData = undefined;
         updateData.corporateData = undefined;
       }

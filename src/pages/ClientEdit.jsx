@@ -70,8 +70,9 @@ const ClientEdit = () => {
         <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Client</h3>
           <ClientForm
-            initialValues={clientData}
+            client={clientData}
             onSubmit={handleUpdateClient}
+            onCancel={handleGoBack}
             isLoading={updateClientMutation.isLoading}
           />
         </div>

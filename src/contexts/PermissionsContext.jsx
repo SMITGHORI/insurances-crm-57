@@ -13,7 +13,7 @@ export const usePermissions = () => {
 };
 
 export const PermissionsProvider = ({ children }) => {
-  const { user, hasPermission, hasAnyPermission, isSameBranch, isSuperAdmin } = useAuth();
+  const { user, hasPermission, hasAnyPermission, isSameBranch, isSuperAdmin, isAgent } = useAuth();
 
   const value = {
     user,
@@ -21,6 +21,7 @@ export const PermissionsProvider = ({ children }) => {
     hasAnyPermission,
     isSameBranch,
     isSuperAdmin,
+    isAgent, // Add this line
     isAuthenticated: !!user
   };
 

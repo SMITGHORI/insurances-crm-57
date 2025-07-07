@@ -44,6 +44,7 @@ import Settings from '@/pages/Settings';
 import Auth from '@/pages/Auth';
 import NotFound from '@/pages/NotFound';
 import Index from '@/pages/Index';
+import DeveloperPermissions from '@/components/developer/DeveloperPermissions';
 
 // Create a client instance
 const queryClient = new QueryClient({
@@ -65,6 +66,7 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/developer" element={<DeveloperPermissions />} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={<RouteGuard><MainLayout /></RouteGuard>}>

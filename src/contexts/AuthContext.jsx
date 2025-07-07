@@ -284,6 +284,11 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'super_admin';
   };
 
+  // Add this new function
+  const isAgent = () => {
+    return user?.role === 'agent';
+  };
+
   const value = {
     user,
     loading,
@@ -294,6 +299,7 @@ export const AuthProvider = ({ children }) => {
     hasAnyPermission,
     isSameBranch,
     isSuperAdmin,
+    isAgent, // Add this to the exported value
     isAuthenticated: !!user
   };
 

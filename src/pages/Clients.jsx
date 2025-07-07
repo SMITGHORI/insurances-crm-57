@@ -404,8 +404,8 @@ const Clients = () => {
                       </button>
                     </div>
                     <ClientForm 
-                      onClose={() => setShowAddModal(false)}
-                      onSuccess={handleClientFormSuccess}
+                      onSubmit={handleClientFormSuccess}
+                      onCancel={() => setShowAddModal(false)}
                       isLoading={createClientMutation.isLoading}
                       userRole={user?.role}
                       userId={user?.id}

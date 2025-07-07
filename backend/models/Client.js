@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 const { Schema } = mongoose;
 
 // Individual client sub-schema
@@ -438,5 +439,8 @@ clientSchema.statics.searchClients = function(query, filters = {}) {
     ...filters
   }).sort({ score: { $meta: 'textScore' } });
 };
+
+// Add pagination plugin
+clientSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model('Client', clientSchema);

@@ -13,7 +13,7 @@ export const useDashboardOverview = () => {
 
   const query = useQuery({
     queryKey: ['dashboard', 'overview'],
-    queryFn: () => dashboardApi.getDashboardOverview(),
+    queryFn: () => dashboardApi.getOverviewData(),
     staleTime: 1000 * 60 * 2, // 2 minutes
     refetchOnWindowFocus: false,
     onError: (error) => {
@@ -244,27 +244,23 @@ export const useRefreshDashboard = () => {
       // Invalidate all dashboard queries to trigger refetch
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       
-      // Optionally fetch fresh data
-      const data = await dashboardApi.refreshDashboard();
+      // Fetch fresh data from individual endpoints
+      const [overview, activities, metrics, charts, quickActions] = await Promise.all([
+        dashboardApi.getOverviewData(),
+        dashboardApi.getRecentActivities(10),
+        dashboardApi.getPerformanceMetrics('30d'),
+        dashboardApi.getChartsData('all'),
+        dashboardApi.getQuickActions()
+      ]);
       
       // Update query cache with fresh data
-      if (data.overview) {
-        queryClient.setQueryData(['dashboard', 'overview'], data.overview);
-      }
-      if (data.activities) {
-        queryClient.setQueryData(['dashboard', 'activities', 10], data.activities);
-      }
-      if (data.metrics) {
-        queryClient.setQueryData(['dashboard', 'performance', '30d'], data.metrics);
-      }
-      if (data.charts) {
-        queryClient.setQueryData(['dashboard', 'charts', 'all'], data.charts);
-      }
-      if (data.quickActions) {
-        queryClient.setQueryData(['dashboard', 'quickActions'], data.quickActions);
-      }
+      queryClient.setQueryData(['dashboard', 'overview'], overview);
+      queryClient.setQueryData(['dashboard', 'activities', 10], activities);
+      queryClient.setQueryData(['dashboard', 'performance', '30d'], metrics);
+      queryClient.setQueryData(['dashboard', 'charts', 'all'], charts);
+      queryClient.setQueryData(['dashboard', 'quickActions'], quickActions);
 
-      return data;
+      return { overview, activities, metrics, charts, quickActions };
     } catch (error) {
       console.error('Failed to refresh dashboard from MongoDB:', error);
       throw error;
@@ -289,16 +285,11 @@ export const useDashboardData = () => {
 
   // Set up real-time module integration
   useEffect(() => {
-    const subscription = dashboardApi.subscribeToModuleUpdates(() => {
-      console.log('Real-time update received, refreshing dashboard data');
-      overview.refetch();
-      activities.refetch();
-      metrics.refetch();
-      charts.refetch();
-      quickActions.refetch();
-    });
-
-    return subscription;
+    // TODO: Implement real-time subscription when backend supports it
+    console.log('Dashboard data hooks initialized');
+    
+    // For now, we'll rely on the individual hooks' WebSocket listeners
+    // and periodic refetching instead of a centralized subscription
   }, [overview, activities, metrics, charts, quickActions]);
 
   return {

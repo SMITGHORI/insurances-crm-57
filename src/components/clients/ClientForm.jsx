@@ -10,12 +10,19 @@ import { toast } from 'sonner';
 import { generateClientId } from '@/utils/idGenerator';
 import { FileUploader } from '@/components/ui/file-uploader';
 import ClientAnniversaryForm from './ClientAnniversaryForm';
+import { useAuth } from '@/contexts/AuthContext';
+import { validateClientData } from '@/schemas/clientSchemas';
 
-const ClientForm = ({ client, onSubmit, onCancel }) => {
+const ClientForm = ({ client, onSubmit, onCancel, userRole, userId }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('basic');
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = !!client?.id;
+  
+  // Use userId from props or fallback to authenticated user
+  const currentUserId = userId || user?.id;
 
   // Initialize form data with anniversary and communication preferences
   const [formData, setFormData] = useState({
@@ -150,50 +157,121 @@ const ClientForm = ({ client, onSubmit, onCancel }) => {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
     
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
       return;
     }
     
-    // Prepare client data
-    const clientData = {
-      ...formData,
-      id: client?.id || Date.now(),
-      clientId: client?.clientId || generateClientId([]),
-      type: formData.clientType.charAt(0).toUpperCase() + formData.clientType.slice(1)
-    };
+    setIsSubmitting(true);
     
-    // Submit the form
-    onSubmit(clientData);
+    try {
+      // Parse location into address components
+      const locationParts = formData.location.split(',').map(part => part.trim());
+      const address = locationParts[0] || '';
+      const city = locationParts[1] || '';
+      const state = locationParts[2] || '';
+      const pincode = locationParts[3] || '';
+      
+      // Prepare base client data
+      let clientData = {
+        clientType: formData.clientType,
+        email: formData.email,
+        phone: formData.contact,
+        address: address || 'Not provided',
+        city: city || 'Not provided',
+        state: state || 'Not provided',
+        pincode: pincode || '000000',
+        country: 'India',
+        status: formData.status,
+        notes: formData.notes || '',
+        assignedAgentId: currentUserId,
+        createdBy: currentUserId
+      };
+      
+      // Add client type specific fields in nested structure for MongoDB
+      if (formData.clientType === 'individual') {
+        const nameParts = formData.name.trim().split(' ');
+        clientData.individualData = {
+          firstName: nameParts[0] || 'Unknown',
+          lastName: nameParts.slice(1).join(' ') || 'User',
+          dob: formData.dob ? new Date(formData.dob) : new Date('1990-01-01'),
+          gender: formData.gender?.toLowerCase() || 'other',
+          panNumber: formData.panNumber || `TEMP${Date.now().toString().slice(-5)}A`,
+          occupation: formData.occupation || 'Not specified'
+        };
+      } else if (formData.clientType === 'corporate') {
+        clientData.corporateData = {
+          companyName: formData.name,
+          registrationNo: formData.registrationNo || '',
+          gstNumber: formData.gstNumber || '',
+          industry: formData.industry || 'Other',
+          employeeCount: parseInt(formData.employeeCount) || 1,
+          contactPersonName: formData.contactPerson || '',
+          contactPersonDesignation: formData.contactPersonDesignation || '',
+          contactPersonEmail: formData.email,
+          contactPersonPhone: formData.contact
+        };
+      } else if (formData.clientType === 'group') {
+        clientData.groupData = {
+          groupName: formData.name,
+          groupType: formData.groupType || 'other',
+          memberCount: parseInt(formData.memberCount) || 2,
+          primaryContactName: formData.primaryContact || '',
+          primaryContactDesignation: formData.primaryContactDesignation || ''
+        };
+      }
+      
+      // Add documents if they exist
+      if (formData.documents && Object.keys(formData.documents).length > 0) {
+        clientData.documents = formData.documents;
+      }
+      
+      // Add communication preferences and important dates
+      if (formData.communicationPreferences) {
+        clientData.communicationPreferences = formData.communicationPreferences;
+      }
+      
+      if (formData.importantDates && Object.keys(formData.importantDates).length > 0) {
+        clientData.importantDates = formData.importantDates;
+      }
+      
+      // Validate data using schema before submission
+      try {
+        validateClientData(clientData, !isEditMode);
+      } catch (validationError) {
+        toast.error(`Validation Error: ${validationError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Submit the form
+      await onSubmit(clientData);
+      toast.success(isEditMode ? 'Client updated successfully!' : 'Client created successfully!');
+      
+    } catch (error) {
+      console.error('Form submission error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to submit form';
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Reset form when client changes
   useEffect(() => {
     if (client) {
-      setFormData({
-        clientType: client.clientType || client.type?.toLowerCase() || 'individual',
-        name: client.name || '',
+      // Extract data based on client type
+      let extractedData = {
+        clientType: client.clientType || 'individual',
         email: client.email || '',
-        contact: client.contact || '',
-        location: client.location || '',
+        contact: client.phone || client.contact || '',
+        location: `${client.address || ''}, ${client.city || ''}, ${client.state || ''}, ${client.pincode || ''}`.replace(/^,\s*|,\s*$/g, ''),
         status: client.status || 'Active',
-        dob: client.dob || '',
-        gender: client.gender || '',
-        panNumber: client.panNumber || '',
-        occupation: client.occupation || '',
-        registrationNo: client.registrationNo || '',
-        gstNumber: client.gstNumber || '',
-        industry: client.industry || '',
-        employeeCount: client.employeeCount || '',
-        contactPerson: client.contactPerson || '',
-        contactPersonDesignation: client.contactPersonDesignation || '',
-        groupType: client.groupType || '',
-        memberCount: client.memberCount || '',
-        primaryContact: client.primaryContact || '',
-        primaryContactDesignation: client.primaryContactDesignation || '',
         notes: client.notes || '',
         importantDates: client.importantDates || {},
         communicationPreferences: client.communicationPreferences || {
@@ -202,7 +280,62 @@ const ClientForm = ({ client, onSubmit, onCancel }) => {
           sms: { enabled: false, birthday: false, anniversary: false }
         },
         documents: client.documents || {}
-      });
+      };
+      
+      // Extract type-specific data
+      if (client.clientType === 'individual' && client.individualData) {
+        const { individualData } = client;
+        extractedData = {
+          ...extractedData,
+          name: `${individualData.firstName || ''} ${individualData.lastName || ''}`.trim(),
+          dob: individualData.dob ? new Date(individualData.dob).toISOString().split('T')[0] : '',
+          gender: individualData.gender ? individualData.gender.charAt(0).toUpperCase() + individualData.gender.slice(1) : '',
+          panNumber: individualData.panNumber || '',
+          occupation: individualData.occupation || ''
+        };
+      } else if (client.clientType === 'corporate' && client.corporateData) {
+        const { corporateData } = client;
+        extractedData = {
+          ...extractedData,
+          name: corporateData.companyName || '',
+          registrationNo: corporateData.registrationNo || '',
+          gstNumber: corporateData.gstNumber || '',
+          industry: corporateData.industry || '',
+          employeeCount: corporateData.employeeCount || '',
+          contactPerson: corporateData.contactPersonName || '',
+          contactPersonDesignation: corporateData.contactPersonDesignation || ''
+        };
+      } else if (client.clientType === 'group' && client.groupData) {
+        const { groupData } = client;
+        extractedData = {
+          ...extractedData,
+          name: groupData.groupName || '',
+          groupType: groupData.groupType || '',
+          memberCount: groupData.memberCount || '',
+          primaryContact: groupData.primaryContactName || '',
+          primaryContactDesignation: groupData.primaryContactDesignation || ''
+        };
+      }
+      
+      // Set default values for fields not in extracted data
+      const defaultFormData = {
+        dob: '',
+        gender: '',
+        panNumber: '',
+        occupation: '',
+        registrationNo: '',
+        gstNumber: '',
+        industry: '',
+        employeeCount: '',
+        contactPerson: '',
+        contactPersonDesignation: '',
+        groupType: '',
+        memberCount: '',
+        primaryContact: '',
+        primaryContactDesignation: ''
+      };
+      
+      setFormData({ ...defaultFormData, ...extractedData });
     }
   }, [client]);
 
@@ -581,11 +714,18 @@ const ClientForm = ({ client, onSubmit, onCancel }) => {
       </Tabs>
 
       <div className="flex justify-end space-x-4 mt-8">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button onClick={handleSubmit}>
-          {isEditMode ? 'Update Client' : 'Create Client'}
+        <Button onClick={handleSubmit} disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              {isEditMode ? 'Updating...' : 'Creating...'}
+            </>
+          ) : (
+            isEditMode ? 'Update Client' : 'Create Client'
+          )}
         </Button>
       </div>
     </div>

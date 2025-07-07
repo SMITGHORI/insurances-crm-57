@@ -19,6 +19,7 @@ const commonFieldsSchema = z.object({
   source: z.enum(['referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other']).optional(),
   notes: z.string().optional(),
   assignedAgentId: z.string().optional(),
+  documents: z.record(z.any()).optional(), // Documents are optional
 });
 
 // Individual client schema
@@ -112,6 +113,7 @@ export const clientUpdateSchema = z.union([
     source: z.enum(['referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other']).optional(),
     notes: z.string().optional(),
     assignedAgentId: z.string().optional(),
+    documents: z.record(z.any()).optional(), // Documents are optional
   }),
   // Corporate client update
   z.object({
@@ -147,6 +149,7 @@ export const clientUpdateSchema = z.union([
     source: z.enum(['referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other']).optional(),
     notes: z.string().optional(),
     assignedAgentId: z.string().optional(),
+    documents: z.record(z.any()).optional(), // Documents are optional
   }),
   // Group client update
   z.object({
@@ -179,6 +182,7 @@ export const clientUpdateSchema = z.union([
     source: z.enum(['referral', 'website', 'social', 'campaign', 'lead', 'direct', 'other']).optional(),
     notes: z.string().optional(),
     assignedAgentId: z.string().optional(),
+    documents: z.record(z.any()).optional(), // Documents are optional
   }),
 ]);
 

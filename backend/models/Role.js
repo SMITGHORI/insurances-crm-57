@@ -52,7 +52,7 @@ roleSchema.pre('save', function(next) {
 
 // Virtual for permission count
 roleSchema.virtual('permissionCount').get(function() {
-  return this.permissions.reduce((acc, p) => acc + p.actions.length, 0);
+  return this.permissions ? this.permissions.reduce((acc, p) => acc + (p.actions ? p.actions.length : 0), 0) : 0;
 });
 
 // Static method to get default roles
