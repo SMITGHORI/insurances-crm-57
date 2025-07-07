@@ -1,7 +1,17 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsBackendApi } from '../services/api/clientsApiBackend';
 import { toast } from 'sonner';
+
+// Query keys for clients
+export const clientsQueryKeys = {
+  all: ['clients'],
+  lists: () => [...clientsQueryKeys.all, 'list'],
+  list: (filters) => [...clientsQueryKeys.lists(), { filters }],
+  details: () => [...clientsQueryKeys.all, 'detail'],
+  detail: (id) => [...clientsQueryKeys.details(), id],
+  documents: (id) => [...clientsQueryKeys.all, 'documents', id],
+  stats: () => [...clientsQueryKeys.all, 'stats'],
+};
 
 // Get all clients with filters
 export const useClients = (params = {}) => {
