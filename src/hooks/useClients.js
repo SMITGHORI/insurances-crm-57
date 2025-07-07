@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsBackendApi } from '../services/api/clientsApiBackend';
 import { toast } from 'sonner';
@@ -79,6 +80,63 @@ export const useDeleteClient = () => {
     onError: (error) => {
       console.error('Delete client error:', error);
       toast.error(error.message || 'Failed to delete client');
+    }
+  });
+};
+
+// Bulk client operations
+export const useBulkClientOperations = () => {
+  const queryClient = useQueryClient();
+
+  const bulkAssign = useMutation({
+    mutationFn: ({ clientIds, agentId }) => clientsBackendApi.bulkAssignToAgent(clientIds, agentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success('Clients assigned successfully');
+    },
+    onError: (error) => {
+      console.error('Bulk assign error:', error);
+      toast.error(error.message || 'Failed to assign clients');
+    }
+  });
+
+  const bulkUpdate = useMutation({
+    mutationFn: ({ clientIds, updateData }) => clientsBackendApi.bulkUpdateClients(clientIds, updateData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success('Clients updated successfully');
+    },
+    onError: (error) => {
+      console.error('Bulk update error:', error);
+      toast.error(error.message || 'Failed to update clients');
+    }
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: (clientIds) => clientsBackendApi.bulkDeleteClients(clientIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      toast.success('Clients deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Bulk delete error:', error);
+      toast.error(error.message || 'Failed to delete clients');
+    }
+  });
+
+  return { bulkAssign, bulkUpdate, bulkDelete };
+};
+
+// Export clients
+export const useClientExport = () => {
+  return useMutation({
+    mutationFn: (exportData) => clientsBackendApi.exportClients(exportData),
+    onSuccess: () => {
+      toast.success('Clients exported successfully');
+    },
+    onError: (error) => {
+      console.error('Export clients error:', error);
+      toast.error(error.message || 'Failed to export clients');
     }
   });
 };
