@@ -22,9 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Plus, Download, Trash, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUpdatePolicy } from '@/hooks/usePolicies';
 
 const EndorsementHistory = ({ policy, setPolicy }) => {
   const [showAddForm, setShowAddForm] = useState(false);
+  const updatePolicyMutation = useUpdatePolicy();
   const [newEndorsement, setNewEndorsement] = useState({
     type: '',
     date: new Date().toISOString().split('T')[0],
@@ -33,7 +35,7 @@ const EndorsementHistory = ({ policy, setPolicy }) => {
     document: null
   });
 
-  const handleAddEndorsement = () => {
+  const handleAddEndorsement = async () => {
     // Validation
     if (!newEndorsement.type || !newEndorsement.date || !newEndorsement.effectiveDate || !newEndorsement.description) {
       toast.error('Please fill in all required fields');
@@ -64,33 +66,31 @@ const EndorsementHistory = ({ policy, setPolicy }) => {
       details: `${newEndorsement.type} endorsement added, effective ${new Date(newEndorsement.effectiveDate).toLocaleDateString()}`
     });
     
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      // Update state
+      setPolicy(updatedPolicy);
+      setShowAddForm(false);
+      setNewEndorsement({
+        type: '',
+        date: new Date().toISOString().split('T')[0],
+        effectiveDate: new Date().toISOString().split('T')[0],
+        description: '',
+        document: null
+      });
+      
+      toast.success('Endorsement added successfully');
+    } catch (error) {
+      console.error('Error adding endorsement:', error);
+      toast.error('Failed to add endorsement');
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    setShowAddForm(false);
-    setNewEndorsement({
-      type: '',
-      date: new Date().toISOString().split('T')[0],
-      effectiveDate: new Date().toISOString().split('T')[0],
-      description: '',
-      document: null
-    });
-    
-    toast.success('Endorsement added successfully');
   };
 
-  const handleDeleteEndorsement = (endorsementId) => {
+  const handleDeleteEndorsement = async (endorsementId) => {
     const updatedPolicy = { ...policy };
     
     // Filter out the endorsement to delete
@@ -108,21 +108,19 @@ const EndorsementHistory = ({ policy, setPolicy }) => {
       details: `Endorsement record deleted`
     });
     
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      // Update state
+      setPolicy(updatedPolicy);
+      toast.success('Endorsement deleted successfully');
+    } catch (error) {
+      console.error('Error deleting endorsement:', error);
+      toast.error('Failed to delete endorsement');
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    toast.success('Endorsement deleted successfully');
   };
 
   const handleDocumentUpload = (file) => {

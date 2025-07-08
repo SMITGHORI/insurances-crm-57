@@ -14,12 +14,12 @@ const activitySchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['client', 'policy', 'claim', 'quotation', 'lead', 'agent', 'user', 'payment', 'document'],
+    enum: ['client', 'policy', 'claim', 'quotation', 'lead', 'agent', 'user', 'payment', 'document', 'plan', 'invoice', 'setting'],
     required: true
   },
   operation: {
     type: String,
-    enum: ['create', 'read', 'update', 'delete'],
+    enum: ['create', 'read', 'update', 'delete', 'error'],
     required: true
   },
   description: {

@@ -27,20 +27,21 @@ import {
 import AgentDetailTabs from '@/components/agents/AgentDetailTabs';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAgentById, useUpdateAgent, useDeleteAgent } from '@/hooks/useAgents';
 
 const AgentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [agent, setAgent] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
+  // API hooks
+  const { data: agent, isLoading: loading, error, refetch } = useAgentById(id);
+  const updateAgentMutation = useUpdateAgent();
+  const deleteAgentMutation = useDeleteAgent();
+  
   useEffect(() => {
-    console.log('AgentDetails: Looking for agent with ID:', id);
-    
     if (!id || id === 'undefined') {
-      console.error('AgentDetails: Invalid agent ID:', id);
       toast.error("Invalid Agent ID", {
         description: "The agent ID is missing or invalid."
       });
@@ -48,92 +49,13 @@ const AgentDetails = () => {
       return;
     }
 
-    // Load agent data from localStorage or create sample data if none exists
-    let storedAgents = localStorage.getItem('agentsData');
-    let agents = [];
-    
-    if (!storedAgents) {
-      // Create sample agent data if none exists
-      agents = [
-        {
-          _id: '1',
-          id: '1',
-          name: 'Rajesh Kumar',
-          email: 'rajesh.kumar@example.com',
-          phone: '+91 98765 43210',
-          status: 'active',
-          specialization: 'Health & Life Insurance',
-          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-          joinDate: '15 Jan 2023',
-          licenseNumber: 'IRDAI-AG-25896-12/14',
-          licenseExpiry: '14 Dec 2025',
-          performanceMetrics: {
-            leadsConverted: 68,
-            targetAchieved: 85,
-            customerRating: 4.7,
-            retentionRate: 94
-          }
-        },
-        {
-          _id: '2',
-          id: '2',
-          name: 'Priya Sharma',
-          email: 'priya.sharma@example.com',
-          phone: '+91 87654 32109',
-          status: 'active',
-          specialization: 'Vehicle & Property Insurance',
-          avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
-          joinDate: '22 Mar 2023',
-          licenseNumber: 'IRDAI-AG-25897-03/15',
-          licenseExpiry: '22 Mar 2026',
-          performanceMetrics: {
-            leadsConverted: 72,
-            targetAchieved: 91,
-            customerRating: 4.8,
-            retentionRate: 96
-          }
-        },
-        {
-          _id: '3',
-          id: '3',
-          name: 'Amit Patel',
-          email: 'amit.patel@example.com',
-          phone: '+91 76543 21098',
-          status: 'inactive',
-          specialization: 'Corporate Insurance',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-          joinDate: '10 Aug 2022',
-          licenseNumber: 'IRDAI-AG-25898-08/16',
-          licenseExpiry: '10 Aug 2025'
-        }
-      ];
-      
-      localStorage.setItem('agentsData', JSON.stringify(agents));
-      console.log('AgentDetails: Created sample agent data');
-    } else {
-      agents = JSON.parse(storedAgents);
-      console.log('AgentDetails: Loaded agents from localStorage:', agents);
-    }
-    
-    // Look for agent by both _id (backend) and id (frontend)
-    const foundAgent = agents.find(agent => 
-      agent._id === id || agent.id === id || agent._id === parseInt(id) || agent.id === parseInt(id)
-    );
-    
-    console.log('AgentDetails: Found agent:', foundAgent);
-    
-    if (foundAgent) {
-      setAgent(foundAgent);
-    } else {
-      console.error('AgentDetails: Agent not found for ID:', id);
+    if (error) {
       toast.error("Agent Not Found", {
         description: "The requested agent could not be found."
       });
       navigate('/agents');
     }
-    
-    setLoading(false);
-  }, [id, navigate]);
+  }, [id, navigate, error]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -148,28 +70,26 @@ const AgentDetails = () => {
     }
   };
 
-  const handleStatusToggle = () => {
+  const handleStatusToggle = async () => {
     if (!agent) return;
 
-    // Toggle between active and inactive
     const newStatus = agent.status === 'active' ? 'inactive' : 'active';
     
-    // Update agent in localStorage
-    const storedAgents = localStorage.getItem('agentsData');
-    if (storedAgents) {
-      const agents = JSON.parse(storedAgents);
-      const agentId = agent._id || agent.id;
-      const updatedAgents = agents.map(a => 
-        (a._id === agentId || a.id === agentId) ? { ...a, status: newStatus } : a
-      );
+    try {
+      await updateAgentMutation.mutateAsync({
+        id: agent._id || agent.id,
+        data: { status: newStatus }
+      });
       
-      localStorage.setItem('agentsData', JSON.stringify(updatedAgents));
-      
-      // Update local state
-      setAgent({ ...agent, status: newStatus });
+      // Refetch agent data to get updated information
+      refetch();
       
       toast.success(`Agent ${newStatus === 'active' ? 'Activated' : 'Deactivated'}`, {
         description: `${agent.name} has been ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.`
+      });
+    } catch (error) {
+      toast.error('Failed to update agent status', {
+        description: 'Please try again later.'
       });
     }
   };
@@ -183,24 +103,23 @@ const AgentDetails = () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteAgent = () => {
-    // Get agents from localStorage
-    const storedAgents = localStorage.getItem('agentsData');
-    if (storedAgents && agent) {
-      const agents = JSON.parse(storedAgents);
-      const agentId = agent._id || agent.id;
-      const updatedAgents = agents.filter(a => (a._id !== agentId && a.id !== agentId));
-      
-      // Update localStorage
-      localStorage.setItem('agentsData', JSON.stringify(updatedAgents));
+  const confirmDeleteAgent = async () => {
+    if (!agent) return;
+    
+    try {
+      await deleteAgentMutation.mutateAsync(agent._id || agent.id);
       
       toast.success("Agent Deleted", {
         description: `${agent.name} has been deleted successfully.`
       });
       
-      // Close dialog and navigate back
       setIsDeleteDialogOpen(false);
       navigate('/agents');
+    } catch (error) {
+      toast.error('Failed to delete agent', {
+        description: 'Please try again later.'
+      });
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -380,53 +299,69 @@ const AgentDetails = () => {
       </div>
 
       {/* Agent Performance Card */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="py-4">
-            <CardTitle className="text-sm font-medium text-gray-500">Conversion Rate</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{agent.performanceMetrics?.leadsConverted || '68'}%</div>
-            <Progress className="h-2 mt-2" value={agent.performanceMetrics?.leadsConverted || 68} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="py-4">
-            <CardTitle className="text-sm font-medium text-gray-500">Target Achievement</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{agent.performanceMetrics?.targetAchieved || '85'}%</div>
-            <Progress className="h-2 mt-2" value={agent.performanceMetrics?.targetAchieved || 85} />
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="py-4">
-            <CardTitle className="text-sm font-medium text-gray-500">Customer Rating</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{agent.performanceMetrics?.customerRating || '4.7'}/5</div>
-            <div className="flex mt-1 text-yellow-400">
-              {[...Array(Math.floor(agent.performanceMetrics?.customerRating || 4.7))].map((_, i) => (
-                <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M10 15.27L16.18 19L14.54 11.97L20 7.24L12.81 6.63L10 0L7.19 6.63L0 7.24L5.46 11.97L3.82 19L10 15.27Z" />
-                </svg>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="py-4">
-            <CardTitle className="text-sm font-medium text-gray-500">Retention Rate</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-2xl font-bold">{agent.performanceMetrics?.retentionRate || '94'}%</div>
-            <Progress className="h-2 mt-2" value={agent.performanceMetrics?.retentionRate || 94} />
-          </CardContent>
-        </Card>
-      </div>
+      {performanceLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="py-4">
+                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="h-2 bg-gray-200 rounded animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-medium text-gray-500">Conversion Rate</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold">{performance?.conversionRate || 0}%</div>
+              <Progress className="h-2 mt-2" value={performance?.conversionRate || 0} />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-medium text-gray-500">Target Achievement</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold">{performance?.targetAchievement || 0}%</div>
+              <Progress className="h-2 mt-2" value={performance?.targetAchievement || 0} />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-medium text-gray-500">Customer Rating</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold">{performance?.customerRating || 0}/5</div>
+              <div className="flex mt-1 text-yellow-400">
+                {[...Array(Math.floor(performance?.customerRating || 0))].map((_, i) => (
+                  <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M10 15.27L16.18 19L14.54 11.97L20 7.24L12.81 6.63L10 0L7.19 6.63L0 7.24L5.46 11.97L3.82 19L10 15.27Z" />
+                  </svg>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-medium text-gray-500">Retention Rate</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-2xl font-bold">{performance?.retentionRate || 0}%</div>
+              <Progress className="h-2 mt-2" value={performance?.retentionRate || 0} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Enhanced Tab Content */}
       <AgentDetailTabs agent={agent} />

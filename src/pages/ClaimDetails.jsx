@@ -54,27 +54,7 @@ const ClaimDetails = () => {
       try {
         console.log('Fetching claim details for ID:', id);
         
-        // Try to get from localStorage first (offline mode)
-        const storedClaims = localStorage.getItem('claimsData');
-        if (storedClaims) {
-          const claims = JSON.parse(storedClaims);
-          const foundClaim = claims.find(claim => claim.id === id);
-          
-          if (foundClaim) {
-            // Ensure documents and timeline arrays exist
-            const claimWithDefaults = {
-              ...foundClaim,
-              documents: foundClaim.documents || [],
-              timeline: foundClaim.timeline || [],
-              notes: foundClaim.notes || []
-            };
-            setClaim(claimWithDefaults);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // If not found in localStorage, try API
+        // Fetch claim details from API
         const response = await claimsApi.getClaimById(id);
         if (response) {
           // Ensure documents and timeline arrays exist
@@ -91,74 +71,8 @@ const ClaimDetails = () => {
       } catch (error) {
         console.error('Error fetching claim details:', error);
         toast.error(`Failed to load claim details: ${error.message}`);
-        
-        // Try to create sample data for demo
-        const sampleClaim = {
-          id: id,
-          claimNumber: `CLM-${Date.now()}`,
-          policyNumber: 'POL-2024-0001',
-          clientName: 'Sample Client',
-          incidentDate: '2024-01-15',
-          reportedDate: '2024-01-16',
-          status: 'under_review',
-          claimAmount: 50000,
-          estimatedAmount: 45000,
-          description: 'Sample claim for demonstration',
-          type: 'health',
-          dateOfFiling: '2024-01-16',
-          policyType: 'Health Insurance',
-          memberName: 'Sample Member',
-          dateOfIncident: '2024-01-15',
-          approvedAmount: null,
-          insuranceCompanyPolicyNumber: 'INS-001-2024',
-          claimReason: 'Medical Treatment',
-          insuranceCompany: 'Sample Insurance Co.',
-          insuranceCompanyClaimId: null,
-          claimHandler: 'John Doe',
-          handlerContact: '+91-9876543210',
-          documents: [], // Initialize empty documents array
-          timeline: [ // Initialize sample timeline events
-            {
-              id: 1,
-              event: 'Claim Filed',
-              description: 'Claim was submitted for review',
-              status: 'filed',
-              date: '2024-01-16',
-              time: '10:30 AM'
-            },
-            {
-              id: 2,
-              event: 'Under Review',
-              description: 'Claim is being reviewed by our team',
-              status: 'processing',
-              date: '2024-01-17',
-              time: '02:15 PM'
-            }
-          ],
-          notes: [], // Initialize empty notes array
-          details: {
-            hospitalName: 'Sample Hospital',
-            hospitalAddress: 'Sample Address',
-            admissionDate: '2024-01-15',
-            dischargeDate: '2024-01-17',
-            roomCategory: 'Private',
-            treatmentType: 'Medical',
-            diagnosis: 'Sample Diagnosis',
-            treatment: 'Sample Treatment',
-            doctorName: 'Dr. Sample',
-            doctorSpeciality: 'General Medicine',
-            cashless: true,
-            preAuthApproved: true,
-            preAuthAmount: 50000,
-            billedAmount: 50000,
-            copaymentRequired: false,
-            copaymentAmount: 0,
-            medicalHistory: 'No significant medical history'
-          }
-        };
-        
-        setClaim(sampleClaim);
-        toast.info('Loaded sample claim data for demonstration');
+        // Navigate back to claims list if claim not found
+        navigate('/claims');
       } finally {
         setLoading(false);
       }

@@ -1,6 +1,7 @@
 
 const Activity = require('../models/Activity');
 const UAParser = require('ua-parser-js');
+const mongoose = require('mongoose');
 
 /**
  * Middleware to automatically log all activities
@@ -115,7 +116,7 @@ class ActivityLogger {
       description: `${operation.charAt(0).toUpperCase() + operation.slice(1)} ${entityInfo.type}: ${entityInfo.name}`,
       details: this.buildDetails(originalBody, changeDetails),
       entityType: entityInfo.type,
-      entityId: entityInfo.id,
+      entityId: mongoose.Types.ObjectId.isValid(entityInfo.id) ? entityInfo.id : new mongoose.Types.ObjectId(),
       entityName: entityInfo.name,
       clientId: entityInfo.clientId,
       clientName: entityInfo.clientName,
@@ -144,7 +145,7 @@ class ActivityLogger {
       errorMessage: statusCode >= 400 ? responseData?.message : null,
       duration,
       tags: this.generateTags(operation, entityInfo.type, statusCode),
-      createdBy: req.user._id
+      performedBy: req.user._id
     };
   }
 

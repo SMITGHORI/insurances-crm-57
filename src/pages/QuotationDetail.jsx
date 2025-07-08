@@ -4,41 +4,54 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import QuotationDetailTabs from '@/components/quotations/QuotationDetailTabs';
+import { useQuotation } from '@/hooks/useQuotations';
+import { toast } from 'react-hot-toast';
 
 const QuotationDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { data: quotation, isLoading, error } = useQuotation(id);
 
-  // Mock quotation data - in real app, this would come from an API call
-  const quotation = {
-    id: id,
-    quoteId: 'QT-2025-0001',
-    clientId: '674a1234567890abcdef1001',
-    clientName: 'John Doe',
-    clientEmail: 'john.doe@email.com',
-    clientPhone: '+91-9876543210',
-    insuranceType: 'Health Insurance',
-    insuranceCompany: 'Star Health',
-    products: [
-      {
-        name: 'Family Floater Plan',
-        description: 'Comprehensive health coverage for family',
-        sumInsured: 500000,
-        premium: 25000
-      }
-    ],
-    sumInsured: 500000,
-    premium: 25000,
-    agentId: '674a1234567890abcdef2001',
-    agentName: 'Agent Smith',
-    status: 'sent',
-    validUntil: '2025-07-01',
-    createdDate: '2025-06-01',
-    sentDate: '2025-06-02',
-    notes: 'Initial quotation for family health insurance',
-    attachments: [],
-    customFields: {}
-  };
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-6 bg-gray-200 rounded w-1/2 mb-8"></div>
+          <div className="h-96 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    toast.error('Failed to load quotation details');
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Failed to load quotation details</p>
+          <Button onClick={() => navigate('/quotations')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Quotations
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!quotation) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <p className="text-gray-600 mb-4">Quotation not found</p>
+          <Button onClick={() => navigate('/quotations')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Quotations
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

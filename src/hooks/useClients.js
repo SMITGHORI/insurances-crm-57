@@ -12,38 +12,14 @@ export const clientsQueryKeys = {
   search: (query) => [...clientsQueryKeys.all, 'search', query],
 };
 
-// Mock clients service for fallback
-const mockClientsApi = {
-  getClients: () => Promise.resolve({
-    success: true,
-    data: [
-      {
-        _id: 'client1',
-        displayName: 'John Doe',
-        email: 'john@example.com',
-        phone: '+91-9876543210',
-        assignedAgentId: 'agent-fallback-id'
-      },
-      {
-        _id: 'client2',
-        displayName: 'Jane Smith',
-        email: 'jane@example.com',
-        phone: '+91-9876543211',
-        assignedAgentId: 'agent-fallback-id'
-      }
-    ],
-    total: 2
-  })
-};
+import clientsApi from '../services/api/clientsApi';
 
 export const useClients = (params = {}) => {
   return useQuery({
     queryKey: clientsQueryKeys.list(params),
     queryFn: async () => {
       try {
-        // For now, use mock data since the focus is on policies
-        console.log('Using mock clients data for policies module');
-        return await mockClientsApi.getClients();
+        return await clientsApi.getClients(params);
       } catch (error) {
         console.error('Error fetching clients:', error);
         throw error;
@@ -61,17 +37,7 @@ export const useClient = (clientId) => {
     queryFn: async () => {
       try {
         console.log('Fetching client details:', clientId);
-        // Mock single client data
-        return {
-          success: true,
-          data: {
-            _id: clientId,
-            displayName: 'John Doe',
-            email: 'john@example.com',
-            phone: '+91-9876543210',
-            assignedAgentId: 'agent-fallback-id'
-          }
-        };
+        return await clientsApi.getClientById(clientId);
       } catch (error) {
         console.error('Error fetching client:', error);
         throw error;
@@ -89,14 +55,7 @@ export const useCreateClient = () => {
   return useMutation({
     mutationFn: async (clientData) => {
       console.log('Creating client:', clientData);
-      // Mock create response
-      return {
-        success: true,
-        data: {
-          _id: 'new-client-id',
-          ...clientData
-        }
-      };
+      return await clientsApi.createClient(clientData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
@@ -116,14 +75,7 @@ export const useUpdateClient = () => {
   return useMutation({
     mutationFn: async ({ clientId, clientData }) => {
       console.log('Updating client:', clientId, clientData);
-      // Mock update response
-      return {
-        success: true,
-        data: {
-          _id: clientId,
-          ...clientData
-        }
-      };
+      return await clientsApi.updateClient(clientId, clientData);
     },
     onSuccess: (data, variables) => {
       const { clientId } = variables;
@@ -145,8 +97,7 @@ export const useDeleteClient = () => {
   return useMutation({
     mutationFn: async (clientId) => {
       console.log('Deleting client:', clientId);
-      // Mock delete response
-      return { success: true };
+      return await clientsApi.deleteClient(clientId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
@@ -166,8 +117,7 @@ export const useBulkClientOperations = () => {
   return useMutation({
     mutationFn: async ({ operation, clientIds, data }) => {
       console.log('Bulk client operation:', operation, clientIds, data);
-      // Mock bulk operation response
-      return { success: true, affected: clientIds.length };
+      return await clientsApi.bulkOperation({ operation, clientIds, data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientsQueryKeys.lists() });
@@ -185,12 +135,7 @@ export const useClientExport = () => {
   return useMutation({
     mutationFn: async (exportParams) => {
       console.log('Exporting clients:', exportParams);
-      // Mock export response
-      return {
-        success: true,
-        data: [],
-        message: 'Export completed successfully'
-      };
+      return await clientsApi.exportClients(exportParams);
     },
     onSuccess: () => {
       toast.success('Clients exported successfully');
@@ -209,15 +154,15 @@ export const useUploadDocument = () => {
   return useMutation({
     mutationFn: async ({ clientId, documentType, file }) => {
       console.log('Uploading document:', clientId, documentType, file);
-      // Mock upload response
-      return {
-        success: true,
-        data: {
-          documentId: 'new-doc-id',
-          documentType,
-          fileName: file.name
-        }
-      };
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('documentType', documentType);
+      
+      return await clientsApi.makeRequest(`/${clientId}/documents`, {
+        method: 'POST',
+        body: formData,
+        headers: {} // Let browser set Content-Type for FormData
+      });
     },
     onSuccess: (data, variables) => {
       const { clientId } = variables;

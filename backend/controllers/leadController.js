@@ -279,11 +279,16 @@ const getLeads = async (req, res, next) => {
       hasPrev
     };
 
-    successResponse(res, {
-      leads: leadsWithScores,
-      pagination,
-      totalCount
-    }, 'Leads retrieved successfully');
+    res.status(200).json({
+      success: true,
+      data: {
+        leads: leadsWithScores,
+        pagination,
+        totalCount
+      },
+      message: 'Leads retrieved successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -306,7 +311,8 @@ const getLeadById = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -318,7 +324,12 @@ const getLeadById = async (req, res, next) => {
       score: calculateLeadScore(lead)
     };
 
-    successResponse(res, leadWithScore, 'Lead retrieved successfully');
+    res.status(200).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Lead retrieved successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -348,7 +359,12 @@ const createLead = async (req, res, next) => {
       // Log merge activity
       await logLeadActivity(existingLead._id, 'merged', 'Lead merged with duplicate', req.user._id);
       
-      return successResponse(res, existingLead, 'Lead merged with existing duplicate', 200);
+      return res.status(200).json({
+        success: true,
+        data: existingLead,
+        message: 'Lead merged with existing duplicate',
+        timestamp: new Date().toISOString()
+      });
     }
 
     // Auto-assign based on territory
@@ -363,7 +379,8 @@ const createLead = async (req, res, next) => {
     }
 
     // Ensure assignedTo.agentId is set if not provided
-    if (!req.body.assignedTo?.agentId && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (!req.body.assignedTo?.agentId && userRole === 'agent') {
       req.body.assignedTo = {
         agentId: req.user._id,
         name: req.user.name || req.user.email
@@ -391,7 +408,12 @@ const createLead = async (req, res, next) => {
       score: calculateLeadScore(populatedLead)
     };
 
-    successResponse(res, leadWithScore, 'Lead created successfully', 201);
+    res.status(201).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Lead created successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     if (error.code === 11000) {
@@ -415,7 +437,8 @@ const updateLead = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -453,7 +476,12 @@ const updateLead = async (req, res, next) => {
       score: calculateLeadScore(updatedLead)
     };
 
-    successResponse(res, leadWithScore, 'Lead updated successfully');
+    res.status(200).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Lead updated successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     if (error.code === 11000) {
@@ -477,7 +505,8 @@ const deleteLead = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -493,7 +522,12 @@ const deleteLead = async (req, res, next) => {
     // Log activity
     await logLeadActivity(id, 'deleted', 'Lead deleted', req.user._id);
 
-    successResponse(res, null, 'Lead deleted successfully');
+    res.status(200).json({
+      success: true,
+      data: null,
+      message: 'Lead deleted successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -513,7 +547,8 @@ const addFollowUp = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -539,7 +574,12 @@ const addFollowUp = async (req, res, next) => {
       score: calculateLeadScore(updatedLead)
     };
 
-    successResponse(res, leadWithScore, 'Follow-up added successfully');
+    res.status(200).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Follow-up added successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -559,7 +599,8 @@ const addNote = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -585,7 +626,12 @@ const addNote = async (req, res, next) => {
       score: calculateLeadScore(updatedLead)
     };
 
-    successResponse(res, leadWithScore, 'Note added successfully');
+    res.status(200).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Note added successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -628,7 +674,12 @@ const assignLead = async (req, res, next) => {
       score: calculateLeadScore(updatedLead)
     };
 
-    successResponse(res, leadWithScore, 'Lead assigned successfully');
+    res.status(200).json({
+      success: true,
+      data: leadWithScore,
+      message: 'Lead assigned successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -652,7 +703,8 @@ const convertToClient = async (req, res, next) => {
     }
 
     // Check ownership for agents
-    if (req.checkOwnership && req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (req.checkOwnership && userRole === 'agent') {
       if (lead.assignedTo.agentId?.toString() !== req.user._id.toString()) {
         throw new AppError('Access denied', 403);
       }
@@ -726,12 +778,17 @@ const convertToClient = async (req, res, next) => {
       });
     }
 
-    successResponse(res, {
-      leadId: lead._id,
-      clientId: client._id,
-      clientNumber: client.clientId,
-      message: 'Lead converted to client successfully'
-    }, 'Lead converted successfully');
+    res.status(200).json({
+      success: true,
+      data: {
+        leadId: lead._id,
+        clientId: client._id,
+        clientNumber: client.clientId,
+        message: 'Lead converted to client successfully'
+      },
+      message: 'Lead converted successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -825,7 +882,12 @@ const getLeadsStats = async (req, res, next) => {
       period
     };
 
-    successResponse(res, stats, 'Lead statistics retrieved successfully');
+    res.status(200).json({
+      success: true,
+      data: stats,
+      message: 'Lead statistics retrieved successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -866,7 +928,12 @@ const searchLeads = async (req, res, next) => {
       score: calculateLeadScore(lead)
     }));
 
-    successResponse(res, leadsWithScores, 'Search results retrieved successfully');
+    res.status(200).json({
+      success: true,
+      data: leadsWithScores,
+      message: 'Search results retrieved successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -908,7 +975,12 @@ const getStaleLeads = async (req, res, next) => {
         Math.floor((new Date() - new Date(lead.createdAt)) / (1000 * 60 * 60 * 24))
     }));
 
-    successResponse(res, leadsWithScores, 'Stale leads retrieved successfully');
+    res.status(200).json({
+      success: true,
+      data: leadsWithScores,
+      message: 'Stale leads retrieved successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);
@@ -993,7 +1065,12 @@ const getLeadFunnelReport = async (req, res, next) => {
       period
     };
 
-    successResponse(res, funnelReport, 'Lead funnel report generated successfully');
+    res.status(200).json({
+      success: true,
+      data: funnelReport,
+      message: 'Lead funnel report generated successfully',
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     next(error);

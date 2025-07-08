@@ -8,23 +8,17 @@ class PoliciesBackendApi {
 
   async makeRequest(endpoint, options = {}) {
     const token = localStorage.getItem('authToken');
-    const isDemoMode = localStorage.getItem('demoMode');
     
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
-        ...(token && !isDemoMode ? { 'Authorization': `Bearer ${token}` } : {})
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       }
     };
 
     const config = { ...defaultOptions, ...options };
     
     try {
-      // In demo mode, return mock data
-      if (isDemoMode) {
-        return this.getMockData(endpoint, config.method);
-      }
-
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
       
       if (!response.ok) {
@@ -35,74 +29,11 @@ class PoliciesBackendApi {
       return await response.json();
     } catch (error) {
       console.error('API request failed:', error);
-      
-      // Fallback to mock data on network errors
-      if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
-        console.log('Network error, using fallback mock data');
-        return this.getMockData(endpoint, config.method);
-      }
-      
       throw error;
     }
   }
 
-  getMockData(endpoint, method = 'GET') {
-    const mockPolicies = [
-      {
-        _id: 'pol1',
-        policyNumber: 'POL-2024-001',
-        clientId: { displayName: 'John Doe', email: 'john@example.com' },
-        type: 'life',
-        status: 'Active',
-        premium: 25000,
-        sumAssured: 1000000,
-        startDate: '2024-01-01',
-        endDate: '2025-01-01',
-        insuranceCompany: 'LIC India',
-        assignedAgentId: 'agent-fallback-id'
-      },
-      {
-        _id: 'pol2',
-        policyNumber: 'POL-2024-002',
-        clientId: { displayName: 'Jane Smith', email: 'jane@example.com' },
-        type: 'health',
-        status: 'Active',
-        premium: 15000,
-        sumAssured: 500000,
-        startDate: '2024-02-01',
-        endDate: '2025-02-01',
-        insuranceCompany: 'Star Health',
-        assignedAgentId: 'agent-fallback-id'
-      }
-    ];
 
-    if (endpoint.includes('/stats')) {
-      return {
-        success: true,
-        data: {
-          totalPolicies: mockPolicies.length,
-          activePolicies: mockPolicies.filter(p => p.status === 'Active').length,
-          totalPremium: mockPolicies.reduce((sum, p) => sum + p.premium, 0),
-          expiringPolicies: 0
-        }
-      };
-    }
-
-    if (method === 'POST') {
-      return {
-        success: true,
-        data: { _id: 'new-policy-id', ...mockPolicies[0] }
-      };
-    }
-
-    return {
-      success: true,
-      data: mockPolicies,
-      total: mockPolicies.length,
-      totalPages: 1,
-      currentPage: 1
-    };
-  }
 
   async getPolicies(params = {}) {
     const queryString = new URLSearchParams(params).toString();

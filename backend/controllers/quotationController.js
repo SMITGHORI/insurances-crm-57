@@ -26,7 +26,8 @@ exports.getQuotations = async (req, res) => {
     const filter = {};
 
     // Role-based filtering
-    if (req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent') {
       filter.agentId = req.user.id;
     } else if (agentId && agentId !== 'all') {
       filter.agentId = agentId;
@@ -119,7 +120,8 @@ exports.getQuotationById = async (req, res) => {
     }
 
     // Check access permissions
-    if (req.user.role === 'agent' && quotation.agentId.toString() !== req.user.id) {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent' && quotation.agentId.toString() !== req.user.id) {
       return responseHandler.error(res, 'Access denied', 403);
     }
 
@@ -140,7 +142,8 @@ exports.createQuotation = async (req, res) => {
     };
 
     // If agent role, set agentId to current user
-    if (req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent') {
       quotationData.agentId = req.user.id;
       quotationData.agentName = req.user.name;
     }
@@ -170,7 +173,8 @@ exports.updateQuotation = async (req, res) => {
     }
 
     // Check permissions
-    if (req.user.role === 'agent' && quotation.agentId.toString() !== req.user.id) {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent' && quotation.agentId.toString() !== req.user.id) {
       return responseHandler.error(res, 'Access denied', 403);
     }
 
@@ -209,7 +213,8 @@ exports.deleteQuotation = async (req, res) => {
     }
 
     // Check permissions
-    if (req.user.role === 'agent' && quotation.agentId.toString() !== req.user.id) {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent' && quotation.agentId.toString() !== req.user.id) {
       return responseHandler.error(res, 'Access denied', 403);
     }
 
@@ -241,7 +246,8 @@ exports.sendQuotation = async (req, res) => {
     }
 
     // Check permissions
-    if (req.user.role === 'agent' && quotation.agentId.toString() !== req.user.id) {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent' && quotation.agentId.toString() !== req.user.id) {
       return responseHandler.error(res, 'Access denied', 403);
     }
 
@@ -276,7 +282,8 @@ exports.updateQuotationStatus = async (req, res) => {
     }
 
     // Check permissions for status updates
-    if (req.user.role === 'agent' && quotation.agentId.toString() !== req.user.id) {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent' && quotation.agentId.toString() !== req.user.id) {
       return responseHandler.error(res, 'Access denied', 403);
     }
 
@@ -324,7 +331,8 @@ exports.getQuotationsStats = async (req, res) => {
     baseFilter.createdAt = { $gte: dateFrom };
 
     // Role-based filtering
-    if (req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent') {
       baseFilter.agentId = req.user.id;
     } else if (agentId && agentId !== 'all') {
       baseFilter.agentId = agentId;
@@ -421,7 +429,8 @@ exports.searchQuotations = async (req, res) => {
     };
 
     // Role-based filtering
-    if (req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent') {
       searchFilter.agentId = req.user.id;
     }
 
@@ -448,7 +457,8 @@ exports.exportQuotations = async (req, res) => {
     const filter = {};
     
     // Role-based filtering
-    if (req.user.role === 'agent') {
+    const userRole = req.user.role?.name || req.user.role;
+    if (userRole === 'agent') {
       filter.agentId = req.user.id;
     } else if (filters.agentId && filters.agentId !== 'all') {
       filter.agentId = filters.agentId;

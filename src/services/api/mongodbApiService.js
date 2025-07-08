@@ -14,7 +14,7 @@ class MongoDBApiService {
     const token = localStorage.getItem('authToken');
     return {
       'Content-Type': 'application/json',
-      ...(token && token !== 'demo-token-admin' && token !== 'demo-token-agent' && {
+      ...(token && {
         'Authorization': `Bearer ${token}`
       })
     };

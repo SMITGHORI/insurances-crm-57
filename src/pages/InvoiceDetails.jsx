@@ -18,46 +18,30 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import InvoicePreview from '@/components/invoices/InvoicePreview';
 import InvoiceHistory from '@/components/invoices/InvoiceHistory';
-import { getSampleInvoices } from '@/utils/invoiceUtils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
+import { useInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
 
 const InvoiceDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const isMobile = useIsMobile();
-  const [invoice, setInvoice] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [showSharePopup, setShowSharePopup] = useState(false);
   const downloadRef = useRef();
   const printRef = useRef();
 
+  const { data: invoice, isLoading: loading, error, isError } = useInvoice(id);
+  const updateInvoiceMutation = useUpdateInvoice();
+  const deleteInvoiceMutation = useDeleteInvoice();
+
   useEffect(() => {
-    setLoading(true);
-    
-    const storedInvoiceData = localStorage.getItem('invoicesData');
-    let invoices = [];
-    
-    if (storedInvoiceData) {
-      invoices = JSON.parse(storedInvoiceData);
-    } else {
-      invoices = getSampleInvoices();
-      localStorage.setItem('invoicesData', JSON.stringify(invoices));
-    }
-    
-    const foundInvoice = invoices.find(inv => inv.id.toString() === id);
-    
-    if (foundInvoice) {
-      setInvoice(foundInvoice);
-    } else {
-      toast.error("Invoice not found");
+    if (isError) {
+      toast.error('Failed to load invoice details');
       navigate('/invoices');
     }
-    
-    setLoading(false);
-  }, [id, navigate]);
+  }, [isError, navigate]);
   
   const handleEditInvoice = () => {
     if (!isSuperAdmin()) {
@@ -67,23 +51,18 @@ const InvoiceDetails = () => {
     navigate(`/invoices/edit/${id}`);
   };
   
-  const handleDeleteInvoice = () => {
+  const handleDeleteInvoice = async () => {
     if (!isSuperAdmin()) {
       toast.error("You don't have permission to delete invoices");
       return;
     }
     
     if (window.confirm("Are you sure you want to delete this invoice?")) {
-      const storedInvoiceData = localStorage.getItem('invoicesData');
-      
-      if (storedInvoiceData) {
-        const invoices = JSON.parse(storedInvoiceData);
-        const updatedInvoices = invoices.filter(inv => inv.id.toString() !== id);
-        
-        localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
-        
-        toast.success("Invoice deleted successfully");
+      try {
+        await deleteInvoiceMutation.mutateAsync(invoice._id || invoice.id);
         navigate('/invoices');
+      } catch (error) {
+        console.error('Error deleting invoice:', error);
       }
     }
   };
@@ -94,33 +73,14 @@ const InvoiceDetails = () => {
       return;
     }
     
-    const storedInvoiceData = localStorage.getItem('invoicesData');
-    
-    if (storedInvoiceData && invoice) {
-      const invoices = JSON.parse(storedInvoiceData);
-      
-      const newInvoice = {
-        ...invoice,
-        id: (Math.max(...invoices.map(inv => parseInt(inv.id))) + 1).toString(),
-        invoiceNumber: `${invoice.invoiceNumber.split('-')[0]}-${invoice.invoiceNumber.split('-')[1]}-${
-          (parseInt(invoice.invoiceNumber.split('-')[2]) + 1).toString().padStart(4, '0')
-        }`,
-        status: 'draft',
-        history: [
-          {
-            action: "Duplicated",
-            date: new Date().toISOString().split('T')[0],
-            user: "Admin",
-            details: `Duplicated from Invoice ${invoice.invoiceNumber}`
-          }
-        ]
-      };
-      
-      const updatedInvoices = [...invoices, newInvoice];
-      localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
-      
-      toast.success("Invoice duplicated successfully");
-      navigate(`/invoices/${newInvoice.id}`);
+    if (invoice) {
+      // Navigate to invoice creation form with pre-filled data
+      navigate('/invoices/create', { 
+        state: { 
+          duplicateFrom: invoice,
+          isDuplicate: true 
+        } 
+      });
     }
   };
 

@@ -1,70 +1,7 @@
 
 import { commissionService } from '@/services/commissionService';
 
-export const getSampleInvoices = () => [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2025-0001',
-    clientId: '1',
-    clientName: 'Rajesh Kumar',
-    clientEmail: 'rajesh.kumar@email.com',
-    clientPhone: '+91 98765 43210',
-    clientAddress: '123 MG Road, Bangalore, Karnataka 560001',
-    policyId: '1',
-    policyNumber: 'POL-2024-0543',
-    insuranceType: 'Health Insurance',
-    agentId: '1',
-    agentName: 'Priya Sharma',
-    issueDate: '2025-01-15',
-    dueDate: '2025-02-14',
-    status: 'paid',
-    items: [
-      {
-        id: 'item_1',
-        description: 'Health Insurance Premium - Family Floater',
-        quantity: 1,
-        unitPrice: 25000,
-        tax: 4500,
-        total: 29500
-      }
-    ],
-    subtotal: 25000,
-    discount: 0,
-    tax: 4500,
-    total: 29500,
-    notes: 'Annual premium payment for family health insurance policy',
-    paymentTerms: 'Due on receipt',
-    premiumType: 'Annual',
-    coverageStartDate: '2025-01-15',
-    coverageEndDate: '2026-01-14',
-    premiumPeriod: 'Jan 2025 - Jan 2026',
-    customFields: {
-      'GST Number': '29ABCDE1234F1Z5',
-      'PAN Number': 'ABCDE1234F'
-    },
-    history: [
-      {
-        action: 'Created',
-        date: '2025-01-15',
-        user: 'Admin',
-        details: 'Invoice created for health insurance premium'
-      },
-      {
-        action: 'Sent',
-        date: '2025-01-15',
-        user: 'Admin',
-        details: 'Invoice sent to client via email'
-      },
-      {
-        action: 'Paid',
-        date: '2025-01-20',
-        user: 'System',
-        details: 'Payment received and processed'
-      }
-    ]
-  }
-  // ... other sample invoices
-];
+// Sample invoice data function removed - using real API data
 
 export const generateInvoiceNumber = (prefix = 'INV', existingNumbers = []) => {
   const year = new Date().getFullYear();
@@ -98,53 +35,31 @@ export const calculateInvoiceTotals = (items) => {
 };
 
 /**
- * Enhanced invoice creation with commission processing
+ * Calculate commission data for an invoice
+ * Note: Commission storage is now handled through the API
+ * This function only calculates commission data for display/processing
  */
-export const processInvoiceWithCommission = (invoiceData, agentData, policyData) => {
+export const calculateInvoiceCommission = (invoiceData, agentData, policyData) => {
   try {
-    // If agent is assigned and invoice is new (not editing), calculate commission
-    if (agentData && !invoiceData.isEditing) {
-      const commissionData = commissionService.calculateCommission(
+    if (agentData) {
+      return commissionService.calculateCommission(
         invoiceData, 
         agentData, 
         policyData
       );
-      
-      // Store commission in background
-      commissionService.storeCommission(commissionData);
-      
-      console.log('Commission calculated and stored for invoice:', invoiceData.invoiceNumber);
     }
-    
-    return invoiceData;
+    return null;
   } catch (error) {
-    console.error('Error processing invoice with commission:', error);
-    // Don't fail invoice creation if commission calculation fails
-    return invoiceData;
+    console.error('Error calculating commission:', error);
+    return null;
   }
 };
 
 /**
- * Get invoice commission status
+ * Note: Commission storage and retrieval is now handled through the API.
+ * Use useAgentCommissions hook to fetch commission data.
+ * Commission processing should be handled on the backend when invoices are created/updated.
  */
-export const getInvoiceCommissionStatus = (invoiceId) => {
-  try {
-    const allCommissions = commissionService.getAllCommissions();
-    const invoiceCommission = allCommissions.find(c => c.invoiceId === invoiceId);
-    
-    return invoiceCommission ? {
-      exists: true,
-      status: invoiceCommission.status,
-      amount: invoiceCommission.commissionAmount,
-      rate: invoiceCommission.commissionRate
-    } : {
-      exists: false
-    };
-  } catch (error) {
-    console.error('Error getting invoice commission status:', error);
-    return { exists: false };
-  }
-};
 
 /**
  * Format currency for display

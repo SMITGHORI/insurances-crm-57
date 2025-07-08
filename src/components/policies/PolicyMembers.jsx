@@ -17,9 +17,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useUpdatePolicy } from '@/hooks/usePolicies';
 
 const PolicyMembers = ({ policy, setPolicy }) => {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const updatePolicyMutation = useUpdatePolicy();
   const [newMember, setNewMember] = useState({
     name: "",
     relationship: "Self",
@@ -34,75 +36,61 @@ const PolicyMembers = ({ policy, setPolicy }) => {
   });
 
   // Handle saving members to policy
-  const handleSaveMember = () => {
+  const handleSaveMember = async () => {
     if (!newMember.name) {
       toast.error("Member name is required");
       return;
     }
 
-    // Get current policies from localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    let policiesList = [];
-    
-    if (storedPoliciesData) {
-      policiesList = JSON.parse(storedPoliciesData);
-    }
-
-    // Find the policy to update
-    const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-    
-    if (policyIndex === -1) {
-      toast.error("Policy not found");
-      return;
-    }
-
     // Initialize members array if it doesn't exist
-    if (!policiesList[policyIndex].members) {
-      policiesList[policyIndex].members = [];
-    }
+    const currentMembers = policy.members || [];
 
     // Add new member with an ID
-    const memberId = policiesList[policyIndex].members.length > 0 
-      ? Math.max(...policiesList[policyIndex].members.map(m => m.id)) + 1 
+    const memberId = currentMembers.length > 0 
+      ? Math.max(...currentMembers.map(m => m.id)) + 1 
       : 1;
 
-    policiesList[policyIndex].members.push({
+    const newMemberData = {
       ...newMember,
       id: memberId,
       birthDate: newMember.birthDate ? newMember.birthDate : null,
       anniversaryDate: newMember.anniversaryDate ? newMember.anniversaryDate : null
-    });
+    };
 
-    // Update localStorage
-    localStorage.setItem('policiesData', JSON.stringify(policiesList));
-
-    // Update current policy state
-    setPolicy({
+    const updatedPolicy = {
       ...policy,
-      members: [...(policy.members || []), {
-        ...newMember,
-        id: memberId,
-        birthDate: newMember.birthDate ? newMember.birthDate : null,
-        anniversaryDate: newMember.anniversaryDate ? newMember.anniversaryDate : null
-      }]
-    });
+      members: [...currentMembers, newMemberData]
+    };
 
-    // Reset form and close dialog
-    setNewMember({
-      name: "",
-      relationship: "Self",
-      mobile: "",
-      email: "",
-      age: "",
-      birthDate: null,
-      gender: "Male",
-      bloodGroup: "",
-      anniversaryDate: null,
-      maritalStatus: "Unmarried"
-    });
-    setIsAddMemberOpen(false);
-    
-    toast.success("Member added successfully");
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
+
+      // Update current policy state
+      setPolicy(updatedPolicy);
+
+      // Reset form and close dialog
+      setNewMember({
+        name: "",
+        relationship: "Self",
+        mobile: "",
+        email: "",
+        age: "",
+        birthDate: null,
+        gender: "Male",
+        bloodGroup: "",
+        anniversaryDate: null,
+        maritalStatus: "Unmarried"
+      });
+      setIsAddMemberOpen(false);
+      
+      toast.success("Member added successfully");
+    } catch (error) {
+      console.error('Error adding member:', error);
+      toast.error('Failed to add member');
+    }
   };
 
   // Handle copy policy number to clipboard

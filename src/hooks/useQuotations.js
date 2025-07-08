@@ -36,7 +36,7 @@ export const useQuotations = (params = {}) => {
     onError: (error) => {
       console.error('Error fetching quotations:', error);
       if (!quotationsApi.isOfflineMode) {
-        toast.error('Failed to load quotations - working offline with sample data');
+        toast.error('Failed to load quotations');
       }
     },
   });

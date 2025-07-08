@@ -24,7 +24,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { generateClientId } from '../utils/idGenerator';
+import { useClient, useUpdateClient, useDeleteClient } from '@/hooks/useClients';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import AnniversaryManager from '@/components/clients/AnniversaryManager';
 import DocumentUpload from '@/components/clients/DocumentUpload';
@@ -32,137 +32,27 @@ import DocumentUpload from '@/components/clients/DocumentUpload';
 const ClientDetailsView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [client, setClient] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedClient, setEditedClient] = useState(null);
   const isMobile = window.innerWidth <= 768;
 
-  // Load client data
+  const { data: client, isLoading: loading, error, isError } = useClient(id);
+  const updateClientMutation = useUpdateClient();
+  const deleteClientMutation = useDeleteClient();
+
   useEffect(() => {
-    setLoading(true);
-    
-    // Try to get clients from localStorage first
-    const storedClientsData = localStorage.getItem('clientsData');
-    let clientsList = [];
-    
-    if (storedClientsData) {
-      clientsList = JSON.parse(storedClientsData);
-    } else {
-      // Fallback to dummy data if no localStorage data
-      clientsList = [
-        {
-          id: 1,
-          clientId: 'AMB-CLI-2025-0001',
-          name: 'Rahul Sharma',
-          type: 'Individual',
-          contact: '+91 9876543210',
-          email: 'rahul.sharma@example.com',
-          location: 'Mumbai, Maharashtra',
-          policies: 3,
-          status: 'Active',
-          createdAt: '2025-01-15',
-          dob: '1985-06-22',
-          panNumber: 'ABCPD1234R',
-          gender: 'Male',
-          occupation: 'Software Engineer',
-          notes: 'Prefers communication via email',
-          assignedAgent: 'Amit Kumar',
-          documents: {}
-        },
-        {
-          id: 2,
-          clientId: 'AMB-CLI-2025-0002',
-          name: 'Tech Solutions Ltd',
-          type: 'Corporate',
-          contact: '+91 2234567890',
-          email: 'info@techsolutions.com',
-          location: 'Bangalore, Karnataka',
-          policies: 8,
-          status: 'Active',
-          createdAt: '2025-01-20',
-          registrationNo: 'U12345KA2015PTC123456',
-          gstNumber: '29AABCT1234A1Z5',
-          industry: 'Information Technology',
-          employeeCount: 150,
-          contactPerson: 'Vikram Mehta',
-          contactPersonDesignation: 'HR Manager',
-          notes: 'Handles group health insurance for employees',
-          assignedAgent: 'Priya Sharma',
-          documents: {}
-        },
-        {
-          id: 3,
-          clientId: 'AMB-CLI-2025-0003',
-          name: 'Family Group Insurance',
-          type: 'Group',
-          contact: '+91 9988776655',
-          email: 'family@groupinsurance.com',
-          location: 'Chennai, Tamil Nadu',
-          policies: 2,
-          status: 'Active',
-          createdAt: '2025-02-01',
-          groupType: 'Family',
-          memberCount: 8,
-          primaryContact: 'Ravi Kumar',
-          primaryContactDesignation: 'Head of Family',
-          notes: 'Family group policy for extended family members',
-          assignedAgent: 'Lakshmi Devi',
-          documents: {}
-        }
-      ];
+    if (isError) {
+      toast.error('Failed to load client details');
+      navigate('/clients');
     }
-    
-    // Find the requested client
-    const foundClient = clientsList.find(c => c.id === parseInt(id));
-    
-    if (foundClient) {
-      // Ensure anniversary and communication preferences exist
-      if (!foundClient.importantDates) {
-        foundClient.importantDates = {};
-      }
-      if (!foundClient.communicationPreferences) {
-        foundClient.communicationPreferences = {
-          email: { enabled: true, birthday: true, anniversary: true, offers: true },
-          whatsapp: { enabled: false, birthday: false, anniversary: false },
-          sms: { enabled: false, birthday: false, anniversary: false }
-        };
-      }
-      
-      // Add sample anniversary dates for demonstration
-      if (foundClient.type === 'Individual' && !foundClient.importantDates.marriageAnniversary) {
-        foundClient.importantDates.marriageAnniversary = '2020-05-15';
-      }
-      if (foundClient.type === 'Corporate' && !foundClient.importantDates.incorporationDate) {
-        foundClient.importantDates.incorporationDate = '2018-08-20';
-      }
-      if (foundClient.type === 'Group' && !foundClient.importantDates.groupAnniversary) {
-        foundClient.importantDates.groupAnniversary = '2019-12-01';
-      }
-      
-      // Ensure documents property exists
-      if (!foundClient.documents) {
-        foundClient.documents = {};
-      }
-      setClient(foundClient);
-    } else {
-      // Create placeholder client if not found
-      setClient({
-        id: parseInt(id), 
-        clientId: generateClientId([]),
-        name: `Client #${id}`,
-        type: 'Individual',
-        email: 'client@example.com',
-        contact: '+91 9999999999',
-        location: 'New Delhi, Delhi',
-        status: 'Active',
-        policies: 0,
-        createdAt: new Date().toISOString().split('T')[0],
-        documents: {}
-      });
+  }, [isError, navigate]);
+
+  useEffect(() => {
+    if (client) {
+      setEditedClient(client);
     }
-    
-    setLoading(false);
-  }, [id]);
+  }, [client]);
 
   // Handle edit client
   const handleEditClient = () => {
@@ -193,71 +83,7 @@ const ClientDetailsView = () => {
     navigate(`/claims/edit/${claimId}`);
   };
 
-  // Dummy client data - in a real app, this would be fetched from API
-  const clients = [
-    {
-      id: 1,
-      clientId: 'AMB-CLI-2025-0001',
-      name: 'Rahul Sharma',
-      type: 'Individual',
-      contact: '+91 9876543210',
-      email: 'rahul.sharma@example.com',
-      location: 'Mumbai, Maharashtra',
-      policies: 3,
-      status: 'Active',
-      createdAt: '2025-01-15',
-      dob: '1985-06-22',
-      panNumber: 'ABCPD1234R',
-      gender: 'Male',
-      occupation: 'Software Engineer',
-      notes: 'Prefers communication via email',
-      assignedAgent: 'Amit Kumar',
-    },
-    {
-      id: 2,
-      clientId: 'AMB-CLI-2025-0002',
-      name: 'Tech Solutions Ltd',
-      type: 'Corporate',
-      contact: '+91 2234567890',
-      email: 'info@techsolutions.com',
-      location: 'Bangalore, Karnataka',
-      policies: 8,
-      status: 'Active',
-      createdAt: '2025-01-20',
-      registrationNo: 'U12345KA2015PTC123456',
-      gstNumber: '29AABCT1234A1Z5',
-      industry: 'Information Technology',
-      employeeCount: 150,
-      contactPerson: 'Vikram Mehta',
-      contactPersonDesignation: 'HR Manager',
-      notes: 'Handles group health insurance for employees',
-      assignedAgent: 'Priya Sharma',
-    },
-  ];
 
-  // Fetch client data
-  useEffect(() => {
-    // Simulate API fetch
-    setLoading(true);
-    setTimeout(() => {
-      const foundClient = clients.find(c => c.id === parseInt(id)) || 
-        { 
-          id: parseInt(id), 
-          clientId: generateClientId([]),
-          name: `Client #${id}`,
-          type: 'Individual',
-          email: 'client@example.com',
-          contact: '+91 9999999999',
-          location: 'New Delhi, Delhi',
-          status: 'Active',
-          policies: 0,
-          createdAt: new Date().toISOString().split('T')[0]
-        };
-      
-      setClient(foundClient);
-      setLoading(false);
-    }, 500);
-  }, [id]);
 
   const getClientTypeIcon = () => {
     if (!client) return <User className="h-8 w-8 text-gray-400" />;
@@ -846,18 +672,11 @@ const ClientDetailsView = () => {
                     }
                   };
 
-                  // Update localStorage
-                  const storedClientsData = localStorage.getItem('clientsData');
-                  if (storedClientsData) {
-                    const clientsList = JSON.parse(storedClientsData);
-                    const clientIndex = clientsList.findIndex(c => c.id === client.id);
-                    if (clientIndex !== -1) {
-                      clientsList[clientIndex] = updatedClient;
-                      localStorage.setItem('clientsData', JSON.stringify(clientsList));
-                    }
-                  }
-
-                  setClient(updatedClient);
+                  // Update client using mutation
+                  updateClientMutation.mutate({
+                    clientId: client._id || client.id,
+                    clientData: updatedClient
+                  });
                   toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
                 } else {
                   // Remove document
@@ -869,18 +688,11 @@ const ClientDetailsView = () => {
                     }
                   };
 
-                  // Update localStorage
-                  const storedClientsData = localStorage.getItem('clientsData');
-                  if (storedClientsData) {
-                    const clientsList = JSON.parse(storedClientsData);
-                    const clientIndex = clientsList.findIndex(c => c.id === client.id);
-                    if (clientIndex !== -1) {
-                      clientsList[clientIndex] = updatedClient;
-                      localStorage.setItem('clientsData', JSON.stringify(clientsList));
-                    }
-                  }
-
-                  setClient(updatedClient);
+                  // Update client using mutation
+                  updateClientMutation.mutate({
+                    clientId: client._id || client.id,
+                    clientData: updatedClient
+                  });
                   toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document removed successfully`);
                 }
               }}

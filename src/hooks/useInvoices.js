@@ -36,7 +36,7 @@ export const useInvoices = (params = {}) => {
     onError: (error) => {
       console.error('Error fetching invoices:', error);
       if (!invoicesApi.isOfflineMode) {
-        toast.error('Failed to load invoices - working offline with sample data');
+        toast.error('Failed to load invoices');
       }
     },
   });

@@ -13,11 +13,7 @@ export const useRealtimePermissions = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Skip for demo users
-    if (localStorage.getItem('demoMode')) {
-      console.log('Demo mode active, skipping real-time permissions');
-      return;
-    }
+
 
     // Set up WebSocket connection for real-time permission updates
     let ws;
@@ -71,7 +67,7 @@ export const useRealtimePermissions = () => {
 
   // Periodic permission refresh (fallback)
   useEffect(() => {
-    if (!user || localStorage.getItem('demoMode')) return;
+    if (!user) return;
 
     const interval = setInterval(() => {
       refreshPermissions();

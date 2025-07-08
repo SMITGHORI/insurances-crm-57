@@ -24,39 +24,16 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useCommunications, useLoyaltyStats, useCommunicationStats } from '@/hooks/useCommunication';
 
 const CommunicationManager = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(false);
 
-  // Mock data for demonstration
-  const [communications] = useState([
-    {
-      id: 1,
-      client: "John Doe",
-      type: "birthday",
-      channel: "email",
-      status: "sent",
-      subject: "Happy Birthday!",
-      sentAt: "2024-01-15T10:30:00Z"
-    },
-    {
-      id: 2,
-      client: "ABC Corp",
-      type: "offer",
-      channel: "whatsapp",
-      status: "delivered",
-      subject: "Special Business Insurance Offer",
-      sentAt: "2024-01-14T15:20:00Z"
-    }
-  ]);
-
-  const [loyaltyStats] = useState({
-    bronze: { count: 1000, percentage: 70 },
-    silver: { count: 300, percentage: 21 },
-    gold: { count: 100, percentage: 7 },
-    platinum: { count: 30, percentage: 2 }
-  });
+  // Fetch data from API
+  const { data: communications = [], isLoading: commsLoading } = useCommunications({ limit: 10 });
+  const { data: loyaltyStats, isLoading: loyaltyLoading } = useLoyaltyStats();
+  const { data: stats, isLoading: statsLoading } = useCommunicationStats();
 
   const [communicationForm, setCommunicationForm] = useState({
     clientId: '',
@@ -173,51 +150,63 @@ const CommunicationManager = () => {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sent Today</CardTitle>
-                <Send className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground">+12% from yesterday</p>
-              </CardContent>
-            </Card>
+          {(commsLoading || loyaltyLoading || statsLoading) ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Sent Today</CardTitle>
+                  <Send className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.sentToday || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.sentTodayChange ? `${stats.sentTodayChange > 0 ? '+' : ''}${stats.sentTodayChange}% from yesterday` : 'No change data'}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Delivery Rate</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">96.5%</div>
-                <p className="text-xs text-muted-foreground">+2.1% from last week</p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Delivery Rate</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.deliveryRate ? `${stats.deliveryRate}%` : '0%'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.deliveryRateChange ? `${stats.deliveryRateChange > 0 ? '+' : ''}${stats.deliveryRateChange}% from last week` : 'No change data'}
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Birthday Greetings</CardTitle>
-                <Gift className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-muted-foreground">Sent today</p>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Birthday Greetings</CardTitle>
+                  <Gift className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.birthdayGreetings || 0}</div>
+                  <p className="text-xs text-muted-foreground">Sent today</p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">5</div>
-                <p className="text-xs text-muted-foreground">2 expiring soon</p>
-              </CardContent>
-            </Card>
-          </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Offers</CardTitle>
+                  <Star className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.activeOffers || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.expiringOffers ? `${stats.expiringOffers} expiring soon` : 'No expiring offers'}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           <Card>
             <CardHeader>

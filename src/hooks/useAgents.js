@@ -39,7 +39,7 @@ export const useAgents = (params = {}) => {
     onError: (error) => {
       console.error('Error fetching agents:', error);
       if (!agentsApi.isOfflineMode) {
-        toast.error('Failed to load agents - working offline with sample data');
+        toast.error('Failed to load agents');
       }
     },
   });
@@ -246,3 +246,28 @@ export const useAgentPerformance = (agentId, params = {}) => {
     },
   });
 };
+
+/**
+ * Hook to fetch agent's commission summary (monthly breakdown)
+ */
+export const useAgentCommissionSummary = (agentId, params = {}) => {
+  return useQuery({
+    queryKey: [...agentsQueryKeys.commissions(agentId), 'summary', params],
+    queryFn: () => agentsApi.getAgentCommissionSummary(agentId, params),
+    enabled: !!agentId,
+    staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error) => {
+      if (agentsApi.isOfflineMode) return false;
+      return failureCount < 2;
+    },
+    onError: (error) => {
+      console.error('Error fetching agent commission summary:', error);
+      if (!agentsApi.isOfflineMode) {
+        toast.error('Failed to load agent commission summary');
+      }
+    },
+  });
+};
+
+// Alias for backward compatibility
+export const useAgentById = useAgent;

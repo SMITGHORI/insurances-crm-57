@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Plus, Trash } from 'lucide-react';
+import { useUpdatePolicy } from '@/hooks/usePolicies';
 
 const PolicyNotes = ({ policy, setPolicy }) => {
   const [newNote, setNewNote] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const updatePolicyMutation = useUpdatePolicy();
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!newNote.trim()) {
       toast.error('Note cannot be empty');
       return;
@@ -30,46 +32,42 @@ const PolicyNotes = ({ policy, setPolicy }) => {
       timestamp: new Date().toISOString()
     });
     
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      // Update local state
+      setPolicy(updatedPolicy);
+      setNewNote('');
+      setShowAddForm(false);
+      toast.success('Note added successfully');
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast.error('Failed to add note');
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    setNewNote('');
-    setShowAddForm(false);
-    toast.success('Note added successfully');
   };
 
-  const handleDeleteNote = (noteId) => {
+  const handleDeleteNote = async (noteId) => {
     const updatedPolicy = { ...policy };
     
     // Filter out the note to delete
     updatedPolicy.notes = updatedPolicy.notes.filter(note => note.id !== noteId);
     
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      // Update local state
+      setPolicy(updatedPolicy);
+      toast.success('Note deleted successfully');
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast.error('Failed to delete note');
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    toast.success('Note deleted successfully');
   };
 
   const formatDate = (dateString) => {

@@ -53,6 +53,12 @@ class AgentsApiService extends MongoDBApiService {
     const endpoint = queryString ? `/${agentId}/performance?${queryString}` : `/${agentId}/performance`;
     return this.makeRequest(endpoint);
   }
+
+  async getAgentCommissionSummary(agentId, params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const endpoint = queryString ? `/${agentId}/commissions/summary?${queryString}` : `/${agentId}/commissions/summary`;
+    return this.makeRequest(endpoint);
+  }
 }
 
 export const agentsApi = new AgentsApiService();

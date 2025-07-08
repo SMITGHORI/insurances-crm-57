@@ -5,47 +5,51 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { useAutomationRules } from '@/hooks/useCommunication';
+import { useAutomationRules, useUpdateAutomationRule, useDeleteAutomationRule } from '@/hooks/useCommunication';
+import { toast } from 'react-hot-toast';
 
 const AutomationRulesManager = () => {
-  const { data: rules, isLoading } = useAutomationRules();
+  const { data: rules, isLoading, error } = useAutomationRules();
+  const updateRuleMutation = useUpdateAutomationRule();
+  const deleteRuleMutation = useDeleteAutomationRule();
 
-  // Sample data for demonstration
-  const sampleRules = [
-    {
-      _id: '1',
-      name: 'Birthday Greetings',
-      type: 'birthday',
-      trigger: { event: 'date_based', daysOffset: 0, timeOfDay: '09:00' },
-      action: { channel: 'email' },
-      isActive: true,
-      stats: { totalRuns: 45, successfulSends: 43, failedSends: 2 },
-      lastRun: new Date('2024-06-07'),
-      nextRun: new Date('2024-06-09')
-    },
-    {
-      _id: '2',
-      name: 'Anniversary Wishes',
-      type: 'anniversary',
-      trigger: { event: 'date_based', daysOffset: 0, timeOfDay: '10:00' },
-      action: { channel: 'both' },
-      isActive: true,
-      stats: { totalRuns: 12, successfulSends: 12, failedSends: 0 },
-      lastRun: new Date('2024-06-05'),
-      nextRun: new Date('2024-06-15')
-    },
-    {
-      _id: '3',
-      name: 'Policy Renewal Reminder',
-      type: 'renewal_reminder',
-      trigger: { event: 'date_based', daysOffset: -30, timeOfDay: '14:00' },
-      action: { channel: 'email' },
-      isActive: false,
-      stats: { totalRuns: 8, successfulSends: 6, failedSends: 2 },
-      lastRun: new Date('2024-05-28'),
-      nextRun: new Date('2024-07-01')
+  const handleToggleRule = async (ruleId, isActive) => {
+    try {
+      await updateRuleMutation.mutateAsync({
+        id: ruleId,
+        data: { isActive: !isActive }
+      });
+      toast.success(`Rule ${!isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      toast.error('Failed to update rule status');
     }
-  ];
+  };
+
+  const handleDeleteRule = async (ruleId) => {
+    if (window.confirm('Are you sure you want to delete this rule?')) {
+      try {
+        await deleteRuleMutation.mutateAsync(ruleId);
+        toast.success('Rule deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete rule');
+      }
+    }
+  };
+
+  const handleTestRule = async (ruleId) => {
+    try {
+      const response = await fetch(`/api/automation-rules/${ruleId}/test`, {
+        method: 'POST'
+      });
+      if (response.ok) {
+        toast.success('Test execution started');
+      } else {
+        throw new Error('Test failed');
+      }
+    } catch (error) {
+      toast.error('Failed to test rule');
+    }
+  };
 
   const getRuleTypeColor = (type) => {
     const colors = {
@@ -102,7 +106,18 @@ const AutomationRulesManager = () => {
     );
   }
 
-  const displayRules = rules?.data || sampleRules;
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600">Failed to load automation rules</p>
+        <Button onClick={() => window.location.reload()} className="mt-2">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const displayRules = rules?.data || [];
 
   return (
     <div className="space-y-4">
@@ -178,10 +193,7 @@ const AutomationRulesManager = () => {
                   <div className="flex items-center gap-2">
                     <Switch 
                       checked={rule.isActive}
-                      onCheckedChange={() => {
-                        // Handle toggle
-                        console.log('Toggle rule:', rule._id);
-                      }}
+                      onCheckedChange={() => handleToggleRule(rule._id, rule.isActive)}
                     />
                     <span className="text-sm text-gray-600">
                       {rule.isActive ? 'Active' : 'Inactive'}
@@ -193,11 +205,11 @@ const AutomationRulesManager = () => {
                       <Edit className="h-4 w-4 mr-1" />
                       Edit
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleTestRule(rule._id)}>
                       <Play className="h-4 w-4 mr-1" />
                       Test
                     </Button>
-                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700">
+                    <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteRule(rule._id)}>
                       <Trash2 className="h-4 w-4 mr-1" />
                       Delete
                     </Button>

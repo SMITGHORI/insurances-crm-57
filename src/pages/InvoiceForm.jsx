@@ -46,21 +46,21 @@ import {
 } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { 
-  getSampleInvoices, 
   generateInvoiceNumber, 
   calculateInvoiceTotals 
 } from '@/utils/invoiceUtils';
 import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useInvoice, useCreateInvoice, useUpdateInvoice } from '@/hooks/useInvoices';
+import { useClients } from '@/hooks/useClients';
+import { usePolicies } from '@/hooks/usePolicies';
+import { useAgents } from '@/hooks/useAgents';
 
 const InvoiceForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
-  const [clients, setClients] = useState([]);
-  const [policies, setPolicies] = useState([]);
-  const [agents, setAgents] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([
     { 
       id: `item_${Date.now()}`, 
@@ -75,7 +75,16 @@ const InvoiceForm = () => {
   const [itemTaxTotal, setItemTaxTotal] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   const [discount, setDiscount] = useState(0);
-  const [loading, setLoading] = useState(true);
+
+  // API hooks
+  const { data: clients = [], isLoading: clientsLoading } = useClients();
+  const { data: policies = [], isLoading: policiesLoading } = usePolicies();
+  const { data: agents = [], isLoading: agentsLoading } = useAgents();
+  const { data: existingInvoice, isLoading: invoiceLoading } = useInvoice(id, { enabled: !!id });
+  const createInvoiceMutation = useCreateInvoice();
+  const updateInvoiceMutation = useUpdateInvoice();
+
+  const loading = clientsLoading || policiesLoading || agentsLoading || (id && invoiceLoading);
   
   const form = useForm({
     defaultValues: {
@@ -101,74 +110,39 @@ const InvoiceForm = () => {
   
   // Load data and set form values
   useEffect(() => {
-    // Load clients, policies, agents from localStorage
-    const storedClientsData = localStorage.getItem('clientsData');
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    const storedAgentsData = localStorage.getItem('agentsData');
-    
-    if (storedClientsData) {
-      setClients(JSON.parse(storedClientsData));
-    }
-    
-    if (storedPoliciesData) {
-      setPolicies(JSON.parse(storedPoliciesData));
-    }
-    
-    if (storedAgentsData) {
-      setAgents(JSON.parse(storedAgentsData));
-    }
-    
     // If editing an existing invoice
-    if (id) {
+    if (id && existingInvoice) {
       setIsEditing(true);
-      const storedInvoiceData = localStorage.getItem('invoicesData');
       
-      if (storedInvoiceData) {
-        const invoices = JSON.parse(storedInvoiceData);
-        const existingInvoice = invoices.find(inv => inv.id.toString() === id);
-        
-        if (existingInvoice) {
-          // Populate form with existing invoice data
-          form.reset({
-            invoiceNumber: existingInvoice.invoiceNumber,
-            clientId: existingInvoice.clientId,
-            policyId: existingInvoice.policyId || '',
-            agentId: existingInvoice.agentId || '',
-            issueDate: new Date(existingInvoice.issueDate),
-            dueDate: new Date(existingInvoice.dueDate),
-            status: existingInvoice.status,
-            notes: existingInvoice.notes || '',
-            paymentTerms: existingInvoice.paymentTerms || 'Due on receipt',
-            premiumType: existingInvoice.premiumType || 'Annual',
-            coverageStartDate: existingInvoice.coverageStartDate ? new Date(existingInvoice.coverageStartDate) : new Date(),
-            coverageEndDate: existingInvoice.coverageEndDate ? new Date(existingInvoice.coverageEndDate) : new Date(),
-            policyType: existingInvoice.policyType || '',
-            sumInsured: existingInvoice.sumInsured || '',
-            deductible: existingInvoice.deductible || '',
-            gstNumber: existingInvoice.gstNumber || '',
-            panNumber: existingInvoice.panNumber || ''
-          });
-          
-          setInvoiceItems(existingInvoice.items);
-          setDiscount(existingInvoice.discount || 0);
-        } else {
-          toast.error("Invoice not found");
-          navigate('/invoices');
-        }
-      }
-    } else {
+      // Populate form with existing invoice data
+      form.reset({
+        invoiceNumber: existingInvoice.invoiceNumber,
+        clientId: existingInvoice.clientId,
+        policyId: existingInvoice.policyId || '',
+        agentId: existingInvoice.agentId || '',
+        issueDate: new Date(existingInvoice.issueDate),
+        dueDate: new Date(existingInvoice.dueDate),
+        status: existingInvoice.status,
+        notes: existingInvoice.notes || '',
+        paymentTerms: existingInvoice.paymentTerms || 'Due on receipt',
+        premiumType: existingInvoice.premiumType || 'Annual',
+        coverageStartDate: existingInvoice.coverageStartDate ? new Date(existingInvoice.coverageStartDate) : new Date(),
+        coverageEndDate: existingInvoice.coverageEndDate ? new Date(existingInvoice.coverageEndDate) : new Date(),
+        policyType: existingInvoice.policyType || '',
+        sumInsured: existingInvoice.sumInsured || '',
+        deductible: existingInvoice.deductible || '',
+        gstNumber: existingInvoice.gstNumber || '',
+        panNumber: existingInvoice.panNumber || ''
+      });
+      
+      setInvoiceItems(existingInvoice.items || []);
+      setDiscount(existingInvoice.discount || 0);
+    } else if (!id) {
       // For new invoice, generate a new invoice number
-      const storedInvoiceData = localStorage.getItem('invoicesData');
-      const existingInvoiceNumbers = storedInvoiceData 
-        ? JSON.parse(storedInvoiceData).map(inv => inv.invoiceNumber)
-        : [];
-        
-      const newInvoiceNumber = generateInvoiceNumber('INV', existingInvoiceNumbers);
+      const newInvoiceNumber = generateInvoiceNumber('INV', []);
       form.setValue('invoiceNumber', newInvoiceNumber);
     }
-    
-    setLoading(false);
-  }, [id, form, navigate]);
+  }, [id, existingInvoice, form]);
   
   // Update totals when items or discount changes
   useEffect(() => {
@@ -270,133 +244,71 @@ const InvoiceForm = () => {
   };
   
   // Handle form submission
-  const onSubmit = (data) => {
-    // Get existing invoices
-    const storedInvoiceData = localStorage.getItem('invoicesData');
-    const invoices = storedInvoiceData ? JSON.parse(storedInvoiceData) : getSampleInvoices();
-    
-    // Find selected client, policy and agent
-    const selectedClient = clients.find(client => client.id.toString() === data.clientId);
-    const selectedPolicy = data.policyId ? 
-      policies.find(policy => policy.id.toString() === data.policyId) : null;
-    const selectedAgent = data.agentId ? 
-      agents.find(agent => agent.id.toString() === data.agentId) : null;
-    
-    // Create invoice object
-    const invoiceData = {
-      id: isEditing ? id : String(Math.max(...invoices.map(inv => parseInt(inv.id))) + 1),
-      invoiceNumber: data.invoiceNumber,
-      clientId: data.clientId,
-      clientName: selectedClient?.name || 'Unknown Client',
-      clientEmail: selectedClient?.email || '',
-      clientPhone: selectedClient?.contact || '',
-      clientAddress: selectedClient?.location || '',
-      policyId: data.policyId || undefined,
-      policyNumber: selectedPolicy?.policyNumber || undefined,
-      insuranceType: selectedPolicy?.type || data.policyType || undefined,
-      agentId: data.agentId || undefined,
-      agentName: selectedAgent?.name || undefined,
-      issueDate: format(data.issueDate, 'yyyy-MM-dd'),
-      dueDate: format(data.dueDate, 'yyyy-MM-dd'),
-      status: data.status,
-      items: invoiceItems,
-      subtotal: itemSubtotal,
-      discount: parseFloat(discount) || 0,
-      tax: itemTaxTotal,
-      total: grandTotal,
-      notes: data.notes,
-      paymentTerms: data.paymentTerms,
-      premiumType: data.premiumType,
-      coverageStartDate: format(data.coverageStartDate, 'yyyy-MM-dd'),
-      coverageEndDate: format(data.coverageEndDate, 'yyyy-MM-dd'),
-      policyType: data.policyType,
-      sumInsured: data.sumInsured,
-      deductible: data.deductible,
-      gstNumber: data.gstNumber,
-      panNumber: data.panNumber,
-      premiumPeriod: `${format(data.coverageStartDate, 'MMM yyyy')} - ${format(data.coverageEndDate, 'MMM yyyy')}`,
-      customFields: {
-        ...(selectedClient?.gstNumber ? { "GST Number": selectedClient.gstNumber } : {}),
-        ...(data.gstNumber ? { "GST Number": data.gstNumber } : {}),
-        ...(data.panNumber ? { "PAN Number": data.panNumber } : {})
-      },
-      history: [
-        {
-          action: isEditing ? "Updated" : "Created",
-          date: new Date().toISOString().split('T')[0],
-          user: "Admin",
-          details: isEditing ? "Invoice updated" : "Invoice created"
+  const onSubmit = async (data) => {
+    try {
+      // Find selected client, policy and agent
+      const selectedClient = clients.find(client => client.id.toString() === data.clientId);
+      const selectedPolicy = data.policyId ? 
+        policies.find(policy => policy.id.toString() === data.policyId) : null;
+      const selectedAgent = data.agentId ? 
+        agents.find(agent => agent.id.toString() === data.agentId) : null;
+      
+      // Create invoice object
+      const invoiceData = {
+        invoiceNumber: data.invoiceNumber,
+        clientId: data.clientId,
+        clientName: selectedClient?.name || 'Unknown Client',
+        clientEmail: selectedClient?.email || '',
+        clientPhone: selectedClient?.contact || '',
+        clientAddress: selectedClient?.location || '',
+        policyId: data.policyId || undefined,
+        policyNumber: selectedPolicy?.policyNumber || undefined,
+        insuranceType: selectedPolicy?.type || data.policyType || undefined,
+        agentId: data.agentId || undefined,
+        agentName: selectedAgent?.name || undefined,
+        issueDate: format(data.issueDate, 'yyyy-MM-dd'),
+        dueDate: format(data.dueDate, 'yyyy-MM-dd'),
+        status: data.status,
+        items: invoiceItems,
+        subtotal: itemSubtotal,
+        discount: parseFloat(discount) || 0,
+        tax: itemTaxTotal,
+        total: grandTotal,
+        notes: data.notes,
+        paymentTerms: data.paymentTerms,
+        premiumType: data.premiumType,
+        coverageStartDate: format(data.coverageStartDate, 'yyyy-MM-dd'),
+        coverageEndDate: format(data.coverageEndDate, 'yyyy-MM-dd'),
+        policyType: data.policyType,
+        sumInsured: data.sumInsured,
+        deductible: data.deductible,
+        gstNumber: data.gstNumber,
+        panNumber: data.panNumber,
+        premiumPeriod: `${format(data.coverageStartDate, 'MMM yyyy')} - ${format(data.coverageEndDate, 'MMM yyyy')}`,
+        customFields: {
+          ...(selectedClient?.gstNumber ? { "GST Number": selectedClient.gstNumber } : {}),
+          ...(data.gstNumber ? { "GST Number": data.gstNumber } : {}),
+          ...(data.panNumber ? { "PAN Number": data.panNumber } : {})
         }
-      ]
-    };
-    
-    // Handle commission calculation in background (for back-office)
-    if (selectedAgent && !isEditing) {
-      calculateAndStoreCommission(invoiceData, selectedAgent, selectedPolicy);
-    }
-    
-    // Update or add invoice
-    let updatedInvoices;
-    if (isEditing) {
-      // Keep existing history for edited invoice
-      const existingInvoice = invoices.find(inv => inv.id.toString() === id);
-      if (existingInvoice && existingInvoice.history) {
-        invoiceData.history = [
-          ...existingInvoice.history,
-          ...invoiceData.history
-        ];
+      };
+      
+      let result;
+      if (isEditing) {
+        result = await updateInvoiceMutation.mutateAsync({
+          id: existingInvoice._id || existingInvoice.id,
+          ...invoiceData
+        });
+      } else {
+        result = await createInvoiceMutation.mutateAsync(invoiceData);
       }
       
-      // Update existing invoice
-      updatedInvoices = invoices.map(inv => 
-        inv.id.toString() === id ? invoiceData : inv
-      );
-    } else {
-      // Add new invoice
-      updatedInvoices = [...invoices, invoiceData];
+      navigate(`/invoices/${result._id || result.id}`);
+    } catch (error) {
+      console.error('Error saving invoice:', error);
     }
-    
-    // Save to localStorage
-    localStorage.setItem('invoicesData', JSON.stringify(updatedInvoices));
-    
-    toast.success(`Invoice ${isEditing ? 'updated' : 'created'} successfully`);
-    navigate(`/invoices/${invoiceData.id}`);
   };
   
-  // Commission calculation function (back-office only)
-  const calculateAndStoreCommission = (invoice, agent, policy) => {
-    try {
-      // Get commission rates from agent or policy
-      const commissionRate = agent.defaultCommissionRate || 0.15; // Default 15%
-      const premiumAmount = invoice.subtotal;
-      const commissionAmount = premiumAmount * commissionRate;
 
-      const commissionRecord = {
-        id: `COM_${Date.now()}`,
-        invoiceId: invoice.id,
-        agentId: agent.id,
-        policyId: policy?.id,
-        commissionType: 'percentage',
-        baseAmount: premiumAmount,
-        commissionRate: commissionRate * 100, // Store as percentage
-        commissionAmount: commissionAmount,
-        status: 'pending',
-        calculatedDate: new Date().toISOString().split('T')[0],
-        notes: `Auto-calculated commission for invoice ${invoice.invoiceNumber}`,
-        createdBy: 'System',
-        createdAt: new Date().toISOString()
-      };
-
-      // Store commission data separately
-      const existingCommissions = JSON.parse(localStorage.getItem('commissionsData') || '[]');
-      existingCommissions.push(commissionRecord);
-      localStorage.setItem('commissionsData', JSON.stringify(existingCommissions));
-
-      console.log('Commission calculated and stored:', commissionRecord);
-    } catch (error) {
-      console.error('Error calculating commission:', error);
-    }
-  };
   
   // Show professional loading skeleton
   if (loading) {

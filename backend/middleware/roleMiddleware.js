@@ -15,7 +15,8 @@ const roleMiddleware = (allowedRoles) => {
       }
 
       // Check if user has required role
-      if (!allowedRoles.includes(req.user.role)) {
+      const userRole = req.user.role?.name || req.user.role;
+      if (!allowedRoles.includes(userRole)) {
         throw new AppError('Insufficient permissions', 403);
       }
 
@@ -34,12 +35,13 @@ const resourceOwnershipMiddleware = (resourceIdParam = 'id', ownerField = 'assig
   return async (req, res, next) => {
     try {
       // Skip for super admin and manager
-      if (['super_admin', 'manager'].includes(req.user.role)) {
+      const userRole = req.user.role?.name || req.user.role;
+      if (['super_admin', 'manager', 'admin'].includes(userRole)) {
         return next();
       }
 
       // For agents, add ownership filter
-      if (req.user.role === 'agent') {
+      if (userRole === 'agent') {
         // Add filter to query params for GET requests
         if (req.method === 'GET') {
           req.ownershipFilter = { [ownerField]: req.user._id };
@@ -64,8 +66,10 @@ const resourceOwnershipMiddleware = (resourceIdParam = 'id', ownerField = 'assig
 const clientAccessMiddleware = (req, res, next) => {
   try {
     // Set up role-based filters
-    switch (req.user.role) {
+    const userRole = req.user.role?.name || req.user.role;
+    switch (userRole) {
       case 'super_admin':
+      case 'admin':
         // Super admin can access all clients
         break;
         

@@ -3,13 +3,13 @@ import { toast } from 'sonner';
 
 /**
  * Commission Service
- * Handles all commission-related calculations and management
- * Separated from invoice logic for back-office optimization
+ * Handles commission-related calculations
+ * Note: Commission storage and management is now handled through the API
+ * This service focuses on calculation logic only
  */
 
 class CommissionService {
   constructor() {
-    this.storageKey = 'commissionsData';
     this.defaultRates = {
       'Health Insurance': 0.15,
       'Life Insurance': 0.20,
@@ -76,167 +76,12 @@ class CommissionService {
   }
 
   /**
-   * Store commission record
+   * Note: Commission storage and management methods have been removed
+   * as they are now handled through the API via useAgentCommissions hook.
+   * Use the following hooks for commission data:
+   * - useAgentCommissions(agentId, params) for fetching commission data
+   * - Commission updates should be handled through dedicated API endpoints
    */
-  storeCommission(commissionData) {
-    try {
-      const existingCommissions = this.getAllCommissions();
-      existingCommissions.push(commissionData);
-      localStorage.setItem(this.storageKey, JSON.stringify(existingCommissions));
-      
-      console.log('Commission stored successfully:', commissionData.id);
-      return commissionData;
-    } catch (error) {
-      console.error('Error storing commission:', error);
-      throw new Error('Failed to store commission');
-    }
-  }
-
-  /**
-   * Get all commissions
-   */
-  getAllCommissions() {
-    try {
-      const commissionsData = localStorage.getItem(this.storageKey);
-      return commissionsData ? JSON.parse(commissionsData) : [];
-    } catch (error) {
-      console.error('Error loading commissions:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get commissions for specific agent
-   */
-  getAgentCommissions(agentId, filters = {}) {
-    try {
-      const allCommissions = this.getAllCommissions();
-      let agentCommissions = allCommissions.filter(commission => 
-        commission.agentId && commission.agentId.toString() === agentId.toString()
-      );
-
-      // Apply filters
-      if (filters.status && filters.status !== 'all') {
-        agentCommissions = agentCommissions.filter(c => c.status === filters.status);
-      }
-
-      if (filters.startDate && filters.endDate) {
-        agentCommissions = agentCommissions.filter(c => 
-          c.calculatedDate >= filters.startDate && c.calculatedDate <= filters.endDate
-        );
-      }
-
-      return agentCommissions;
-    } catch (error) {
-      console.error('Error loading agent commissions:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Update commission status
-   */
-  updateCommissionStatus(commissionId, newStatus, notes = '') {
-    try {
-      const allCommissions = this.getAllCommissions();
-      const updatedCommissions = allCommissions.map(commission => {
-        if (commission.id === commissionId) {
-          return {
-            ...commission,
-            status: newStatus,
-            ...(newStatus === 'paid' && { paidDate: new Date().toISOString().split('T')[0] }),
-            ...(notes && { notes: `${commission.notes}. ${notes}` }),
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return commission;
-      });
-
-      localStorage.setItem(this.storageKey, JSON.stringify(updatedCommissions));
-      
-      const statusMessages = {
-        'paid': 'Commission marked as paid',
-        'rejected': 'Commission rejected',
-        'pending': 'Commission status updated to pending'
-      };
-      
-      toast.success(statusMessages[newStatus] || 'Commission status updated');
-      return true;
-    } catch (error) {
-      console.error('Error updating commission status:', error);
-      toast.error('Failed to update commission status');
-      return false;
-    }
-  }
-
-  /**
-   * Bulk process commissions
-   */
-  bulkProcessCommissions(commissionIds, action) {
-    try {
-      const allCommissions = this.getAllCommissions();
-      let processedCount = 0;
-
-      const updatedCommissions = allCommissions.map(commission => {
-        if (commissionIds.includes(commission.id)) {
-          processedCount++;
-          return {
-            ...commission,
-            status: action === 'approve' ? 'paid' : 'rejected',
-            ...(action === 'approve' && { paidDate: new Date().toISOString().split('T')[0] }),
-            updatedAt: new Date().toISOString(),
-            notes: `${commission.notes}. Bulk ${action}d on ${new Date().toISOString().split('T')[0]}`
-          };
-        }
-        return commission;
-      });
-
-      localStorage.setItem(this.storageKey, JSON.stringify(updatedCommissions));
-      
-      toast.success(`${processedCount} commissions ${action}d successfully`);
-      return processedCount;
-    } catch (error) {
-      console.error('Error bulk processing commissions:', error);
-      toast.error('Failed to process commissions');
-      return 0;
-    }
-  }
-
-  /**
-   * Get commission summary for agent
-   */
-  getCommissionSummary(agentId, period = '6m') {
-    try {
-      const agentCommissions = this.getAgentCommissions(agentId);
-      
-      const paidCommissions = agentCommissions.filter(c => c.status === 'paid');
-      const pendingCommissions = agentCommissions.filter(c => c.status === 'pending');
-      
-      const totalPaid = paidCommissions.reduce((sum, c) => sum + c.commissionAmount, 0);
-      const totalPending = pendingCommissions.reduce((sum, c) => sum + c.commissionAmount, 0);
-      
-      // Calculate period-based metrics
-      const periodMonths = period === '3m' ? 3 : period === '6m' ? 6 : 12;
-      const monthlyAverage = paidCommissions.length > 0 ? totalPaid / periodMonths : 0;
-      
-      return {
-        totalPaid,
-        totalPending,
-        monthlyAverage,
-        totalCommissions: agentCommissions.length,
-        averageRate: this.calculateAverageRate(agentCommissions)
-      };
-    } catch (error) {
-      console.error('Error calculating commission summary:', error);
-      return {
-        totalPaid: 0,
-        totalPending: 0,
-        monthlyAverage: 0,
-        totalCommissions: 0,
-        averageRate: 0
-      };
-    }
-  }
 
   /**
    * Calculate average commission rate for agent

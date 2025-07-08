@@ -21,7 +21,49 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Plus, Upload, Send, MessageSquare, Mail, MoreHorizontal, Download, Eye } from 'lucide-react';
 import { useQuotes, useBulkUpdateQuotes, useSendWhatsApp, useSendEmail } from '@/hooks/useQuotes';
-import { Quote } from '@/__mocks__/quotes';
+// Define Quote interface locally
+interface Quote {
+  id: string;
+  quoteId: string;
+  leadId: string;
+  leadName: string;
+  carrier: string;
+  premium: number;
+  coverageAmount: number;
+  planName: string;
+  validityStart: string;
+  validityEnd: string;
+  validUntil: string;
+  insuranceType: 'Health Insurance' | 'Life Insurance' | 'Motor Insurance' | 'Home Insurance' | 'Travel Insurance';
+  status: 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+  agentId: string;
+  agentName: string;
+  branch: string;
+  createdAt: string;
+  updatedAt?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+  approvedAt?: string;
+  notes?: string;
+  documentUrl?: string;
+  commissionAmount?: number;
+  whatsappSent?: boolean;
+  emailSent?: boolean;
+  valueScore: number;
+  riskProfile?: {
+    age?: number;
+    location?: string;
+    vehicleType?: string;
+    healthStatus?: string;
+  };
+  followUpReminders: Array<{
+    type: 'email' | 'call' | 'whatsapp';
+    scheduledFor: string;
+    completed: boolean;
+  }>;
+}
 import QuotesFilters from './QuotesFilters';
 import WhatsAppSendDialog from './WhatsAppSendDialog';
 import EmailSendDialog from './EmailSendDialog';

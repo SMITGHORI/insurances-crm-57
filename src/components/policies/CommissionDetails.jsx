@@ -4,17 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useUpdatePolicy } from '@/hooks/usePolicies';
 
 const CommissionDetails = ({ policy, setPolicy }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const updatePolicyMutation = useUpdatePolicy();
   const [commissionData, setCommissionData] = useState({
     percentage: policy.commission?.percentage || 0,
     amount: policy.commission?.amount || '0',
@@ -23,7 +19,7 @@ const CommissionDetails = ({ policy, setPolicy }) => {
     paymentDate: policy.commission?.paymentDate || ''
   });
 
-  const handleSaveCommission = () => {
+  const handleSaveCommission = async () => {
     const updatedPolicy = { ...policy };
     
     // Update commission data
@@ -41,22 +37,20 @@ const CommissionDetails = ({ policy, setPolicy }) => {
       details: `Commission details updated: ${commissionData.percentage}%, ₹${commissionData.amount}`
     });
     
-    // Save to localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
+    try {
+      await updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      });
       
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
+      // Update local state
+      setPolicy(updatedPolicy);
+      setIsEditing(false);
+      toast.success('Commission details updated successfully');
+    } catch (error) {
+      console.error('Error updating commission:', error);
+      toast.error('Failed to update commission details');
     }
-    
-    // Update state
-    setPolicy(updatedPolicy);
-    setIsEditing(false);
-    toast.success('Commission details updated successfully');
   };
 
   const calculateCommissionAmount = () => {

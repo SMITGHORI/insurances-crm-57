@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/professional-skeleton';
+import { usePolicies } from '@/hooks/usePolicies';
 
 const ClientTable = ({ 
   clients = [], 
@@ -32,6 +33,7 @@ const ClientTable = ({
   isDeleting
 }) => {
   const navigate = useNavigate();
+  const { data: policies } = usePolicies();
   
   const getClientTypeIcon = (type) => {
     switch (type) {
@@ -49,18 +51,17 @@ const ClientTable = ({
   const viewClientPolicies = (e, clientId) => {
     e.stopPropagation();
     
-    // Get policies for this client
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (!storedPoliciesData) {
+    // Get policies for this client from API data
+    if (!policies || !policies.data) {
+      alert('Policies data not available');
       return;
     }
     
-    const policies = JSON.parse(storedPoliciesData);
-    const clientPolicies = policies.filter(policy => policy.client.id === clientId);
+    const clientPolicies = policies.data.filter(policy => policy.client?.id === clientId || policy.client?._id === clientId);
     
     // If client has exactly one policy, go directly to it
     if (clientPolicies.length === 1) {
-      navigate(`/policies/${clientPolicies[0].id}`);
+      navigate(`/policies/${clientPolicies[0].id || clientPolicies[0]._id}`);
     } 
     // If multiple policies, go to policies view with filter
     else if (clientPolicies.length > 1) {

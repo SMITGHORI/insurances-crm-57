@@ -113,18 +113,7 @@ const Auth = () => {
             <p className="text-gray-600">Professional CRM Platform</p>
           </div>
 
-          {/* Demo Mode Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex items-start space-x-3">
-              <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-blue-800">Demo Mode Available</h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  If backend is unavailable, the system will automatically switch to demo mode with pre-filled credentials.
-                </p>
-              </div>
-            </div>
-          </div>
+
 
           <Card className="border-0 shadow-lg">
             <CardHeader className="text-center space-y-2 pb-6">
@@ -172,14 +161,7 @@ const Auth = () => {
                 </Button>
               </form>
               
-              <div className="mt-4 text-center space-y-2">
-                <p className="text-sm text-gray-600">
-                  Demo credentials: admin@gmail.com / admin@123
-                </p>
-                <p className="text-xs text-gray-500">
-                  System automatically detects backend availability
-                </p>
-              </div>
+
             </CardContent>
           </Card>
 

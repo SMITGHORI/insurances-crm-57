@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
+import { usePolicy, useUpdatePolicy, useDeletePolicy } from '@/hooks/usePolicies';
 import {
   FileText,
   Upload,
@@ -50,35 +51,20 @@ import { PageSkeleton } from '@/components/ui/professional-skeleton';
 const PolicyDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [policy, setPolicy] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isMobile = useIsMobile();
 
+  const { data: policy, isLoading: loading, error, isError } = usePolicy(id);
+  const updatePolicyMutation = useUpdatePolicy();
+  const deletePolicyMutation = useDeletePolicy();
+
   useEffect(() => {
-    setLoading(true);
-    
-    // Try to get policies from localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    let policiesList = [];
-    
-    if (storedPoliciesData) {
-      policiesList = JSON.parse(storedPoliciesData);
-    }
-    
-    // Find the policy by id
-    const foundPolicy = policiesList.find(p => p.id === parseInt(id));
-    
-    if (foundPolicy) {
-      setPolicy(foundPolicy);
-    } else {
-      toast.error(`Policy with ID ${id} not found`);
+    if (isError) {
+      toast.error('Failed to load policy details');
       navigate('/policies');
     }
-    
-    setLoading(false);
-  }, [id, navigate]);
+  }, [isError, navigate]);
 
   // Calculate days remaining until renewal
   const daysUntilRenewal = policy ? Math.floor(
@@ -104,28 +90,12 @@ const PolicyDetails = () => {
     navigate(`/policies/edit/${id}`);
   };
 
-  const handleDeletePolicy = () => {
+  const handleDeletePolicy = async () => {
     try {
-      // Get current policies from localStorage
-      const storedPoliciesData = localStorage.getItem('policiesData');
-      
-      if (storedPoliciesData) {
-        let policiesList = JSON.parse(storedPoliciesData);
-        
-        // Filter out the policy to delete
-        policiesList = policiesList.filter(p => p.id !== parseInt(id));
-        
-        // Save updated policies list back to localStorage
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-        
-        toast.success('Policy deleted successfully');
-        navigate('/policies');
-      } else {
-        toast.error('No policies found');
-      }
+      await deletePolicyMutation.mutateAsync(policy._id || policy.id);
+      navigate('/policies');
     } catch (error) {
       console.error('Error deleting policy:', error);
-      toast.error('Failed to delete policy');
     }
   };
   

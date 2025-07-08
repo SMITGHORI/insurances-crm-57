@@ -19,7 +19,19 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, FileText, Edit3 } from 'lucide-react';
-import { insuranceCarriers } from '@/__mocks__/quotes';
+// Define insurance carriers locally
+const insuranceCarriers = [
+  'HDFC ERGO',
+  'ICICI Lombard',
+  'LIC',
+  'Star Health',
+  'Bajaj Allianz',
+  'New India Assurance',
+  'Oriental Insurance',
+  'United India Insurance',
+  'SBI General',
+  'IFFCO Tokio'
+];
 import { toast } from 'sonner';
 
 interface QuoteUploadDialogProps {
@@ -64,25 +76,52 @@ const QuoteUploadDialog: React.FC<QuoteUploadDialogProps> = ({
     setUploadedFile(file);
     setIsExtracting(true);
 
-    // Simulate OCR extraction (in real implementation, this would call an OCR service)
-    setTimeout(() => {
-      // Mock extracted data
+    // Call OCR extraction API
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/quotes/extract', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to extract quote data');
+      }
+      
+      const extractedData = await response.json();
       setExtractedData({
-        carrier: 'HDFC ERGO',
-        premium: '25000',
-        coverageAmount: '500000',
-        planName: 'Health Secure Plus',
-        validityStart: new Date().toISOString().split('T')[0],
-        validityEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        insuranceType: 'Health Insurance',
-        leadId: 'LD000001',
+        carrier: extractedData.carrier || '',
+        premium: extractedData.premium || '',
+        coverageAmount: extractedData.coverageAmount || '',
+        planName: extractedData.planName || '',
+        validityStart: extractedData.validityStart || new Date().toISOString().split('T')[0],
+        validityEnd: extractedData.validityEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        insuranceType: extractedData.insuranceType || '',
+        leadId: extractedData.leadId || '',
       });
       setIsExtracting(false);
       toast.success('Quote data extracted successfully! Please review and correct if needed.');
-    }, 2000);
+    } catch (error) {
+      console.error('OCR extraction failed:', error);
+      setIsExtracting(false);
+      toast.error('Failed to extract quote data. Please fill in manually.');
+      // Set empty data for manual entry
+      setExtractedData({
+        carrier: '',
+        premium: '',
+        coverageAmount: '',
+        planName: '',
+        validityStart: new Date().toISOString().split('T')[0],
+        validityEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        insuranceType: '',
+        leadId: '',
+      });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate required fields
     const requiredFields = ['carrier', 'premium', 'coverageAmount', 'planName', 'validityEnd', 'leadId'];
     const missingFields = requiredFields.filter(field => !extractedData[field as keyof typeof extractedData]);
@@ -92,22 +131,38 @@ const QuoteUploadDialog: React.FC<QuoteUploadDialogProps> = ({
       return;
     }
 
-    // Mock save operation
-    toast.success('Quote saved successfully!');
-    onClose();
-    
-    // Reset form
-    setUploadedFile(null);
-    setExtractedData({
-      carrier: '',
-      premium: '',
-      coverageAmount: '',
-      planName: '',
-      validityStart: '',
-      validityEnd: '',
-      insuranceType: '',
-      leadId: '',
-    });
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(extractedData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save quote');
+      }
+      
+      toast.success('Quote saved successfully!');
+      onClose();
+      
+      // Reset form
+      setUploadedFile(null);
+      setExtractedData({
+        carrier: '',
+        premium: '',
+        coverageAmount: '',
+        planName: '',
+        validityStart: '',
+        validityEnd: '',
+        insuranceType: '',
+        leadId: '',
+      });
+    } catch (error) {
+      console.error('Failed to save quote:', error);
+      toast.error('Failed to save quote. Please try again.');
+    }
   };
 
   const insuranceTypes = [

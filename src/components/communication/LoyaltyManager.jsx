@@ -3,22 +3,59 @@ import React from 'react';
 import { Star, Award, TrendingUp, Users, Gift } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useLoyaltyStats, useLoyaltyActivity } from '@/hooks/useCommunication';
 
 const LoyaltyManager = () => {
-  // Sample data for demonstration
-  const tierStats = [
-    { tier: 'Bronze', count: 245, color: 'bg-orange-100 text-orange-800', icon: '🥉' },
-    { tier: 'Silver', count: 89, color: 'bg-gray-100 text-gray-800', icon: '🥈' },
-    { tier: 'Gold', count: 34, color: 'bg-yellow-100 text-yellow-800', icon: '🥇' },
-    { tier: 'Platinum', count: 12, color: 'bg-purple-100 text-purple-800', icon: '💎' }
+  // Fetch loyalty data from API
+  const { data: loyaltyStats, isLoading: statsLoading, error: statsError } = useLoyaltyStats();
+  const { data: recentActivity = [], isLoading: activityLoading, error: activityError } = useLoyaltyActivity();
+  
+  // Show loading state
+  if (statsLoading || activityLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state
+  if (statsError || activityError) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <h3 className="text-lg font-semibold text-gray-800">Failed to load loyalty data</h3>
+          <p className="text-gray-600 mt-2">Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Default tier configuration
+  const tierConfig = [
+    { tier: 'Bronze', color: 'bg-orange-100 text-orange-800', icon: '🥉' },
+    { tier: 'Silver', color: 'bg-gray-100 text-gray-800', icon: '🥈' },
+    { tier: 'Gold', color: 'bg-yellow-100 text-yellow-800', icon: '🥇' },
+    { tier: 'Platinum', color: 'bg-purple-100 text-purple-800', icon: '💎' }
   ];
-
-  const recentActivity = [
-    { client: 'Raj Patel', action: 'Earned 500 points', tier: 'Gold', date: '2 hours ago' },
-    { client: 'Priya Singh', action: 'Redeemed 1000 points', tier: 'Silver', date: '5 hours ago' },
-    { client: 'Tech Corp', action: 'Upgraded to Platinum', tier: 'Platinum', date: '1 day ago' },
-    { client: 'Amit Kumar', action: 'Earned 250 points', tier: 'Bronze', date: '2 days ago' }
-  ];
+  
+  // Merge API data with tier configuration
+  const tierStats = tierConfig.map(config => {
+    const apiData = loyaltyStats?.tiers?.find(t => t.tier === config.tier);
+    return {
+      ...config,
+      count: apiData?.count || 0
+    };
+  });
+  
+  const totalClients = tierStats.reduce((sum, tier) => sum + tier.count, 0);
 
   return (
     <div className="space-y-6">
@@ -41,7 +78,7 @@ const LoyaltyManager = () => {
                 <div className="text-2xl">{stat.icon}</div>
               </div>
               <Badge className={`${stat.color} mt-2`}>
-                {((stat.count / 380) * 100).toFixed(1)}% of clients
+                {totalClients > 0 ? ((stat.count / totalClients) * 100).toFixed(1) : 0}% of clients
               </Badge>
             </CardContent>
           </Card>
@@ -63,15 +100,21 @@ const LoyaltyManager = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Total Points Issued</span>
-                <span className="text-2xl font-bold text-green-600">2,45,600</span>
+                <span className="text-2xl font-bold text-green-600">
+                  {loyaltyStats?.points?.totalIssued?.toLocaleString() || '0'}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Points Redeemed</span>
-                <span className="text-2xl font-bold text-blue-600">89,400</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  {loyaltyStats?.points?.totalRedeemed?.toLocaleString() || '0'}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Available Points</span>
-                <span className="text-2xl font-bold text-purple-600">1,56,200</span>
+                <span className="text-2xl font-bold text-purple-600">
+                  {loyaltyStats?.points?.totalAvailable?.toLocaleString() || '0'}
+                </span>
               </div>
             </div>
           </CardContent>

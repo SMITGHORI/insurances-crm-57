@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useCommunications } from '@/hooks/useCommunication';
 import { toast } from 'sonner';
 
 const Communication = () => {
@@ -33,47 +34,36 @@ const Communication = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  // Mock data for communications
-  const communications = [
-    {
-      id: '1',
-      type: 'email',
-      subject: 'Policy Renewal Reminder',
-      content: 'Your health insurance policy is due for renewal...',
-      clientName: 'John Doe',
-      clientEmail: 'john@example.com',
-      status: 'sent',
-      sentAt: '2024-06-25T10:30:00Z',
-      deliveredAt: '2024-06-25T10:32:00Z',
-      channel: 'email',
-      priority: 'medium'
-    },
-    {
-      id: '2',
-      type: 'birthday',
-      subject: 'Happy Birthday!',
-      content: 'Wishing you a wonderful birthday...',
-      clientName: 'Jane Smith',
-      clientPhone: '+91-9876543210',
-      status: 'delivered',
-      sentAt: '2024-06-25T09:00:00Z',
-      deliveredAt: '2024-06-25T09:01:00Z',
-      channel: 'whatsapp',
-      priority: 'low'
-    },
-    {
-      id: '3',
-      type: 'offer',
-      subject: 'Special Discount on Health Insurance',
-      content: 'Get 20% off on premium health insurance plans...',
-      clientName: 'Robert Johnson',
-      clientEmail: 'robert@example.com',
-      status: 'pending',
-      scheduledFor: '2024-06-26T14:00:00Z',
-      channel: 'email',
-      priority: 'high'
-    }
-  ];
+  // Fetch communications from API
+  const { data: communications = [], isLoading, error } = useCommunications();
+  
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-4 md:py-6 pb-20 md:pb-6">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-bold text-gray-800">Failed to load communications</h2>
+          <p className="text-gray-600 mt-2">Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredCommunications = useMemo(() => {
     return communications.filter(comm => {

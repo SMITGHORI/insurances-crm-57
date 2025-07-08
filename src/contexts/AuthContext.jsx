@@ -43,12 +43,10 @@ export const AuthProvider = ({ children }) => {
             } else {
               console.log('Token expired, clearing storage');
               localStorage.removeItem('authToken');
-              localStorage.removeItem('demoMode');
             }
           } catch (error) {
             console.error('Invalid token:', error);
             localStorage.removeItem('authToken');
-            localStorage.removeItem('demoMode');
           }
         } else {
           console.log('No token found in localStorage');
@@ -70,119 +68,27 @@ export const AuthProvider = ({ children }) => {
       console.log('Email:', email);
       setLoading(true);
 
-      let response;
-      let isUsingFallback = false;
+      const response = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-      try {
-        // Try real backend first
-        response = await fetch(`${API_CONFIG.BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-      } catch (networkError) {
-        console.log('Backend unavailable, using fallback authentication');
-        isUsingFallback = true;
-      }
+      const data = await response.json();
+      console.log('Backend response:', data);
 
-      let data;
-      
-      if (isUsingFallback || !response || !response.ok) {
-        // Fallback authentication
-        console.log('Using fallback authentication');
+      if (data.success && data.data?.token) {
+        localStorage.setItem('authToken', data.data.token);
         
-        if (email === 'admin@gmail.com' && password === 'admin@123') {
-          // Create fallback admin user
-          const fallbackUser = {
-            id: 'admin-fallback-id',
-            email: 'admin@gmail.com',
-            name: 'Admin User',
-            role: 'super_admin',
-            branch: 'main',
-            permissions: [
-              { module: 'clients', actions: ['view', 'create', 'edit', 'delete', 'export', 'edit_sensitive'] },
-              { module: 'leads', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'quotations', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'policies', actions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'edit_sensitive'] },
-              { module: 'claims', actions: ['view', 'create', 'edit', 'delete', 'approve', 'export', 'edit_status'] },
-              { module: 'invoices', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'agents', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'activities', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'offers', actions: ['view', 'create', 'edit', 'delete', 'export'] },
-              { module: 'reports', actions: ['view', 'export'] },
-              { module: 'settings', actions: ['view', 'edit', 'export'] }
-            ],
-            flatPermissions: [
-              'clients:view', 'clients:create', 'clients:edit', 'clients:delete', 'clients:export', 'clients:edit_sensitive',
-              'leads:view', 'leads:create', 'leads:edit', 'leads:delete', 'leads:export',
-              'quotations:view', 'quotations:create', 'quotations:edit', 'quotations:delete', 'quotations:export',
-              'policies:view', 'policies:create', 'policies:edit', 'policies:delete', 'policies:approve', 'policies:export', 'policies:edit_sensitive',
-              'claims:view', 'claims:create', 'claims:edit', 'claims:delete', 'claims:approve', 'claims:export', 'claims:edit_status',
-              'invoices:view', 'invoices:create', 'invoices:edit', 'invoices:delete', 'invoices:export',
-              'agents:view', 'agents:create', 'agents:edit', 'agents:delete', 'agents:export',
-              'activities:view', 'activities:create', 'activities:edit', 'activities:delete', 'activities:export',
-              'offers:view', 'offers:create', 'offers:edit', 'offers:delete', 'offers:export',
-              'reports:view', 'reports:export',
-              'settings:view', 'settings:edit', 'settings:export'
-            ]
-          };
-
-          localStorage.setItem('demoMode', 'true');
-          localStorage.setItem('authToken', 'demo-token-admin');
-          setUser(fallbackUser);
-          console.log('Fallback admin login successful');
-          return { success: true };
-        } else if (email === 'agent@gmail.com' && password === 'agent123') {
-          const fallbackAgent = {
-            id: 'agent-fallback-id',
-            email: 'agent@gmail.com',
-            name: 'Test Agent',
-            role: 'agent',
-            branch: 'branch1',
-            permissions: [
-              { module: 'clients', actions: ['view', 'create', 'edit'] },
-              { module: 'leads', actions: ['view', 'create', 'edit'] },
-              { module: 'quotations', actions: ['view', 'create', 'edit'] },
-              { module: 'policies', actions: ['view', 'create', 'edit'] },
-              { module: 'claims', actions: ['view', 'create', 'edit'] }
-            ],
-            flatPermissions: [
-              'clients:view', 'clients:create', 'clients:edit',
-              'leads:view', 'leads:create', 'leads:edit',
-              'quotations:view', 'quotations:create', 'quotations:edit',
-              'policies:view', 'policies:create', 'policies:edit',
-              'claims:view', 'claims:create', 'claims:edit'
-            ]
-          };
-
-          localStorage.setItem('demoMode', 'true');
-          localStorage.setItem('authToken', 'demo-token-agent');
-          setUser(fallbackAgent);
-          console.log('Fallback agent login successful');
-          return { success: true };
-        } else {
-          console.log('Invalid fallback credentials');
-          return { success: false, error: 'Invalid credentials' };
-        }
+        const decoded = jwtDecode(data.data.token);
+        const userData = transformUserData(data.data.user);
+        
+        setUser(userData);
+        console.log('Backend login successful');
+        return { success: true };
       } else {
-        // Real backend response
-        data = await response.json();
-        console.log('Backend response:', data);
-
-        if (data.success && data.data?.token) {
-          localStorage.setItem('authToken', data.data.token);
-          localStorage.removeItem('demoMode');
-          
-          const decoded = jwtDecode(data.data.token);
-          const userData = transformUserData(data.data.user);
-          
-          setUser(userData);
-          console.log('Real backend login successful');
-          return { success: true };
-        } else {
-          console.log('Backend login failed:', data.message);
-          return { success: false, error: data.message || 'Login failed' };
-        }
+        console.log('Backend login failed:', data.message);
+        return { success: false, error: data.message || 'Login failed' };
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -208,7 +114,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     console.log('Logging out...');
     localStorage.removeItem('authToken');
-    localStorage.removeItem('demoMode');
     setUser(null);
   };
 
@@ -216,11 +121,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('authToken');
     if (!token || !user) return;
 
-    // Skip refresh for demo mode
-    if (localStorage.getItem('demoMode')) {
-      console.log('Demo mode active, skipping permission refresh');
-      return;
-    }
+
 
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}/auth/refresh-permissions`, {

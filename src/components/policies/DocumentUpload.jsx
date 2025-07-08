@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Upload, Download, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUpdatePolicy } from '@/hooks/usePolicies';
 
 const DocumentUpload = ({ policy, setPolicy }) => {
   const isMobile = useIsMobile();
+  const updatePolicyMutation = useUpdatePolicy();
 
   const handleDocumentUpload = (documentType, file) => {
     if (!file) return;
@@ -44,20 +46,17 @@ const DocumentUpload = ({ policy, setPolicy }) => {
         details: `${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded`
       });
       
-      // Update the policy in localStorage
-      const storedPoliciesData = localStorage.getItem('policiesData');
-      if (storedPoliciesData) {
-        const policiesList = JSON.parse(storedPoliciesData);
-        const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-        
-        if (policyIndex !== -1) {
-          policiesList[policyIndex] = updatedPolicy;
-          localStorage.setItem('policiesData', JSON.stringify(policiesList));
-        }
-      }
-      
-      setPolicy(updatedPolicy);
-      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
+      // Update the policy via API
+      updatePolicyMutation.mutateAsync({
+        id: policy.id,
+        ...updatedPolicy
+      }).then(() => {
+        setPolicy(updatedPolicy);
+        toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document uploaded successfully`);
+      }).catch((error) => {
+        console.error('Error updating policy:', error);
+        toast.error('Failed to upload document');
+      });
     };
     
     reader.onerror = () => {
@@ -88,20 +87,17 @@ const DocumentUpload = ({ policy, setPolicy }) => {
       details: `${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document deleted`
     });
     
-    // Update the policy in localStorage
-    const storedPoliciesData = localStorage.getItem('policiesData');
-    if (storedPoliciesData) {
-      const policiesList = JSON.parse(storedPoliciesData);
-      const policyIndex = policiesList.findIndex(p => p.id === policy.id);
-      
-      if (policyIndex !== -1) {
-        policiesList[policyIndex] = updatedPolicy;
-        localStorage.setItem('policiesData', JSON.stringify(policiesList));
-      }
-    }
-    
-    setPolicy(updatedPolicy);
-    toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document deleted successfully`);
+    // Update the policy via API
+    updatePolicyMutation.mutateAsync({
+      id: policy.id,
+      ...updatedPolicy
+    }).then(() => {
+      setPolicy(updatedPolicy);
+      toast.success(`${documentType.charAt(0).toUpperCase() + documentType.slice(1)} document deleted successfully`);
+    }).catch((error) => {
+      console.error('Error updating policy:', error);
+      toast.error('Failed to delete document');
+    });
   };
 
   const handleDownload = (document, documentType) => {

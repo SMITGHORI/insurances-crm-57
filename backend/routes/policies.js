@@ -23,7 +23,7 @@ router.use(authMiddleware);
  * @access Private (Super Admin: all policies, Agent: assigned policies only)
  */
 router.get('/', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.getAllPolicies
 );
@@ -34,7 +34,7 @@ router.get('/',
  * @access Private (Super Admin: any policy, Agent: assigned policies only)
  */
 router.get('/:id', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.getPolicyById
 );
@@ -45,7 +45,7 @@ router.get('/:id',
  * @access Private (Super Admin, Manager)
  */
 router.post('/', 
-  roleMiddleware(['super_admin', 'manager']),
+  roleMiddleware(['super_admin', 'manager', 'admin']),
   validationMiddleware(policyValidation),
   policyController.createPolicy
 );
@@ -56,7 +56,7 @@ router.post('/',
  * @access Private (Super Admin: any policy, Agent: assigned policies only)
  */
 router.put('/:id', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   validationMiddleware(updatePolicyValidation),
   policyController.updatePolicy
@@ -68,7 +68,7 @@ router.put('/:id',
  * @access Private (Super Admin only)
  */
 router.delete('/:id', 
-  roleMiddleware(['super_admin']),
+  roleMiddleware(['super_admin', 'admin']),
   policyController.deletePolicy
 );
 
@@ -78,7 +78,7 @@ router.delete('/:id',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.post('/:id/documents', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   uploadMiddleware.single('document'),
   validationMiddleware(policyDocumentValidation),
@@ -91,7 +91,7 @@ router.post('/:id/documents',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.get('/:id/documents', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.getPolicyDocuments
 );
@@ -102,7 +102,7 @@ router.get('/:id/documents',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.delete('/:id/documents/:documentId', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.deleteDocument
 );
@@ -113,7 +113,7 @@ router.delete('/:id/documents/:documentId',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.post('/:id/payments', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   validationMiddleware(paymentValidation),
   policyController.addPayment
@@ -125,7 +125,7 @@ router.post('/:id/payments',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.get('/:id/payments', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.getPaymentHistory
 );
@@ -136,7 +136,7 @@ router.get('/:id/payments',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.post('/:id/renew', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   validationMiddleware(renewalValidation),
   policyController.renewPolicy
@@ -148,7 +148,7 @@ router.post('/:id/renew',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.post('/:id/notes', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.addNote
 );
@@ -159,7 +159,7 @@ router.post('/:id/notes',
  * @access Private (Super Admin, Manager, assigned Agent)
  */
 router.get('/:id/notes', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   resourceOwnershipMiddleware('id', 'assignedAgentId'),
   policyController.getPolicyNotes
 );
@@ -170,7 +170,7 @@ router.get('/:id/notes',
  * @access Private (Super Admin: all policies, Agent: assigned policies only)
  */
 router.get('/search/:query', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   policyController.searchPolicies
 );
 
@@ -180,7 +180,7 @@ router.get('/search/:query',
  * @access Private (Super Admin, Manager, specific Agent)
  */
 router.get('/agent/:agentId', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   policyController.getPoliciesByAgent
 );
 
@@ -190,7 +190,7 @@ router.get('/agent/:agentId',
  * @access Private (Super Admin, Manager)
  */
 router.put('/:id/assign', 
-  roleMiddleware(['super_admin', 'manager']),
+  roleMiddleware(['super_admin', 'manager', 'admin']),
   policyController.assignPolicyToAgent
 );
 
@@ -200,7 +200,7 @@ router.put('/:id/assign',
  * @access Private (Super Admin, Manager)
  */
 router.get('/stats/summary', 
-  roleMiddleware(['super_admin', 'manager']),
+  roleMiddleware(['super_admin', 'manager', 'admin']),
   policyController.getPolicyStats
 );
 
@@ -210,7 +210,7 @@ router.get('/stats/summary',
  * @access Private (Super Admin, Manager, Agent)
  */
 router.get('/expiring/:days', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   policyController.getExpiringPolicies
 );
 
@@ -220,7 +220,7 @@ router.get('/expiring/:days',
  * @access Private (Super Admin, Manager, Agent)
  */
 router.get('/renewals/due', 
-  roleMiddleware(['super_admin', 'manager', 'agent']),
+  roleMiddleware(['super_admin', 'manager', 'agent', 'admin']),
   policyController.getPoliciesDueForRenewal
 );
 
@@ -230,7 +230,7 @@ router.get('/renewals/due',
  * @access Private (Super Admin, Manager)
  */
 router.post('/bulk/assign', 
-  roleMiddleware(['super_admin', 'manager']),
+  roleMiddleware(['super_admin', 'manager', 'admin']),
   policyController.bulkAssignPolicies
 );
 
@@ -240,7 +240,7 @@ router.post('/bulk/assign',
  * @access Private (Super Admin, Manager)
  */
 router.get('/export', 
-  roleMiddleware(['super_admin', 'manager']),
+  roleMiddleware(['super_admin', 'manager', 'admin']),
   policyController.exportPolicies
 );
 

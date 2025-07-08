@@ -17,8 +17,108 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Mail, Users, Eye } from 'lucide-react';
-import { Quote } from '@/__mocks__/quotes';
-import { emailTemplates } from '@/__mocks__/quotes';
+// Define Quote interface locally
+interface Quote {
+  id: string;
+  quoteId: string;
+  leadId: string;
+  leadName: string;
+  carrier: string;
+  premium: number;
+  coverageAmount: number;
+  planName: string;
+  validityStart: string;
+  validityEnd: string;
+  validUntil: string;
+  insuranceType: 'Health Insurance' | 'Life Insurance' | 'Motor Insurance' | 'Home Insurance' | 'Travel Insurance';
+  status: 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+  agentId: string;
+  agentName: string;
+  branch: string;
+  createdAt: string;
+  updatedAt?: string;
+  sentAt?: string;
+  viewedAt?: string;
+  acceptedAt?: string;
+  rejectedAt?: string;
+  approvedAt?: string;
+  notes?: string;
+  documentUrl?: string;
+  commissionAmount?: number;
+  whatsappSent?: boolean;
+  emailSent?: boolean;
+  valueScore: number;
+  riskProfile?: {
+    age?: number;
+    location?: string;
+    vehicleType?: string;
+    healthStatus?: string;
+  };
+  followUpReminders: Array<{
+    type: 'email' | 'call' | 'whatsapp';
+    scheduledFor: string;
+    completed: boolean;
+  }>;
+}
+
+// Define email templates locally
+const emailTemplates = {
+  'Health Insurance': {
+    subject: 'Your Health Insurance Quote - {{quoteid}}',
+    template: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Your Health Insurance Quote</h2>
+        <p>Dear {{clientName}},</p>
+        <p>We're pleased to share your personalized health insurance quote:</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3>{{planName}}</h3>
+          <p><strong>Carrier:</strong> {{carrier}}</p>
+          <p><strong>Premium:</strong> ₹{{premium}}</p>
+          <p><strong>Coverage:</strong> ₹{{coverage}}</p>
+          <p><strong>Valid Until:</strong> {{validityEnd}}</p>
+        </div>
+        <p>This quote is valid until {{validityEnd}}. Click below to accept:</p>
+        <a href="{{acceptUrl}}" style="background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Accept Quote</a>
+      </div>
+    `
+  },
+  'Motor Insurance': {
+    subject: 'Your Motor Insurance Quote - {{quoteid}}',
+    template: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Your Motor Insurance Quote</h2>
+        <p>Dear {{clientName}},</p>
+        <p>Here's your motor insurance quote:</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3>{{planName}}</h3>
+          <p><strong>Carrier:</strong> {{carrier}}</p>
+          <p><strong>Premium:</strong> ₹{{premium}}</p>
+          <p><strong>Coverage:</strong> ₹{{coverage}}</p>
+          <p><strong>Valid Until:</strong> {{validityEnd}}</p>
+        </div>
+        <a href="{{acceptUrl}}" style="background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Accept Quote</a>
+      </div>
+    `
+  },
+  'Life Insurance': {
+    subject: 'Your Life Insurance Quote - {{quoteid}}',
+    template: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Your Life Insurance Quote</h2>
+        <p>Dear {{clientName}},</p>
+        <p>Your life insurance quote is ready:</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3>{{planName}}</h3>
+          <p><strong>Carrier:</strong> {{carrier}}</p>
+          <p><strong>Premium:</strong> ₹{{premium}}</p>
+          <p><strong>Coverage:</strong> ₹{{coverage}}</p>
+          <p><strong>Valid Until:</strong> {{validityEnd}}</p>
+        </div>
+        <a href="{{acceptUrl}}" style="background: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Accept Quote</a>
+      </div>
+    `
+  }
+};
 
 interface EmailSendDialogProps {
   open: boolean;

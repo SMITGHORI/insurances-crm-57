@@ -12,7 +12,22 @@ import Protected from '@/components/Protected';
 import ProtectedRow from '@/components/ProtectedRow';
 import { useUpdateQuoteStatus, useExportQuotes } from '@/hooks/useQuotes';
 import { toast } from 'sonner';
-import { Quote } from '@/__mocks__/quotes';
+// Define Quote interface locally
+interface Quote {
+  id: string;
+  clientId: string;
+  clientName: string;
+  carrier: string;
+  type: string;
+  premium: number;
+  coverageAmount: number;
+  status: 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+  validUntil: string;
+  createdAt: string;
+  updatedAt: string;
+  branch: string;
+  valueScore?: number;
+}
 
 interface QuoteComparisonTableProps {
   quotes: Quote[];
@@ -200,7 +215,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
                             View Details
                           </DropdownMenuItem>
                           
-                          {quote.documentUrl && (
+                          {'documentUrl' in quote && quote.documentUrl && (
                             <Protected module="quotations" action="view_document">
                               <DropdownMenuItem asChild>
                                 <a 
