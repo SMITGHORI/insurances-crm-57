@@ -1,5 +1,5 @@
 
-const Settings = require('../models/Settings');
+const UserSettings = require('../models/UserSettings');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { AppError } = require('../utils/errorHandler');
@@ -14,11 +14,11 @@ const getSettings = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     
     // If no settings exist, create default settings
     if (!settings) {
-      settings = await Settings.createDefaultSettings({
+      settings = await UserSettings.createDefaultSettings({
         userId,
         userName: req.user.name,
         name: req.user.name,
@@ -44,7 +44,7 @@ const createSettings = async (req, res, next) => {
     const userId = req.user._id;
     
     // Check if settings already exist
-    const existingSettings = await Settings.findByUserId(userId);
+    const existingSettings = await UserSettings.findByUserId(userId);
     if (existingSettings) {
       throw new AppError('Settings already exist for this user', 400);
     }
@@ -57,7 +57,7 @@ const createSettings = async (req, res, next) => {
       updatedBy: userId
     };
     
-    const settings = await Settings.create(settingsData);
+    const settings = await UserSettings.create(settingsData);
     
     successResponse(res, settings, 'Settings created successfully', 201);
   } catch (error) {
@@ -74,7 +74,7 @@ const updateSettings = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -110,7 +110,7 @@ const updateProfile = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -141,7 +141,7 @@ const updateNotifications = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -163,7 +163,7 @@ const updateSecurity = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -185,7 +185,7 @@ const updatePreferences = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -207,7 +207,7 @@ const updatePrivacy = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -253,7 +253,7 @@ const changePassword = async (req, res, next) => {
     });
     
     // Update settings with password change timestamp
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (settings) {
       settings.security.passwordLastChanged = new Date();
       settings.updatedBy = userId;
@@ -275,7 +275,7 @@ const resetSettings = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -297,7 +297,7 @@ const deleteSettings = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    const settings = await Settings.findByUserId(userId);
+    const settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -319,7 +319,7 @@ const deleteSettings = async (req, res, next) => {
  */
 const getSettingsStats = async (req, res, next) => {
   try {
-    const stats = await Settings.getSettingsStats();
+    const stats = await UserSettings.getSettingsStats();
     
     successResponse(res, stats[0] || {}, 'Settings statistics retrieved successfully', 200);
   } catch (error) {
@@ -336,7 +336,7 @@ const exportSettings = async (req, res, next) => {
   try {
     const userId = req.user._id;
     
-    const settings = await Settings.findByUserId(userId);
+    const settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }
@@ -371,7 +371,7 @@ const importSettings = async (req, res, next) => {
       throw new AppError('Settings data is required', 400);
     }
     
-    let settings = await Settings.findByUserId(userId);
+    let settings = await UserSettings.findByUserId(userId);
     if (!settings) {
       throw new AppError('Settings not found', 404);
     }

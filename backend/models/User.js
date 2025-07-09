@@ -1,132 +1,104 @@
-const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-// Define the user schema
-const userSchema = new Schema({
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    maxlength: [100, 'Name cannot exceed 100 characters']
+  },
   email: {
     type: String,
-    required: true,
+    required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
     trim: true,
-    index: true
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
-    required: true,
-    minlength: 6,
-    select: false // Don't include password in queries by default
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true
+    required: [true, 'Password is required'],
+    minlength: [8, 'Password must be at least 8 characters'],
+    select: false
   },
   phone: {
     type: String,
-    trim: true
+    trim: true,
+    maxlength: [20, 'Phone number cannot exceed 20 characters']
   },
   role: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Role',
-    required: true,
-    index: true
-  },
-  branch: {
     type: String,
-    required: true,
-    enum: ['main', 'north', 'south', 'east', 'west'],
-    default: 'main'
+    enum: ['agent', 'manager', 'admin', 'super_admin'],
+    default: 'agent'
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  jobTitle: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Job title cannot exceed 100 characters']
   },
-  loginAttempts: {
-    type: Number,
-    default: 0
+  avatar: {
+    type: String,
+    trim: true
   },
-  lockUntil: {
-    type: Date
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
   },
   lastLogin: {
     type: Date
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  permissions: [{
+    type: String
+  }],
+  department: {
+    type: String,
+    trim: true
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  territory: {
+    type: String,
+    trim: true
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: String,
+  passwordResetToken: String,
+  passwordResetExpires: Date
+}, {
+  timestamps: true,
+  versionKey: false
 });
 
-// Pre-find hook to populate role
-userSchema.pre(/^find/, function(next) {
-  this.populate({
-    path: 'role',
-    select: 'name displayName permissions'
-  });
+// Indexes
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ createdAt: -1 });
+
+// Pre-save middleware to hash password
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Pre-save hook to update timestamp
-userSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
-
-// Virtual for flattened permissions
-userSchema.virtual('flatPermissions').get(function() {
-  if (!this.role || typeof this.role === 'string') return [];
-  
-  const roleDoc = this.role;
-  if (!roleDoc.permissions) return [];
-  
-  return roleDoc.permissions.flatMap(p => 
-    p.actions.map(action => `${p.module}:${action}`)
-  );
-});
-
-// Virtual for account lock status
-userSchema.virtual('isLocked').get(function() {
-  return !!(this.lockUntil && this.lockUntil > Date.now());
-});
-
-// Method to check if user has specific permission
-userSchema.methods.hasPermission = function(module, action) {
-  if (!this.role || !this.role.permissions) return false;
-  
-  const modulePermission = this.role.permissions.find(p => p.module === module);
-  return modulePermission && modulePermission.actions.includes(action);
+// Instance method to check password
+userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
+  return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-// Method to increment login attempts
-userSchema.methods.incLoginAttempts = function() {
-  // If we have a previous lock that has expired, restart at 1
-  if (this.lockUntil && this.lockUntil < Date.now()) {
-    return this.updateOne({
-      $unset: { lockUntil: 1 },
-      $set: { loginAttempts: 1 }
-    });
+// Instance method to check if password was changed after JWT was issued
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
   }
-  
-  const updates = { $inc: { loginAttempts: 1 } };
-  
-  // Lock account after 5 failed attempts for 2 hours
-  if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
-    updates.$set = { lockUntil: Date.now() + 2 * 60 * 60 * 1000 };
-  }
-  
-  return this.updateOne(updates);
+  return false;
 };
 
-// Ensure virtuals are included in JSON output
-userSchema.set('toJSON', { virtuals: true });
-userSchema.set('toObject', { virtuals: true });
-
-// Create and export the User model
-const User = mongoose.model('User', userSchema);
-
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);

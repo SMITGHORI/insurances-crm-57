@@ -4,20 +4,16 @@ const { AppError } = require('../utils/errorHandler');
 /**
  * Role-based access control middleware
  * @param {Array} allowedRoles - Array of roles that can access the route
- * @returns {Function} Middleware function
  */
 const roleMiddleware = (allowedRoles) => {
   return (req, res, next) => {
     try {
-      // Check if user is authenticated
       if (!req.user) {
-        throw new AppError('Authentication required', 401);
+        return next(new AppError('Authentication required', 401));
       }
 
-      // Check if user has required role
-      const userRole = req.user.role?.name || req.user.role;
-      if (!allowedRoles.includes(userRole)) {
-        throw new AppError('Insufficient permissions', 403);
+      if (!allowedRoles.includes(req.user.role)) {
+        return next(new AppError('You do not have permission to perform this action', 403));
       }
 
       next();
@@ -28,28 +24,52 @@ const roleMiddleware = (allowedRoles) => {
 };
 
 /**
- * Resource ownership middleware for agents
- * Ensures agents can only access their assigned resources
+ * Check if user has specific permission
+ * @param {String} permission - Permission to check
  */
-const resourceOwnershipMiddleware = (resourceIdParam = 'id', ownerField = 'assignedAgentId') => {
-  return async (req, res, next) => {
+const permissionMiddleware = (permission) => {
+  return (req, res, next) => {
     try {
-      // Skip for super admin and manager
-      const userRole = req.user.role?.name || req.user.role;
-      if (['super_admin', 'manager', 'admin'].includes(userRole)) {
+      if (!req.user) {
+        return next(new AppError('Authentication required', 401));
+      }
+
+      // Check if user has the required permission
+      // This can be expanded based on your permission system
+      const userPermissions = req.user.permissions || [];
+      
+      if (!userPermissions.includes(permission)) {
+        return next(new AppError('Insufficient permissions', 403));
+      }
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+/**
+ * Check if user owns the resource or has admin role
+ * @param {String} resourceIdField - Field name that contains the resource owner ID
+ */
+const ownershipMiddleware = (resourceIdField = 'userId') => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return next(new AppError('Authentication required', 401));
+      }
+
+      // Admin users can access any resource
+      if (req.user.role === 'super_admin' || req.user.role === 'admin') {
         return next();
       }
 
-      // For agents, add ownership filter
-      if (userRole === 'agent') {
-        // Add filter to query params for GET requests
-        if (req.method === 'GET') {
-          req.ownershipFilter = { [ownerField]: req.user._id };
-        }
-        
-        // For other methods, we'll check ownership in the controller
-        req.checkOwnership = true;
-        req.ownerField = ownerField;
+      // Check if user owns the resource
+      const resourceOwnerId = req.params[resourceIdField] || req.body[resourceIdField];
+      
+      if (resourceOwnerId && resourceOwnerId.toString() !== req.user._id.toString()) {
+        return next(new AppError('You can only access your own resources', 403));
       }
 
       next();
@@ -57,44 +77,10 @@ const resourceOwnershipMiddleware = (resourceIdParam = 'id', ownerField = 'assig
       next(error);
     }
   };
-};
-
-/**
- * Client access middleware
- * Specialized middleware for client-related operations
- */
-const clientAccessMiddleware = (req, res, next) => {
-  try {
-    // Set up role-based filters
-    const userRole = req.user.role?.name || req.user.role;
-    switch (userRole) {
-      case 'super_admin':
-      case 'admin':
-        // Super admin can access all clients
-        break;
-        
-      case 'manager':
-        // Manager can access all clients in their region/team
-        // This would require additional user model fields for team/region
-        break;
-        
-      case 'agent':
-        // Agent can only access assigned clients
-        req.agentFilter = { assignedAgentId: req.user._id };
-        break;
-        
-      default:
-        throw new AppError('Invalid user role', 403);
-    }
-
-    next();
-  } catch (error) {
-    next(error);
-  }
 };
 
 module.exports = {
   roleMiddleware,
-  resourceOwnershipMiddleware,
-  clientAccessMiddleware
+  permissionMiddleware,
+  ownershipMiddleware
 };

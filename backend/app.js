@@ -3,154 +3,85 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
-const http = require('http');
-require('dotenv').config();
-
-// Swagger imports
-const swaggerUi = require('swagger-ui-express');
-const { swaggerSpec } = require('./config/swagger');
-
-const app = express();
-const server = http.createServer(app);
-
-// Import middleware
-const rateLimiter = require('./middleware/rateLimiter');
-const auditLogger = require('./middleware/auditLogger');
-const performanceMonitor = require('./middleware/performanceMonitor');
-const webSocketManager = require('./middleware/websocket');
+const rateLimit = require('express-rate-limit');
 const { globalErrorHandler } = require('./utils/errorHandler');
 
-// Import route modules
-const authRoutes = require('./routes/auth');
-const clientRoutes = require('./routes/clients');
-const policyRoutes = require('./routes/policies');
-const claimRoutes = require('./routes/claims');
-const leadRoutes = require('./routes/leads');
-const agentRoutes = require('./routes/agents');
-const quotationRoutes = require('./routes/quotations');
-const dashboardRoutes = require('./routes/dashboard');
-const communicationRoutes = require('./routes/communication');
-const broadcastRoutes = require('./routes/broadcast');
-const enhancedBroadcastRoutes = require('./routes/enhancedBroadcast');
-const campaignRoutes = require('./routes/campaigns');
-const activitiesRoutes = require('./routes/activities');
-const headerRoutes = require('./routes/header');
+// Import routes
 const settingsRoutes = require('./routes/settings');
-const invoiceRoutes = require('./routes/invoices');
-const roleRoutes = require('./routes/roleRoutes');
-const developerRoutes = require('./routes/developerRoutes');
 
-// Initialize WebSocket
-webSocketManager.initialize(server);
+const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || ["http://localhost:5173", "http://localhost:8081"],
-  credentials: true
-}));
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Performance monitoring (before other middleware)
-app.use(performanceMonitor.middleware());
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 
 // Rate limiting
-app.use(rateLimiter.getGeneralLimiter());
-
-// Audit logging (after auth middleware in routes)
-app.use(auditLogger.middleware());
-
-// MongoDB connection - simplified Atlas configuration
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance_system', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 75000
-})
-.then(() => {
-  console.log("MongoDB Atlas connected successfully");
-  console.log(`Connected to database: ${mongoose.connection.name}`);
-  // Initialize roles on successful connection
-  const { initializeRoles } = require('./migrations/seedRoles');
-  initializeRoles().catch(err => console.error("Role initialization error:", err));
-})
-.catch(err => console.error("MongoDB connection error:", err));
-
-// Routes with specific rate limiting
-app.use('/api/auth', rateLimiter.getAuthLimiter(), authRoutes);
-app.use('/api/clients', rateLimiter.getAPILimiter(), clientRoutes);
-app.use('/api/policies', rateLimiter.getAPILimiter(), policyRoutes);
-app.use('/api/claims', rateLimiter.getAPILimiter(), claimRoutes);
-app.use('/api/leads', rateLimiter.getAPILimiter(), leadRoutes);
-app.use('/api/agents', rateLimiter.getAPILimiter(), agentRoutes);
-app.use('/api/quotations', rateLimiter.getAPILimiter(), quotationRoutes);
-app.use('/api/dashboard', rateLimiter.getAPILimiter(), dashboardRoutes);
-app.use('/api/communication', rateLimiter.getAPILimiter(), communicationRoutes);
-app.use('/api/broadcast', rateLimiter.getBulkOperationLimiter(), broadcastRoutes);
-app.use('/api/enhanced-broadcast', rateLimiter.getBulkOperationLimiter(), enhancedBroadcastRoutes);
-app.use('/api/campaigns', rateLimiter.getAPILimiter(), campaignRoutes);
-app.use('/api/activities', rateLimiter.getAPILimiter(), activitiesRoutes);
-app.use('/api/header', rateLimiter.getAPILimiter(), headerRoutes);
-app.use('/api/settings', rateLimiter.getAPILimiter(), settingsRoutes);
-app.use('/api/invoices', rateLimiter.getAPILimiter(), invoiceRoutes);
-app.use('/api/roles', rateLimiter.getAPILimiter(), roleRoutes);
-app.use('/api/developer', rateLimiter.getAPILimiter(), developerRoutes);
-
-// Performance metrics endpoint
-app.get('/api/metrics', rateLimiter.getAPILimiter(), (req, res) => {
-  if (req.user?.role !== 'super_admin') {
-    return res.status(403).json({ error: 'Insufficient permissions' });
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.'
   }
-  
-  const timeframe = req.query.timeframe || '1h';
-  const metrics = performanceMonitor.getMetrics(timeframe);
-  res.json(metrics);
 });
+app.use('/api/', limiter);
 
-// Swagger API documentation (only in non-production)
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Insurance CRM API Documentation'
-  }));
-  console.log(`Swagger UI available at http://localhost:${process.env.PORT || 5000}/api-docs`);
-}
+// Body parser middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
+// Database connection
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance-crm', {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.error('Database connection failed:', error.message);
+    process.exit(1);
+  }
+};
+
+// Connect to database
+connectDB();
+
+// Health check route
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    success: true,
+    message: 'Server is running successfully',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Global error handling middleware
-app.use(globalErrorHandler);
+// API routes
+app.use('/api/settings', settingsRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ 
+app.all('*', (req, res, next) => {
+  res.status(404).json({
     success: false,
-    error: 'Route not found',
-    path: req.originalUrl 
+    message: `Can't find ${req.originalUrl} on this server!`
   });
 });
 
-const PORT = process.env.PORT || 3000;
+// Global error handler
+app.use(globalErrorHandler);
 
-if (process.env.NODE_ENV !== 'test') {
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`WebSocket server initialized`);
-  });
-}
+const PORT = process.env.PORT || 5000;
 
-module.exports = { app, server };
+app.listen(PORT, () => {
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+});
+
+module.exports = app;

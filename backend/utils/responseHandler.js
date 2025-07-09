@@ -1,89 +1,87 @@
 
 /**
- * Standard success response format
+ * Success Response Handler
+ * @param {Object} res - Express response object
+ * @param {Object} data - Response data
+ * @param {String} message - Success message
+ * @param {Number} statusCode - HTTP status code
  */
-const successResponse = (res, data = {}, statusCode = 200) => {
-  const response = {
+const successResponse = (res, data, message = 'Success', statusCode = 200) => {
+  return res.status(statusCode).json({
     success: true,
-    timestamp: new Date().toISOString(),
-    ...data
-  };
-
-  return res.status(statusCode).json(response);
+    status: 'success',
+    message,
+    data,
+    timestamp: new Date().toISOString()
+  });
 };
 
 /**
- * Standard error response format
+ * Error Response Handler
+ * @param {Object} res - Express response object
+ * @param {String} message - Error message
+ * @param {Number} statusCode - HTTP status code
+ * @param {Object} error - Error details (optional)
  */
-const errorResponse = (res, message = 'Internal Server Error', statusCode = 500, errors = null) => {
+const errorResponse = (res, message = 'Something went wrong', statusCode = 500, error = null) => {
   const response = {
     success: false,
+    status: 'error',
     message,
     timestamp: new Date().toISOString()
   };
 
-  if (errors) {
-    response.errors = errors;
+  if (error && process.env.NODE_ENV === 'development') {
+    response.error = error;
   }
 
   return res.status(statusCode).json(response);
 };
 
 /**
- * Paginated response format
+ * Validation Error Response Handler
+ * @param {Object} res - Express response object
+ * @param {Array} errors - Array of validation errors
+ * @param {String} message - Error message
  */
-const paginatedResponse = (res, data, pagination, statusCode = 200) => {
-  const response = {
+const validationErrorResponse = (res, errors, message = 'Validation failed') => {
+  return res.status(400).json({
+    success: false,
+    status: 'fail',
+    message,
+    errors,
+    timestamp: new Date().toISOString()
+  });
+};
+
+/**
+ * Paginated Response Handler
+ * @param {Object} res - Express response object
+ * @param {Object} data - Response data
+ * @param {Object} pagination - Pagination info
+ * @param {String} message - Success message
+ */
+const paginatedResponse = (res, data, pagination, message = 'Success') => {
+  return res.status(200).json({
     success: true,
+    status: 'success',
+    message,
     data,
     pagination: {
-      currentPage: pagination.currentPage,
-      totalPages: pagination.totalPages,
-      totalItems: pagination.totalItems,
-      itemsPerPage: pagination.itemsPerPage,
-      hasNextPage: pagination.currentPage < pagination.totalPages,
-      hasPrevPage: pagination.currentPage > 1
+      page: pagination.page,
+      limit: pagination.limit,
+      total: pagination.total,
+      pages: Math.ceil(pagination.total / pagination.limit),
+      hasNext: pagination.page < Math.ceil(pagination.total / pagination.limit),
+      hasPrev: pagination.page > 1
     },
     timestamp: new Date().toISOString()
-  };
-
-  return res.status(statusCode).json(response);
-};
-
-/**
- * Created resource response format
- */
-const createdResponse = (res, data, message = 'Resource created successfully') => {
-  return successResponse(res, { message, data }, 201);
-};
-
-/**
- * Updated resource response format
- */
-const updatedResponse = (res, data, message = 'Resource updated successfully') => {
-  return successResponse(res, { message, data }, 200);
-};
-
-/**
- * Deleted resource response format
- */
-const deletedResponse = (res, message = 'Resource deleted successfully') => {
-  return successResponse(res, { message }, 200);
-};
-
-/**
- * No content response format
- */
-const noContentResponse = (res) => {
-  return res.status(204).send();
+  });
 };
 
 module.exports = {
   successResponse,
   errorResponse,
-  paginatedResponse,
-  createdResponse,
-  updatedResponse,
-  deletedResponse,
-  noContentResponse
+  validationErrorResponse,
+  paginatedResponse
 };

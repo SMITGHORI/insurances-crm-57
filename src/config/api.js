@@ -21,7 +21,8 @@ export const API_ENDPOINTS = {
   INVOICES: '/invoices',
   AGENTS: '/agents',
   REPORTS: '/reports',
-  ACTIVITIES: '/activities'
+  ACTIVITIES: '/activities',
+  SETTINGS: '/settings'
 };
 
 // HTTP Status codes
