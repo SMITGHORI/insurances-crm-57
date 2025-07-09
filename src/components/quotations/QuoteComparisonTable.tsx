@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -12,9 +13,13 @@ import Protected from '@/components/Protected';
 import ProtectedRow from '@/components/ProtectedRow';
 import { useUpdateQuoteStatus, useExportQuotes } from '@/hooks/useQuotes';
 import { toast } from 'sonner';
-// Define Quote interface locally
+
+// Define Quote interface to match the expected structure
 interface Quote {
   id: string;
+  quoteId?: string;
+  leadId?: string;
+  leadName?: string;
   clientId: string;
   clientName: string;
   carrier: string;
@@ -27,6 +32,17 @@ interface Quote {
   updatedAt: string;
   branch: string;
   valueScore?: number;
+  planName?: string;
+  validityStart?: string;
+  validityEnd?: string;
+  insuranceType?: string;
+  agentId?: string;
+  agentName?: string;
+  commissionAmount?: number;
+  emailSent?: boolean;
+  whatsappSent?: boolean;
+  documentUrl?: string;
+  followUpReminders?: any[];
 }
 
 interface QuoteComparisonTableProps {
@@ -215,7 +231,7 @@ const QuoteComparisonTable: React.FC<QuoteComparisonTableProps> = ({
                             View Details
                           </DropdownMenuItem>
                           
-                          {'documentUrl' in quote && quote.documentUrl && (
+                          {quote.documentUrl && (
                             <Protected module="quotations" action="view_document">
                               <DropdownMenuItem asChild>
                                 <a 
