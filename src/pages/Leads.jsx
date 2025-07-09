@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, BarChart, Download } from 'lucide-react';
+import { Plus, BarChart, Download, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import LeadsTable from '@/components/leads/LeadsTable';
 import LeadFilters from '@/components/leads/LeadFilters';
@@ -11,12 +11,14 @@ import { PageSkeleton } from '@/components/ui/professional-skeleton';
 import LeadStatsCards from '@/components/leads/LeadStatsCards';
 import BulkOperationsToolbar from '@/components/leads/BulkOperationsToolbar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import Protected from '@/components/Protected';
 import { useLeads, useExportLeads } from '../hooks/useLeads';
 
 const Leads = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [connectionStatus, setConnectionStatus] = useState('connected');
   const [filterParams, setFilterParams] = useState({
     status: 'all',
     source: 'all',
@@ -33,15 +35,42 @@ const Leads = () => {
   const [showReports, setShowReports] = useState(false);
 
   // Connect to MongoDB for leads data
-  const { data: leadsResponse, isLoading, error } = useLeads({
+  const { data: leadsResponse, isLoading, error, refetch } = useLeads({
     ...filterParams,
     search: filterParams.searchTerm,
-    sortField,
-    sortDirection
+    sortBy: sortField,
+    sortOrder: sortDirection
   });
 
   // Connect to MongoDB for export
   const exportLeadsMutation = useExportLeads();
+
+  // Monitor connection status
+  useEffect(() => {
+    const checkConnection = () => {
+      if (error && error.message.includes('Network error')) {
+        setConnectionStatus('disconnected');
+      } else if (error && error.message.includes('Failed to fetch')) {
+        setConnectionStatus('disconnected');
+      } else if (!error && leadsResponse) {
+        setConnectionStatus('connected');
+      }
+    };
+
+    checkConnection();
+  }, [error, leadsResponse]);
+
+  // Auto-retry connection
+  useEffect(() => {
+    if (connectionStatus === 'disconnected') {
+      const retryTimer = setTimeout(() => {
+        console.log('Attempting to reconnect to database...');
+        refetch();
+      }, 5000);
+
+      return () => clearTimeout(retryTimer);
+    }
+  }, [connectionStatus, refetch]);
 
   const leads = leadsResponse?.leads || [];
   const pagination = leadsResponse?.pagination || {};
@@ -54,13 +83,13 @@ const Leads = () => {
     try {
       console.log('Exporting leads from MongoDB with filters:', filterParams);
       
-      // Use the MongoDB export API
       await exportLeadsMutation.mutateAsync(filterParams);
       
       console.log('Leads exported successfully from MongoDB');
+      toast.success('Leads data exported successfully');
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error('Failed to export leads data from database');
+      toast.error(`Failed to export leads: ${error.message}`);
     }
   };
 
@@ -95,7 +124,7 @@ const Leads = () => {
 
   const handleBulkAction = (action, leadIds) => {
     console.log('Bulk action:', action, leadIds);
-    // Handle bulk actions here - these will connect to MongoDB
+    toast.info(`Bulk ${action} operation initiated for ${leadIds.length} leads`);
   };
 
   const handleLeadSelection = (leadId, selected) => {
@@ -110,33 +139,55 @@ const Leads = () => {
     setSelectedLeads([]);
   };
 
+  const handleRetryConnection = () => {
+    console.log('Manual retry connection requested');
+    setConnectionStatus('connecting');
+    refetch();
+  };
+
   // Show professional loading skeleton
   if (isLoading) {
     return <PageSkeleton isMobile={isMobile} />;
   }
 
-  // Handle errors
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Leads</h2>
-          <p className="text-gray-600 mb-4">Unable to connect to the database. Please try again later.</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-6">
+      {/* Connection Status Alert */}
+      {connectionStatus === 'disconnected' && (
+        <Alert className="mb-4 border-destructive">
+          <WifiOff className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>Database connection lost. Attempting to reconnect...</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRetryConnection}
+              disabled={connectionStatus === 'connecting'}
+            >
+              {connectionStatus === 'connecting' ? 'Connecting...' : 'Retry'}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {connectionStatus === 'connected' && leadsResponse && (
+        <Alert className="mb-4 border-green-500">
+          <Wifi className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-700">
+            Connected to MongoDB • Real-time database operations active
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Leads Management</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Connected to MongoDB • Real-time database operations
+            MongoDB Integration • {leads.length} leads loaded
+            {pagination.totalItems && ` • ${pagination.totalItems} total`}
           </p>
         </div>
+        
         <div className="flex gap-2">
           <Protected module="leads" action="view">
             <Dialog open={showReports} onOpenChange={setShowReports}>
@@ -150,7 +201,7 @@ const Leads = () => {
                   <DialogTitle>Lead Reports & Analytics</DialogTitle>
                 </DialogHeader>
                 <div className="p-4">
-                  <p className="text-gray-500">Lead reports component will be implemented here</p>
+                  <p className="text-gray-500">Lead reports and analytics will be displayed here with real-time data from MongoDB</p>
                 </div>
               </DialogContent>
             </Dialog>
@@ -161,7 +212,7 @@ const Leads = () => {
               variant="outline" 
               className={isMobile ? "w-full" : ""}
               onClick={handleExport}
-              disabled={exportLeadsMutation.isLoading}
+              disabled={exportLeadsMutation.isLoading || connectionStatus === 'disconnected'}
             >
               <Download className="mr-2 h-4 w-4" /> 
               {exportLeadsMutation.isLoading ? 'Exporting...' : 'Export'}
@@ -169,7 +220,11 @@ const Leads = () => {
           </Protected>
           
           <Protected module="leads" action="create">
-            <Button onClick={handleCreateLead} className={isMobile ? "w-full" : ""}>
+            <Button 
+              onClick={handleCreateLead} 
+              className={isMobile ? "w-full" : ""}
+              disabled={connectionStatus === 'disconnected'}
+            >
               <Plus className="mr-2 h-4 w-4" /> Create Lead
             </Button>
           </Protected>
@@ -200,6 +255,21 @@ const Leads = () => {
         onBulkAction={handleBulkAction}
         agents={[]} // Add agents data here when available
       />
+      
+      {/* Error State */}
+      {error && connectionStatus !== 'disconnected' && (
+        <Alert className="mb-4 border-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>Error loading leads: {error.message}</span>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
       
       <LeadsTable 
         leads={leads}

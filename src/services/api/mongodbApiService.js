@@ -2,62 +2,95 @@
 import { API_CONFIG } from '../../config/api.js';
 
 /**
- * Unified MongoDB API Service
- * Base class for all API services to ensure consistent MongoDB integration
+ * Base MongoDB API Service Class
+ * Provides common CRUD operations for all MongoDB collections
  */
 class MongoDBApiService {
-  constructor(basePath = '') {
-    this.baseURL = `${API_CONFIG.BASE_URL}${basePath}`;
+  constructor(endpoint) {
+    this.baseURL = API_CONFIG.BASE_URL;
+    this.endpoint = endpoint;
   }
 
-  async getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && {
-        'Authorization': `Bearer ${token}`
-      })
-    };
-  }
-
-  async makeRequest(endpoint, options = {}) {
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
-    const headers = await this.getAuthHeaders();
+  /**
+   * Make HTTP request with proper error handling
+   */
+  async makeRequest(url, options = {}) {
+    const requestUrl = url.startsWith('http') ? url : `${this.baseURL}${this.endpoint}${url}`;
     
-    const config = {
-      headers,
-      ...options
+    const defaultOptions = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
+      },
+    };
+
+    const requestOptions = {
+      ...defaultOptions,
+      ...options,
+      headers: {
+        ...defaultOptions.headers,
+        ...options.headers,
+      },
     };
 
     try {
-      console.log(`MongoDB API Request: ${options.method || 'GET'} ${url}`);
-      const response = await fetch(url, config);
+      console.log(`Making ${requestOptions.method || 'GET'} request to:`, requestUrl);
+      
+      const response = await fetch(requestUrl, requestOptions);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        const error = new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        error.status = response.status;
+        error.data = errorData;
+        throw error;
       }
-      
+
       const data = await response.json();
-      console.log(`MongoDB API Response: ${url}`, data);
+      console.log('API Response:', data);
+      
       return data;
     } catch (error) {
-      console.error(`MongoDB API Request failed for ${url}:`, error);
+      console.error('API Request failed:', error);
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server. Please check if the backend is running.');
+      }
+      
       throw error;
     }
   }
 
-  // Common CRUD operations
-  async getAll(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `?${queryString}` : '';
-    return this.makeRequest(endpoint);
+  /**
+   * Get authentication headers
+   */
+  getAuthHeaders() {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+    return {};
   }
 
+  /**
+   * Get all records with pagination and filtering
+   */
+  async getAll(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString ? `?${queryString}` : '';
+    return this.makeRequest(url);
+  }
+
+  /**
+   * Get single record by ID
+   */
   async getById(id) {
     return this.makeRequest(`/${id}`);
   }
 
+  /**
+   * Create new record
+   */
   async create(data) {
     return this.makeRequest('', {
       method: 'POST',
@@ -65,6 +98,9 @@ class MongoDBApiService {
     });
   }
 
+  /**
+   * Update existing record
+   */
   async update(id, data) {
     return this.makeRequest(`/${id}`, {
       method: 'PUT',
@@ -72,23 +108,40 @@ class MongoDBApiService {
     });
   }
 
+  /**
+   * Delete record
+   */
   async delete(id) {
     return this.makeRequest(`/${id}`, {
       method: 'DELETE'
     });
   }
 
-  async search(query, limit = 10) {
-    const params = { q: query, limit };
+  /**
+   * Export data
+   */
+  async export(params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    return this.makeRequest(`/search?${queryString}`);
+    const url = `/export${queryString ? `?${queryString}` : ''}`;
+    return this.makeRequest(url);
   }
 
-  async export(exportData) {
-    return this.makeRequest('/export', {
+  /**
+   * Bulk operations
+   */
+  async bulkUpdate(data) {
+    return this.makeRequest('/bulk-update', {
       method: 'POST',
-      body: JSON.stringify(exportData)
+      body: JSON.stringify(data)
     });
+  }
+
+  /**
+   * Search functionality
+   */
+  async search(query, params = {}) {
+    const searchParams = new URLSearchParams({ q: query, ...params }).toString();
+    return this.makeRequest(`/search?${searchParams}`);
   }
 }
 
