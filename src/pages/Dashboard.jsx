@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Database, Wifi } from 'lucide-react';
+import { RefreshCw, Database, Wifi, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import RecentActivities from '@/components/dashboard/RecentActivities';
@@ -9,10 +9,10 @@ import QuickActions from '@/components/dashboard/QuickActions';
 import DashboardNotifications from '@/components/dashboard/DashboardNotifications';
 import DashboardTasks from '@/components/dashboard/DashboardTasks';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
-import { useDashboardData, useRefreshDashboard } from '@/hooks/useDashboard';
+import { useDashboardData } from '@/hooks/useDashboardApi';
 
 const Dashboard = () => {
-  console.log('Dashboard component rendering with MongoDB integration');
+  console.log('Dashboard component rendering with enhanced API integration');
   
   const {
     overview,
@@ -22,96 +22,79 @@ const Dashboard = () => {
     quickActions,
     isLoading,
     isError,
+    isRefreshing,
+    lastUpdated,
+    refreshDashboard,
     refetch
   } = useDashboardData();
 
-  const { refreshDashboard } = useRefreshDashboard();
-
-  // Set up real-time listeners for module updates
+  // Auto-refresh on component mount
   useEffect(() => {
-    console.log('Setting up real-time MongoDB listeners for dashboard');
+    console.log('Dashboard mounted, setting up real-time listeners');
     
-    const handleModuleUpdate = (event) => {
-      console.log(`Dashboard received ${event.type} event, refreshing data`);
-      toast.info('Dashboard data updated', {
-        description: 'Real-time sync from database'
+    // Trigger initial data load
+    if (!overview && !isLoading) {
+      console.log('No overview data, triggering initial load');
+      refetch.overview();
+    }
+
+    // Listen for browser connectivity changes
+    const handleOnline = () => {
+      console.log('Browser back online, refreshing dashboard');
+      toast.info('Connection restored', {
+        description: 'Refreshing dashboard data...'
       });
-      
-      // Refresh relevant sections based on the update
-      switch (event.type) {
-        case 'client-updated':
-        case 'lead-updated':
-          refetch.overview();
-          refetch.activities();
-          break;
-        case 'policy-updated':
-        case 'claim-updated':
-          refetch.overview();
-          refetch.charts();
-          refetch.quickActions();
-          break;
-        case 'quotation-updated':
-          refetch.overview();
-          refetch.activities();
-          break;
-        case 'offer-updated':
-        case 'broadcast-sent':
-          refetch.metrics();
-          refetch.activities();
-          break;
-        default:
-          // Refresh all data for unknown events
-          Object.values(refetch).forEach(fn => fn());
-      }
+      refreshDashboard();
     };
 
-    // Listen to all module update events
-    const events = [
-      'client-updated', 'client-created', 'client-deleted',
-      'policy-updated', 'policy-created', 'policy-deleted',
-      'claim-updated', 'claim-created', 'claim-deleted',
-      'lead-updated', 'lead-created', 'lead-deleted',
-      'quotation-updated', 'quotation-created', 'quotation-deleted',
-      'offer-updated', 'offer-created', 'offer-deleted',
-      'broadcast-sent', 'broadcast-created'
-    ];
+    const handleOffline = () => {
+      console.log('Browser went offline');
+      toast.warning('Connection lost', {
+        description: 'Some features may not work properly'
+      });
+    };
 
-    events.forEach(eventType => {
-      window.addEventListener(eventType, handleModuleUpdate);
-    });
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
     return () => {
-      events.forEach(eventType => {
-        window.removeEventListener(eventType, handleModuleUpdate);
-      });
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
-  }, [refetch]);
+  }, [overview, isLoading, refreshDashboard, refetch]);
 
+  // Handle manual refresh
   const handleRefresh = async () => {
     try {
       console.log('Manual dashboard refresh triggered');
-      toast.loading('Refreshing dashboard data from MongoDB...');
+      toast.loading('Refreshing dashboard data...', { id: 'dashboard-refresh' });
       await refreshDashboard();
-      toast.success('Dashboard refreshed successfully');
+      toast.success('Dashboard refreshed successfully', { id: 'dashboard-refresh' });
     } catch (error) {
       console.error('Dashboard refresh failed:', error);
-      toast.error('Failed to refresh dashboard data');
+      toast.error('Failed to refresh dashboard data', { id: 'dashboard-refresh' });
     }
   };
 
-  if (isError) {
+  // Show error state if all data failed to load
+  if (isError && !overview && !activities && !metrics && !charts && !quickActions) {
     return (
       <div className="container mx-auto px-4 py-6">
         <div className="text-center py-12">
-          <Database className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Database Connection Error</h2>
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Connection Error</h2>
           <p className="text-gray-600 mb-6">
-            Unable to connect to MongoDB. Please check your backend connection.
+            Unable to connect to the backend API. Please check your connection and try again.
           </p>
-          <Button onClick={handleRefresh} className="mr-4">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Retry Connection
-          </Button>
+          <div className="space-x-4">
+            <Button onClick={handleRefresh} disabled={isRefreshing}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Retry Connection
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -119,28 +102,52 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
-      {/* Header with real-time status */}
+      {/* Header with connection status */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center gap-1 text-green-600">
               <Wifi className="h-4 w-4" />
-              <span className="text-sm">Connected to MongoDB</span>
+              <span className="text-sm">Connected to API</span>
             </div>
             <div className="flex items-center gap-1 text-blue-600">
               <Database className="h-4 w-4" />
               <span className="text-sm">Real-time sync enabled</span>
             </div>
+            {lastUpdated && (
+              <div className="flex items-center gap-1 text-gray-500">
+                <span className="text-xs">
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        <Button onClick={handleRefresh} variant="outline" disabled={isLoading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh Data
+        <Button 
+          onClick={handleRefresh} 
+          variant="outline" 
+          disabled={isLoading || isRefreshing}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${(isLoading || isRefreshing) ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </div>
 
-      {/* Stats Overview from MongoDB */}
+      {/* Connection warning if partial data load */}
+      {isError && (overview || activities || metrics || charts || quickActions) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            <span className="text-yellow-800 font-medium">Partial Data Load</span>
+          </div>
+          <p className="text-yellow-700 text-sm mt-1">
+            Some dashboard sections may not be up to date. Click refresh to reload all data.
+          </p>
+        </div>
+      )}
+
+      {/* Stats Overview with enhanced data */}
       <DashboardStats 
         overview={overview} 
         metrics={metrics} 
@@ -179,8 +186,18 @@ const Dashboard = () => {
 
       {/* Real-time Data Footer */}
       <div className="text-center text-sm text-gray-500 py-4 border-t">
-        Dashboard connected to MongoDB • Last updated: {new Date().toLocaleTimeString()} • 
-        Real-time sync with all modules enabled
+        <div className="flex items-center justify-center gap-4">
+          <span>Dashboard connected to API</span>
+          <span>•</span>
+          <span>Real-time sync with all modules enabled</span>
+          <span>•</span>
+          <span>Auto-refresh every 5 minutes</span>
+        </div>
+        {lastUpdated && (
+          <div className="mt-1">
+            Last synchronized: {lastUpdated.toLocaleString()}
+          </div>
+        )}
       </div>
     </div>
   );
